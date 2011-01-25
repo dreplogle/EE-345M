@@ -1,6 +1,6 @@
 //*****************************************************************************
 //
-// rit128x96x4.h - Prototypes for the driver for the RITEK 128x96x4 graphical
+// rit128x96x4.c - Prototypes for the driver for the RITEK 128x96x4 graphical
 //                   OLED display.
 //
 // Copyright (c) 2007 Luminary Micro, Inc.  All rights reserved.
