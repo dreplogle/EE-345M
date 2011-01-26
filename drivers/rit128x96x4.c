@@ -496,13 +496,12 @@ RIT128x96x4Clear(void)
 //
 //  Written by: Katy Loeffler 1/22/2011
 //*****************************************************************************
-void oLED_Message (int device, int line, char *string, long value){
-	char num_string[10];
-	Fix2Str(value, num_string);
+void oLED_Message(int device, int line, char *string, long value){
+
 	if(!device){ 	   	// top display
 		if(line < 5){  	// check bounds for vertical space
-			RIT128x96x4StringDraw(num_string, 2, (line*8), 11);
-		 	RIT128x96x4StringDraw(string, 70, (line*8), 11);
+		 	RIT128x96x4StringDraw(string, 10, (line*8), 11);
+			RIT128x96x4DecOut5(value, 87, (line*8), 11);
 		}
 		else{
 			RIT128x96x4StringDraw("Line selection error", 2, 0, 11);
@@ -510,8 +509,8 @@ void oLED_Message (int device, int line, char *string, long value){
 	}
 	else if(device){	// bottom display
 		if(line < 5){	// check bounds for vertical space
-		 	RIT128x96x4StringDraw(num_string, 2, (line*8)+48, 11);
-		 	RIT128x96x4StringDraw(string, 70, (line*8)+48, 11);
+		 	RIT128x96x4StringDraw(string, 10, (line*8)+48, 11);
+			RIT128x96x4DecOut5(value, 87, (line*8)+48, 11);
 		}
 		else{
 			RIT128x96x4StringDraw("Line selection error", 2, 48, 11);

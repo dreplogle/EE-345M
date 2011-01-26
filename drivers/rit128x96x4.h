@@ -69,5 +69,5 @@ extern void RIT128x96x4PlotBar(long y);
 extern void RIT128x96x4PlotdBfs(long y);
 extern void RIT128x96x4PlotNext(void);
 extern void RIT128x96x4ShowPlot(void);
-
+extern void oLED_Message(int device, int line, char *string, long value);
 #endif // __RIT128X96X4_H__
