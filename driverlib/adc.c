@@ -1464,6 +1464,40 @@ ADCPhaseDelayGet(unsigned long ulBase)
 
 //*****************************************************************************
 //
+//! Initializes the ADC for future use 
+//
+//*****************************************************************************
+int 
+ADC_Open(void)
+{
+
+}
+
+//*****************************************************************************
+//
+//! Retrieves a single sample from the ADC 
+//
+//*****************************************************************************
+unsigned short 
+ADC_In(unsigned int channelNum)
+{
+
+}
+
+//*****************************************************************************
+//
+//! Retrieves multiple samples from the ADC 
+//
+//*****************************************************************************
+int 
+ADC_Collect(unsigned int channelNum, unsigned int fs, 
+       unsigned short buffer[], unsigned int numberOfSamples)  
+{
+
+}
+
+//*****************************************************************************
+//
 // Close the Doxygen group.
 //! @}
 //

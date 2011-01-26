@@ -245,7 +245,10 @@ extern void ADCReferenceSet(unsigned long ulBase, unsigned long ulRef);
 extern unsigned long ADCReferenceGet(unsigned long ulBase);
 extern void ADCPhaseDelaySet(unsigned long ulBase, unsigned long ulPhase);
 extern unsigned long ADCPhaseDelayGet(unsigned long ulBase);
-
+extern int ADC_Open(void);
+unsigned short ADC_In(unsigned int channelNum)
+extern int ADC_Collect(unsigned int channelNum, unsigned int fs, 
+       unsigned short buffer[], unsigned int numberOfSamples);
 //*****************************************************************************
 //
 // Mark the end of the C bindings section for C++ compilers.
