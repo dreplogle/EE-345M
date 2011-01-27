@@ -32,7 +32,11 @@
 #include "driverlib/sysctl.h"
 #include "driverlib/uart.h"
 #include "driverlib/adc.h"
+#include "driverlib/fifo.h"
 #include "drivers/rit128x96x4.h"
+
+// Global Variables
+	AddFifo(UARTRx, 8, long, 1, 0); 	// UARTRx defined as global Fifo for testing
 
 
 //*****************************************************************************
@@ -68,6 +72,7 @@ void
 UARTIntHandler(void)
 {
     unsigned long ulStatus;
+	long UARTData;
 
     //
     // Get the interrrupt status.
@@ -87,7 +92,12 @@ UARTIntHandler(void)
         //
         // Read the next character from the UART and write it back to the UART.
         //
-        UARTCharPutNonBlocking(UART0_BASE, UARTCharGetNonBlocking(UART0_BASE));
+		UARTData =  UARTCharGetNonBlocking(UART0_BASE);
+		if(!UARTRxFifo_Put(UARTData)){
+			while(UARTRxFifo_Get(&UARTData)){
+        		UARTCharPutNonBlocking(UART0_BASE,UARTData);
+			}
+		}
     }
 }
 
@@ -120,6 +130,9 @@ int
 main(void)
 {
 	unsigned short ADC_sample = 0;
+	UARTRxFifo_Init();
+
+	  
     //
     // Set the clocking to run directly from the crystal.
     //
