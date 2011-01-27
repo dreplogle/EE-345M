@@ -1487,6 +1487,8 @@ unsigned short
 ADC_In(unsigned int channelNum)
 {
     unsigned long ulADC0_Value[1];
+
+
 	//
 	// Enable sample sequence 3 to start a conversion on software command 
 	// with priority 0.
