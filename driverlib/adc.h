@@ -246,7 +246,7 @@ extern unsigned long ADCReferenceGet(unsigned long ulBase);
 extern void ADCPhaseDelaySet(unsigned long ulBase, unsigned long ulPhase);
 extern unsigned long ADCPhaseDelayGet(unsigned long ulBase);
 extern int ADC_Open(void);
-unsigned short ADC_In(unsigned int channelNum)
+extern unsigned short ADC_In(unsigned int channelNum);
 extern int ADC_Collect(unsigned int channelNum, unsigned int fs, 
        unsigned short buffer[], unsigned int numberOfSamples);
 //*****************************************************************************

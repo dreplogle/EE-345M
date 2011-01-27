@@ -35,6 +35,7 @@
 #include "inc/hw_types.h"
 #include "driverlib/adc.h"
 #include "driverlib/debug.h"
+#include "driverlib/sysctl.h"
 #include "driverlib/interrupt.h"
 
 //*****************************************************************************
@@ -1474,6 +1475,7 @@ ADC_Open(void)
 	// ADC Peripheral must be enabled before use
 	//
 	SysCtlPeripheralEnable(SYSCTL_PERIPH_ADC0);
+	return(1);
 }
 
 //*****************************************************************************
@@ -1498,25 +1500,32 @@ ADC_In(unsigned int channelNum)
     // that this is the last conversion on sequence 3 (ADC_CTL_END).  
 	//
 	switch(channelNum){
-	case: 0
+	case 0:
 		ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH0 | ADC_CTL_IE |
                         ADC_CTL_END);
 		break;
-	case: 1
+	case 1:
 		ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH1 | ADC_CTL_IE |
                         ADC_CTL_END);
 		break;
-	case: 2
+	case 2:
 		ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH2 | ADC_CTL_IE |
                         ADC_CTL_END);
 		break;
-	case: 3
+	case 3:
 		ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH3 | ADC_CTL_IE |
                         ADC_CTL_END);
 		break;
 	default: 
 		return 0xFFFF;
 	}
+	// Enable sequence
+	ADCSequenceEnable(ADC0_BASE, 3);
+    //
+    // Clear the interrupt status flag.  This is done to make sure the
+    // interrupt flag is cleared before we sample.
+    //
+    ADCIntClear(ADC0_BASE, 3);
 	//
     // Trigger the ADC conversion.
     //
@@ -1533,7 +1542,7 @@ ADC_In(unsigned int channelNum)
 	// Read ADC Value.
 	//
 	ADCSequenceDataGet(ADC0_BASE, 3, ulADC0_Value);
-	return (unsigned short)ulADC0_Value;
+	return (unsigned short)ulADC0_Value[0];
 }
 
 //*****************************************************************************
@@ -1545,7 +1554,7 @@ int
 ADC_Collect(unsigned int channelNum, unsigned int fs, 
        unsigned short buffer[], unsigned int numberOfSamples)  
 {
-
+	return(0);
 }
 
 //*****************************************************************************
