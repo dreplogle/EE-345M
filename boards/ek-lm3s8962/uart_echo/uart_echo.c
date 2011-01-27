@@ -123,10 +123,10 @@ main(void)
     //
     // Set the clocking to run directly from the crystal.
     //
-    //SysCtlClockSet(SYSCTL_SYSDIV_1 | SYSCTL_USE_OSC | SYSCTL_OSC_MAIN |
-    //               SYSCTL_XTAL_8MHZ);
-	SysCtlClockSet(SYSCTL_SYSDIV_10 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN |
-                   SYSCTL_XTAL_16MHZ);
+    SysCtlClockSet(SYSCTL_SYSDIV_1 | SYSCTL_USE_OSC | SYSCTL_OSC_MAIN |
+                   SYSCTL_XTAL_8MHZ);
+	//SysCtlClockSet(SYSCTL_SYSDIV_10 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN |
+    //               SYSCTL_XTAL_16MHZ);
 
 
     //
@@ -139,16 +139,16 @@ main(void)
    // RIT128x96x4StringDraw("Data:   8 Bit",        12, 32, 15);
    // RIT128x96x4StringDraw("Parity: None",         12, 40, 15);
    // RIT128x96x4StringDraw("Stop:   1 Bit",        12, 48, 15);
-    oLED_Message(0, 0, "Line0", 7);
-	oLED_Message(0, 1, "Line1", 12);
-	oLED_Message(0, 2, "Line2", 76);
-	oLED_Message(0, 3, "Line3", 87);
-	oLED_Message(0, 4, "Line4", 1113);
-	oLED_Message(1, 0, "Line0", 7);
-	oLED_Message(1, 1, "Line1", 345);
-	oLED_Message(1, 2, "Line2", 17);
-	oLED_Message(1, 3, "Line3", 89);
-	oLED_Message(1, 4, "Line4", 1638);
+   // oLED_Message(0, 0, "Line0", 7);
+   //	oLED_Message(0, 1, "Line1", 12);
+//	oLED_Message(0, 2, "Line2", 76);
+//	oLED_Message(0, 3, "Line3", 87);
+//	oLED_Message(0, 4, "Line4", 1113);
+//	oLED_Message(1, 0, "Line0", 7);
+//	oLED_Message(1, 1, "Line1", 345);
+//	oLED_Message(1, 2, "Line2", 17);
+//	oLED_Message(1, 3, "Line3", 89);
+//	oLED_Message(1, 4, "Line4", 1638);
 
 
     //
@@ -192,6 +192,13 @@ main(void)
     while(1)
     {
 		ADC_sample = ADC_In(0);
-		oLED_Message(0, 0, "ADC Output", (long)ADC_sample);
+		oLED_Message(0, 0, "ADC Ch0", (long)ADC_sample);
+		ADC_sample = ADC_In(1);
+		oLED_Message(0, 2, "ADC Ch1", (long)ADC_sample);
+		ADC_sample = ADC_In(2);
+		oLED_Message(1, 0, "ADC Ch2", (long)ADC_sample);
+		ADC_sample = ADC_In(3);
+		oLED_Message(1, 2, "ADC Ch3", (long)ADC_sample);
+		SysCtlDelay(SysCtlClockGet() / 1);
     }
 }
