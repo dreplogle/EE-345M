@@ -1470,7 +1470,10 @@ ADCPhaseDelayGet(unsigned long ulBase)
 int 
 ADC_Open(void)
 {
-
+	//
+	// ADC Peripheral must be enabled before use
+	//
+	SysCtlPeripheralEnable(SYSCTL_PERIPH_ADC0);
 }
 
 //*****************************************************************************
@@ -1481,7 +1484,56 @@ ADC_Open(void)
 unsigned short 
 ADC_In(unsigned int channelNum)
 {
+    unsigned long ulADC0_Value[1];
+	//
+	// Enable sample sequence 3 to start a conversion on software command 
+	// with priority 0.
+	//
+	ADCSequenceConfigure(ADC0_BASE, 3, ADC_TRIGGER_PROCESSOR, 0);
+	
+	//
+ 	// Configure step 0 on sequence 3.  Sample channel 0, 1, 2, or 3 in
+    // single-ended mode (default) and configure the interrupt flag
+    // (ADC_CTL_IE) to be set when the sample is done.  Tell the ADC logic
+    // that this is the last conversion on sequence 3 (ADC_CTL_END).  
+	//
+	switch(channelNum){
+	case: 0
+		ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH0 | ADC_CTL_IE |
+                        ADC_CTL_END);
+		break;
+	case: 1
+		ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH1 | ADC_CTL_IE |
+                        ADC_CTL_END);
+		break;
+	case: 2
+		ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH2 | ADC_CTL_IE |
+                        ADC_CTL_END);
+		break;
+	case: 3
+		ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH3 | ADC_CTL_IE |
+                        ADC_CTL_END);
+		break;
+	default: 
+		return 0xFFFF;
+	}
+	//
+    // Trigger the ADC conversion.
+    //
+    ADCProcessorTrigger(ADC0_BASE, 3);
 
+    //
+    // Wait for conversion to be completed.
+	//
+	while(!ADCIntStatus(ADC0_BASE, 3, false))
+	{
+	}
+
+	//
+	// Read ADC Value.
+	//
+	ADCSequenceDataGet(ADC0_BASE, 3, ulADC0_Value);
+	return (unsigned short)ulADC0_Value;
 }
 
 //*****************************************************************************
