@@ -99,7 +99,8 @@ UARTIntHandler(void)
 			}
 		}
     }
-}
+}	  
+
 
 //*****************************************************************************
 //
@@ -130,6 +131,7 @@ int
 main(void)
 {
 	unsigned short ADC_sample = 0;
+	unsigned short ADC_buffer[6];
 	UARTRxFifo_Init();
 
 	  
@@ -202,16 +204,24 @@ main(void)
     // Loop forever echoing data through the UART.
     //
 	ADC_Open();
+	ADC_Collect(0, 10, ADC_buffer, 6);
+	oLED_Message(0, 0, "Sample 1", (long)ADC_buffer[0]);
+	oLED_Message(0, 1, "Sample 2", (long)ADC_buffer[1]);
+	oLED_Message(0, 2, "Sample 3", (long)ADC_buffer[2]);
+	oLED_Message(0, 3, "Sample 4", (long)ADC_buffer[3]);
+	oLED_Message(1, 0, "Sample 5", (long)ADC_buffer[4]);
+	oLED_Message(1, 1, "Sample 6", (long)ADC_buffer[5]);
     while(1)
     {
+		
 		ADC_sample = ADC_In(0);
 		oLED_Message(0, 0, "ADC Ch0", (long)ADC_sample);
-		ADC_sample = ADC_In(1);
-		oLED_Message(0, 2, "ADC Ch1", (long)ADC_sample);
-		ADC_sample = ADC_In(2);
-		oLED_Message(1, 0, "ADC Ch2", (long)ADC_sample);
-		ADC_sample = ADC_In(3);
-		oLED_Message(1, 2, "ADC Ch3", (long)ADC_sample);
-		//SysCtlDelay(SysCtlClockGet() / 1);
+//		ADC_sample = ADC_In(1);
+//		oLED_Message(0, 2, "ADC Ch1", (long)ADC_sample);
+//		ADC_sample = ADC_In(2);
+//		oLED_Message(1, 0, "ADC Ch2", (long)ADC_sample);
+//		ADC_sample = ADC_In(3);
+//		oLED_Message(1, 2, "ADC Ch3", (long)ADC_sample);
+		SysCtlDelay(SysCtlClockGet() / 20);
     }
 }
