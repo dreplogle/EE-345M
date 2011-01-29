@@ -37,6 +37,9 @@
 #include "driverlib/debug.h"
 #include "driverlib/sysctl.h"
 #include "driverlib/interrupt.h"
+#include "driverlib/fifo.h"
+#include "driverlib/timer.h"
+#include "drivers/rit128x96x4.h"
 
 //*****************************************************************************
 //
@@ -60,6 +63,14 @@
 //
 //*****************************************************************************
 static unsigned char g_pucOversampleFactor[3];
+
+//*****************************************************************************
+//
+// Global FIFO to pass data from the ADC interupt handler
+//
+//*****************************************************************************
+AddFifo(ADCData, 128, unsigned long, 1, 0);   
+static unsigned int g_numADCInterrupts;
 
 //*****************************************************************************
 //
@@ -1556,9 +1567,129 @@ int
 ADC_Collect(unsigned int channelNum, unsigned int fs, 
        unsigned short buffer[], unsigned int numberOfSamples)  
 {
-	return(0);
+	unsigned int clockDivisor;
+	unsigned long ADCSingleSample;
+	int index = 0;
+	g_numADCInterrupts = numberOfSamples;
+	IntMasterEnable();
+	
+	//
+	// Enable sample sequence 3 to start a conversion on timer event 
+	// with priority 0.
+	//
+	ADCSequenceConfigure(ADC0_BASE, 3, ADC_TRIGGER_TIMER, 0);
+	
+	//
+ 	// Configure step 0 on sequence 3.  Sample channel 0, 1, 2, or 3 in
+    // single-ended mode (default) and configure the interrupt flag
+    // (ADC_CTL_IE) to be set when the sample is done.  Tell the ADC logic
+    // that this is the last conversion on sequence 3 (ADC_CTL_END).  
+	//
+	switch(channelNum){
+	case 0:
+		ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH0 | ADC_CTL_IE |
+                        ADC_CTL_END);
+		break;
+	case 1:
+		ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH1 | ADC_CTL_IE |
+                        ADC_CTL_END);
+		break;
+	case 2:
+		ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH2 | ADC_CTL_IE |
+                        ADC_CTL_END);
+		break;
+	case 3:
+		ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH3 | ADC_CTL_IE |
+                        ADC_CTL_END);
+		break;
+	default: 
+		return 0xFFFF;
+	}
+
+	//
+	// Configure GPTimerModule to generate triggering events
+	// at the specified sampling rate.
+	//
+	SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
+	
+	//
+	// Configure Timer0B as a 16-bit periodic timer.
+	//
+	TimerConfigure(TIMER0_BASE, TIMER_CFG_16_BIT_PAIR | TIMER_CFG_B_PERIODIC);
+
+	//
+    // Set the Timer0B load value to 1ms.
+    //
+	clockDivisor = 1000/fs;
+    TimerLoadSet(TIMER0_BASE, TIMER_B, SysCtlClockGet() / clockDivisor);
+	
+	//
+	// Setup the Timer trigger output.
+	//
+	TimerControlTrigger(TIMER0_BASE, TIMER_B, true);
+
+
+	// Enable sample sequencer
+	ADCSequenceEnable(ADC0_BASE, 3);
+
+	//
+	// Allow ADC to generate an interrupt signal.
+	//
+	ADCIntEnable(ADC0_BASE, 3);
+	//
+    // Clear the interrupt status flag.  This is done to make sure the
+    // interrupt flag is cleared before we sample. 
+    //
+    ADCIntClear(ADC0_BASE, 3);
+	//
+	// Enable processor interrupts on ADC Seq3 vector.
+	//
+	IntEnable(INT_ADC0SS3);
+
+
+	//
+    // Start Timer0B.
+    //
+    TimerEnable(TIMER0_BASE, TIMER_B);
+
+	while(g_numADCInterrupts != 0)
+	{
+		oLED_Message(2, 3, "Fu Bar", 0);
+	}
+
+	while(ADCDataFifo_Get(&ADCSingleSample)){
+	   buffer[index] = (unsigned short)ADCSingleSample;
+	   index++;
+	}
+	return 1;	
 }
 
+//*****************************************************************************
+//
+// ADC0 Sequence 3 Interrupt Handler
+//
+//*****************************************************************************
+void 
+ADC0Seq3IntHandler(void)
+{
+ 	unsigned long ulADC0_Value[1];
+	if(g_numADCInterrupts > 0){
+		ADCSequenceDataGet(ADC0_BASE, 3, ulADC0_Value);
+		ADCDataFifo_Put(ulADC0_Value[0]);
+		g_numADCInterrupts--;
+	}
+	else{
+		//
+		// Stop Timer0B.
+		//
+		TimerDisable(TIMER0_BASE, TIMER_B);
+		//
+		// Disable processor interrupts on ADC Seq3 vector.
+		//
+		IntDisable(INT_ADC0SS3);
+	}
+	ADCIntClear(ADC0_BASE, 3);
+}
 //*****************************************************************************
 //
 // Close the Doxygen group.
