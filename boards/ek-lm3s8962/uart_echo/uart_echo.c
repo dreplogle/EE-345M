@@ -166,21 +166,21 @@ UARTOutString(unsigned long ulBase, char *string)
 	//
 	// Disable the TX interrupt while loading the HW TX FIFO.
 	//
-	UARTIntDisable(UART0_BASE, UART_INT_TX);
+	UARTIntDisable(ulBase, UART_INT_TX);
 
 	//
 	//	Load the initial segment of the string into the HW FIFO
 	//
-	while(UARTSpaceAvail(UART0_BASE) & UARTTxFifo_Get(&UARTData)) 
+	while(UARTSpaceAvail(ulBase) & UARTTxFifo_Get(&UARTData)) 
 	{
-		UARTCharPutNonBlocking(UART0_BASE,UARTData);
+		UARTCharPutNonBlocking(ulBase,UARTData);
 	}
    	
 	//
 	//  Enable TX interrupts so that an interrupt will occur when
 	//  the TX FIFO is nearly empty (interrupt level set in main program).
 	//
-	UARTIntEnable(UART0_BASE, UART_INT_TX);
+	UARTIntEnable(ulBase, UART_INT_TX);
 }
 
 
