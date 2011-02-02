@@ -179,13 +179,13 @@ extern "C"
 // Global struct to define which channels should be sampled and when.
 //
 //*****************************************************************************
-struct 
-{
- 	tBoolean OnCh0;
-	tBoolean OnCh1;
-	tBoolean OnCh2;
-	tBoolean OnCh3;
-}ADCChannelConfig
+//struct 
+//{
+// 	tBoolean OnCh0;
+//	tBoolean OnCh1;
+//	tBoolean OnCh2;
+//	tBoolean OnCh3;
+//} ADCChannelConfig;
 
 
 //*****************************************************************************

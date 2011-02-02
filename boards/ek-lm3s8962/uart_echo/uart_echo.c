@@ -91,10 +91,12 @@ UARTIntHandler(void)
 			// and place it in the receive SW FIFO.
 			//
 			UARTData =  (char)UARTCharGetNonBlocking(UART0_BASE);
+			UARTCharPutNonBlocking(UART0_BASE,UARTData); //echo data
+
 			if(!UARTRxFifo_Put(UARTData))
 			{
 				oLED_Message(0, 0, "UART RX", 0);
-				oLED_Message(0, 0, "FIFO FULL", 0);	
+				oLED_Message(0, 1, "FIFO FULL", 0);	
 			}
 		}
 	}
@@ -105,7 +107,7 @@ UARTIntHandler(void)
 		// If there is room in the HW FIFO and there is data in the SW FIFO,
 		// then move data from the SW to the HW FIFO.
 		//
-		while(UARTSpaceAvail(UART0_BASE) & UARTTxFifo_Get(&UARTData)) 
+		while(UARTTxFifo_Get(&UARTData))  //while(UARTSpaceAvail(UART0_BASE) & UARTTxFifo_Get(&UARTData)) 
 		{
 			UARTCharPutNonBlocking(UART0_BASE,UARTData);
 		}
@@ -158,7 +160,7 @@ UARTOutString(unsigned long ulBase, char *string)
 		if(!UARTTxFifo_Put(string[i]))
 		{
 		 	oLED_Message(0, 0, "UART TX", 0);
-			oLED_Message(0, 0, "FIFO FULL", 0);
+			oLED_Message(0, 1, "FIFO FULL", 0);
 		}
 	 	i++;
 	}
@@ -239,9 +241,10 @@ main(void)
 	//
 	// Enable transmit and recieve FIFOs and set levels
 	//
-	UARTFIFOEnable(UART0_BASE);
-	UARTFIFOLevelSet(UART0_BASE, UART_FIFO_TX1_8, UART_FIFO_RX6_8);
-    //
+	UARTFIFODisable(UART0_BASE);
+	//UARTFIFOLevelSet(UART0_BASE, UART_FIFO_TX1_8, UART_FIFO_RX1_8);
+    
+	//
     // Enable the UART interrupt.
     //
     IntEnable(INT_UART0);
@@ -250,24 +253,25 @@ main(void)
     //
     // Prompt for text to be entered.
     //
-    UARTSend((unsigned char *)"Enter text: ", 12);
-
-    //
+    //UARTSend((unsigned char *)"Enter text: ", 12);
+	UARTOutString(UART0_BASE, "Enter some text! aaaa:");
+    
+	//
     // Loop forever echoing data through the UART.
     //
 	ADC_Open();
-	ADC_Collect(0, 10, ADC_buffer, 6);
-	oLED_Message(0, 0, "Sample 1", (long)ADC_buffer[0]);
-	oLED_Message(0, 1, "Sample 2", (long)ADC_buffer[1]);
-	oLED_Message(0, 2, "Sample 3", (long)ADC_buffer[2]);
-	oLED_Message(0, 3, "Sample 4", (long)ADC_buffer[3]);
-	oLED_Message(1, 0, "Sample 5", (long)ADC_buffer[4]);
-	oLED_Message(1, 1, "Sample 6", (long)ADC_buffer[5]);
+	//ADC_Collect(0, 10, ADC_buffer, 6);
+	//oLED_Message(0, 0, "Sample 1", (long)ADC_buffer[0]);
+	//oLED_Message(0, 1, "Sample 2", (long)ADC_buffer[1]);
+	//oLED_Message(0, 2, "Sample 3", (long)ADC_buffer[2]);
+	//oLED_Message(0, 3, "Sample 4", (long)ADC_buffer[3]);
+	//oLED_Message(1, 0, "Sample 5", (long)ADC_buffer[4]);
+	//oLED_Message(1, 1, "Sample 6", (long)ADC_buffer[5]);
     while(1)
     {
 		
 		ADC_sample = ADC_In(0);
-		oLED_Message(0, 0, "ADC Ch0", (long)ADC_sample);
+	//	oLED_Message(0, 0, "ADC Ch0", (long)ADC_sample);
 		SysCtlDelay(SysCtlClockGet() / 20);
     }
 }
