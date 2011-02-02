@@ -1618,8 +1618,9 @@ ADC_Collect(unsigned int channelNum, unsigned int fs,
 	TimerConfigure(TIMER0_BASE, TIMER_CFG_16_BIT_PAIR | TIMER_CFG_B_PERIODIC);
 
 	//
-    // Set the Timer0B load value to 1ms.
+    // Set the Timer0B load value.
     //
+	// CHANGE ME TO GET FULL RANGE OF SAMPLING RATES!
 	clockDivisor = 1000/fs;
     TimerLoadSet(TIMER0_BASE, TIMER_B, SysCtlClockGet() / clockDivisor);
 	
