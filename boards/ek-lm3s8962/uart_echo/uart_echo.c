@@ -36,8 +36,8 @@
 #include "drivers/rit128x96x4.h"
 
 // Global Variables
-	AddFifo(UARTRx, 8, long, 1, 0); 	// UARTRx defined as global Fifo for testing
-
+	AddFifo(UARTRx, 32, unsigned char, 1, 0); 	// UARTRx buffer
+   	AddFifo(UARTTx, 32, unsigned char, 1, 0); 	// UARTTx buffer
 
 //*****************************************************************************
 //
@@ -72,33 +72,48 @@ void
 UARTIntHandler(void)
 {
     unsigned long ulStatus;
-	long UARTData;
+	unsigned char UARTData;
 
     //
     // Get the interrrupt status.
     //
     ulStatus = UARTIntStatus(UART0_BASE, true);
 
+	if(ulStatus == UART_INT_RX)
+	{
+		//
+		// Loop while there are characters in the receive FIFO.
+		//
+		while(UARTCharsAvail(UART0_BASE))
+		{
+			//
+			// Read the next character from the UART, write it back to the UART,
+			// and place it in the receive SW FIFO.
+			//
+			UARTData =  (char)UARTCharGetNonBlocking(UART0_BASE);
+			if(!UARTRxFifo_Put(UARTData))
+			{
+				oLED_Message(0, 0, "UART RX", 0);
+				oLED_Message(0, 0, "FIFO FULL", 0);	
+			}
+		}
+	}
+
+	if(ulStatus == UART_INT_TX)
+	{
+		//
+		// If there is room in the HW FIFO and there is data in the SW FIFO,
+		// then move data from the SW to the HW FIFO.
+		//
+		while(UARTSpaceAvail(UART0_BASE) & UARTTxFifo_Get(&UARTData)) 
+		{
+			UARTCharPutNonBlocking(UART0_BASE,UARTData);
+		}
+	}
     //
     // Clear the asserted interrupts.
     //
-    UARTIntClear(UART0_BASE, ulStatus);
-
-    //
-    // Loop while there are characters in the receive FIFO.
-    //
-    while(UARTCharsAvail(UART0_BASE))
-    {
-        //
-        // Read the next character from the UART and write it back to the UART.
-        //
-		UARTData =  UARTCharGetNonBlocking(UART0_BASE);
-		if(!UARTRxFifo_Put(UARTData)){
-			while(UARTRxFifo_Get(&UARTData)){
-        		UARTCharPutNonBlocking(UART0_BASE,UARTData);
-			}
-		}
-    }
+    UARTIntClear(UART0_BASE, ulStatus);				
 }	  
 
 
@@ -124,6 +139,53 @@ UARTSend(const unsigned char *pucBuffer, unsigned long ulCount)
 
 //*****************************************************************************
 //
+// Load a string into the UART SW transmit FIFO for output to the console, then
+// write the beginning of the string to the HW FIFO and enable TX interrupts.
+// This functions outputs a string to the console through interrupts.
+//
+//*****************************************************************************
+void 
+UARTOutString(unsigned long ulBase, char *string)
+{	
+	int i = 0;
+	unsigned char UARTData;
+	//
+    // Check the arguments.
+    //
+    ASSERT(UARTBaseValid(ulBase));
+	while(string[i])
+	{
+		if(!UARTTxFifo_Put(string[i]))
+		{
+		 	oLED_Message(0, 0, "UART TX", 0);
+			oLED_Message(0, 0, "FIFO FULL", 0);
+		}
+	 	i++;
+	}
+	
+	//
+	// Disable the TX interrupt while loading the HW TX FIFO.
+	//
+	UARTIntDisable(UART0_BASE, UART_INT_TX);
+
+	//
+	//	Load the initial segment of the string into the HW FIFO
+	//
+	while(UARTSpaceAvail(UART0_BASE) & UARTTxFifo_Get(&UARTData)) 
+	{
+		UARTCharPutNonBlocking(UART0_BASE,UARTData);
+	}
+   	
+	//
+	//  Enable TX interrupts so that an interrupt will occur when
+	//  the TX FIFO is nearly empty (interrupt level set in main program).
+	//
+	UARTIntEnable(UART0_BASE, UART_INT_TX);
+}
+
+
+//*****************************************************************************
+//
 // This example demonstrates how to send a string of data to the UART.
 //
 //*****************************************************************************
@@ -140,9 +202,6 @@ main(void)
     //
     SysCtlClockSet(SYSCTL_SYSDIV_1 | SYSCTL_USE_OSC | SYSCTL_OSC_MAIN |
                    SYSCTL_XTAL_8MHZ);
-	//SysCtlClockSet(SYSCTL_SYSDIV_10 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN |
-    //               SYSCTL_XTAL_16MHZ);
-
 
     //
     // Initialize the OLED display and write status.
@@ -154,17 +213,6 @@ main(void)
    // RIT128x96x4StringDraw("Data:   8 Bit",        12, 32, 15);
    // RIT128x96x4StringDraw("Parity: None",         12, 40, 15);
    // RIT128x96x4StringDraw("Stop:   1 Bit",        12, 48, 15);
-   // oLED_Message(0, 0, "Line0", 7);
-   //	oLED_Message(0, 1, "Line1", 12);
-//	oLED_Message(0, 2, "Line2", 76);
-//	oLED_Message(0, 3, "Line3", 87);
-//	oLED_Message(0, 4, "Line4", 1113);
-//	oLED_Message(1, 0, "Line0", 7);
-//	oLED_Message(1, 1, "Line1", 345);
-//	oLED_Message(1, 2, "Line2", 17);
-//	oLED_Message(1, 3, "Line3", 89);
-//	oLED_Message(1, 4, "Line4", 1638);
-
 
     //
     // Enable the peripherals used by this example.
@@ -188,7 +236,11 @@ main(void)
     UARTConfigSetExpClk(UART0_BASE, SysCtlClockGet(), 115200,
                         (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE |
                          UART_CONFIG_PAR_NONE));
-
+	//
+	// Enable transmit and recieve FIFOs and set levels
+	//
+	UARTFIFOEnable(UART0_BASE);
+	UARTFIFOLevelSet(UART0_BASE, UART_FIFO_TX1_8, UART_FIFO_RX6_8);
     //
     // Enable the UART interrupt.
     //
@@ -216,12 +268,6 @@ main(void)
 		
 		ADC_sample = ADC_In(0);
 		oLED_Message(0, 0, "ADC Ch0", (long)ADC_sample);
-//		ADC_sample = ADC_In(1);
-//		oLED_Message(0, 2, "ADC Ch1", (long)ADC_sample);
-//		ADC_sample = ADC_In(2);
-//		oLED_Message(1, 0, "ADC Ch2", (long)ADC_sample);
-//		ADC_sample = ADC_In(3);
-//		oLED_Message(1, 2, "ADC Ch3", (long)ADC_sample);
 		SysCtlDelay(SysCtlClockGet() / 20);
     }
 }
