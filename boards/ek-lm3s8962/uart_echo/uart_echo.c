@@ -107,7 +107,7 @@ UARTIntHandler(void)
 		// If there is room in the HW FIFO and there is data in the SW FIFO,
 		// then move data from the SW to the HW FIFO.
 		//
-		while(UARTTxFifo_Get(&UARTData))  //while(UARTSpaceAvail(UART0_BASE) & UARTTxFifo_Get(&UARTData)) 
+		while(UARTSpaceAvail(UART0_BASE) & UARTTxFifo_Get(&UARTData)) 
 		{
 			UARTCharPutNonBlocking(UART0_BASE,UARTData);
 		}
@@ -168,7 +168,7 @@ UARTOutString(unsigned long ulBase, char *string)
 	//
 	// Disable the TX interrupt while loading the HW TX FIFO.
 	//
-	UARTIntDisable(ulBase, UART_INT_TX);
+//	UARTIntDisable(ulBase, UART_INT_TX);
 
 	//
 	//	Load the initial segment of the string into the HW FIFO
@@ -241,8 +241,8 @@ main(void)
 	//
 	// Enable transmit and recieve FIFOs and set levels
 	//
-	UARTFIFODisable(UART0_BASE);
-	//UARTFIFOLevelSet(UART0_BASE, UART_FIFO_TX1_8, UART_FIFO_RX1_8);
+	UARTFIFOEnable(UART0_BASE);
+	UARTFIFOLevelSet(UART0_BASE, UART_FIFO_TX1_8, UART_FIFO_RX1_8);
     
 	//
     // Enable the UART interrupt.
