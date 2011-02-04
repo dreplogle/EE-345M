@@ -34,10 +34,12 @@
 #include "driverlib/adc.h"
 #include "driverlib/fifo.h"
 #include "drivers/rit128x96x4.h"
+#include "drivers/OS.h"
 
 // Global Variables
 	AddFifo(UARTRx, 32, unsigned char, 1, 0); 	// UARTRx buffer
    	AddFifo(UARTTx, 32, unsigned char, 1, 0); 	// UARTTx buffer
+	long cnt1 = 0; //For dummy function, for testing OS_AddPeriodicThread
 
 //*****************************************************************************
 //
@@ -78,6 +80,10 @@ UARTIntHandler(void)
     // Get the interrrupt status.
     //
     ulStatus = UARTIntStatus(UART0_BASE, true);
+	//
+    // Clear the asserted interrupts.
+    //
+    UARTIntClear(UART0_BASE, ulStatus);
 
 	if(ulStatus == UART_INT_RX)
 	{
@@ -107,15 +113,11 @@ UARTIntHandler(void)
 		// If there is room in the HW FIFO and there is data in the SW FIFO,
 		// then move data from the SW to the HW FIFO.
 		//
-		while(UARTSpaceAvail(UART0_BASE) & UARTTxFifo_Get(&UARTData)) 
+		while(UARTSpaceAvail(UART0_BASE) && UARTTxFifo_Get(&UARTData)) 
 		{
-			UARTCharPutNonBlocking(UART0_BASE,UARTData);
+			UARTCharPut(UART0_BASE,UARTData);
 		}
-	}
-    //
-    // Clear the asserted interrupts.
-    //
-    UARTIntClear(UART0_BASE, ulStatus);				
+	}				
 }	  
 
 
@@ -145,6 +147,11 @@ UARTSend(const unsigned char *pucBuffer, unsigned long ulCount)
 // write the beginning of the string to the HW FIFO and enable TX interrupts.
 // This functions outputs a string to the console through interrupts.
 //
+// \param ulBase specifies the UART port being used
+// \param string is a pointer to a string to be output to the console
+//
+// \return none.
+//
 //*****************************************************************************
 void 
 UARTOutString(unsigned long ulBase, char *string)
@@ -168,14 +175,14 @@ UARTOutString(unsigned long ulBase, char *string)
 	//
 	// Disable the TX interrupt while loading the HW TX FIFO.
 	//
-//	UARTIntDisable(ulBase, UART_INT_TX);
+	UARTIntDisable(ulBase, UART_INT_TX);
 
 	//
 	//	Load the initial segment of the string into the HW FIFO
 	//
-	while(UARTSpaceAvail(ulBase) & UARTTxFifo_Get(&UARTData)) 
+	while(UARTSpaceAvail(ulBase) && UARTTxFifo_Get(&UARTData)) 
 	{
-		UARTCharPutNonBlocking(ulBase,UARTData);
+		UARTCharPut(ulBase,UARTData);
 	}
    	
 	//
@@ -185,6 +192,17 @@ UARTOutString(unsigned long ulBase, char *string)
 	UARTIntEnable(ulBase, UART_INT_TX);
 }
 
+//*****************************************************************************
+//
+// Dummy functions for testing OS_AddPeriodicThread routine.
+//
+//*****************************************************************************
+void
+dummy(void)
+{
+ 	oLED_Message(0, 0, "Periodic Cnt", cnt1);
+	cnt1++;
+}
 
 //*****************************************************************************
 //
@@ -194,10 +212,9 @@ UARTOutString(unsigned long ulBase, char *string)
 int
 main(void)
 {
-	unsigned short ADC_sample = 0;
 	unsigned short ADC_buffer[6];
+	unsigned short ADC_SingleSample;
 	UARTRxFifo_Init();
-
 	  
     //
     // Set the clocking to run directly from the crystal.
@@ -209,12 +226,6 @@ main(void)
     // Initialize the OLED display and write status.
     //
     RIT128x96x4Init(1000000);
-   // RIT128x96x4StringDraw("UART Echo",            36,  0, 15);
-   // RIT128x96x4StringDraw("Port:   Uart 0",       12, 16, 15);
-   // RIT128x96x4StringDraw("Baud:   115,200 bps",  12, 24, 15);
-   // RIT128x96x4StringDraw("Data:   8 Bit",        12, 32, 15);
-   // RIT128x96x4StringDraw("Parity: None",         12, 40, 15);
-   // RIT128x96x4StringDraw("Stop:   1 Bit",        12, 48, 15);
 
     //
     // Enable the peripherals used by this example.
@@ -253,25 +264,23 @@ main(void)
     //
     // Prompt for text to be entered.
     //
-    //UARTSend((unsigned char *)"Enter text: ", 12);
+    //UARTSend((unsigned char *)"Enter text: aaaa", 17);
 	UARTOutString(UART0_BASE, "Enter some text! aaaa:");
     
 	//
     // Loop forever echoing data through the UART.
     //
+	oLED_Message(1, 4, "RT OS LAB:", 1);
 	ADC_Open();
-	//ADC_Collect(0, 10, ADC_buffer, 6);
-	//oLED_Message(0, 0, "Sample 1", (long)ADC_buffer[0]);
-	//oLED_Message(0, 1, "Sample 2", (long)ADC_buffer[1]);
-	//oLED_Message(0, 2, "Sample 3", (long)ADC_buffer[2]);
-	//oLED_Message(0, 3, "Sample 4", (long)ADC_buffer[3]);
-	//oLED_Message(1, 0, "Sample 5", (long)ADC_buffer[4]);
-	//oLED_Message(1, 1, "Sample 6", (long)ADC_buffer[5]);
+	OS_AddPeriodicThread(&dummy, 100, 1);
+
     while(1)
-    {
-		
-		ADC_sample = ADC_In(0);
-	//	oLED_Message(0, 0, "ADC Ch0", (long)ADC_sample);
-		SysCtlDelay(SysCtlClockGet() / 20);
+    {  	
+		ADC_SingleSample = ADC_In(0);
+		oLED_Message(0, 4, "ADC_In(0)", (long)ADC_SingleSample);
+		ADC_Collect(0, 1, ADC_buffer, 3);
+		oLED_Message(1, 0, "ADCSample1", ADC_buffer[0]);
+		oLED_Message(1, 1, "ADCSample2", ADC_buffer[1]);
+		oLED_Message(1, 2, "ADCSample3", ADC_buffer[2]);	
     }
 }

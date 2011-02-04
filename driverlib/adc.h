@@ -38,6 +38,14 @@ extern "C"
 
 //*****************************************************************************
 //
+// Added by K.Loeffler and D.Repogle.  Constants for OS ADC functions.
+//
+//*****************************************************************************
+
+#define ADC_MAX_COLLECT_SAMPLES	128
+
+//*****************************************************************************
+//
 // Values that can be passed to ADCSequenceConfigure as the ulTrigger
 // parameter.
 //
