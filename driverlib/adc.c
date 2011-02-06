@@ -21,6 +21,15 @@
 // This is part of revision 6852 of the Stellaris Peripheral Driver Library.
 //
 //*****************************************************************************
+//
+// This code has been modified by Dustin Repogle and Katy Loeffler.
+// Functions added include:
+//		- ADC_Open
+//		- ADC_In
+//      - ADC_Collect
+//      - ADCSeq3IntHandler
+//
+//*****************************************************************************
 
 //*****************************************************************************
 //
@@ -40,6 +49,7 @@
 #include "driverlib/fifo.h"
 #include "driverlib/timer.h"
 #include "drivers/rit128x96x4.h"
+#include "drivers/OS.h"
 
 //*****************************************************************************
 //
@@ -69,8 +79,8 @@ static unsigned char g_pucOversampleFactor[3];
 // Global FIFO to pass data from the ADC interupt handler
 //
 //*****************************************************************************
-AddFifo(ADCData, 128, unsigned long, 1, 0);   
-static unsigned int g_numADCInterrupts;
+AddFifo(ADCData, ADC_MAX_COLLECT_SAMPLES, unsigned long, 1, 0);   
+unsigned int NumADCInterrupts;
 
 //*****************************************************************************
 //
@@ -1476,7 +1486,10 @@ ADCPhaseDelayGet(unsigned long ulBase)
 
 //*****************************************************************************
 //
-//! Initializes the ADC for future use 
+//! Initializes the ADC for future use.
+//!
+//! \param none.
+//! \return none. 
 //
 //*****************************************************************************
 int 
@@ -1491,7 +1504,11 @@ ADC_Open(void)
 
 //*****************************************************************************
 //
-//! Retrieves a single sample from the ADC 
+//! Retrieves a single sample from the ADC.
+//!
+//! \param channelNum is the ADC channel to sample.
+//!
+//! \return the ADC sample. On error, returns 0xFFFF 
 //
 //*****************************************************************************
 unsigned short 
@@ -1499,79 +1516,95 @@ ADC_In(unsigned int channelNum)
 {
     unsigned long ulADC0_Value[1];
 
-
 	//
 	// Enable sample sequence 3 to start a conversion on software command 
 	// with priority 0.
 	//
-	ADCSequenceConfigure(ADC0_BASE, 3, ADC_TRIGGER_PROCESSOR, 0);
+	ADCSequenceConfigure(ADC0_BASE, 2, ADC_TRIGGER_PROCESSOR, 0);
 	
 	//
- 	// Configure step 0 on sequence 3.  Sample channel 0, 1, 2, or 3 in
+ 	// Configure step 0 on sequence 2.  Sample channel 0, 1, 2, or 3 in
     // single-ended mode (default) and configure the interrupt flag
     // (ADC_CTL_IE) to be set when the sample is done.  Tell the ADC logic
-    // that this is the last conversion on sequence 3 (ADC_CTL_END).  
+    // that this is the last conversion on sequence 2 (ADC_CTL_END).  
 	//
 	switch(channelNum){
 	case 0:
-		ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH0 | ADC_CTL_IE |
+		ADCSequenceStepConfigure(ADC0_BASE, 2, 0, ADC_CTL_CH0 | ADC_CTL_IE |
                         ADC_CTL_END);
 		break;
 	case 1:
-		ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH1 | ADC_CTL_IE |
+		ADCSequenceStepConfigure(ADC0_BASE, 2, 0, ADC_CTL_CH1 | ADC_CTL_IE |
                         ADC_CTL_END);
 		break;
 	case 2:
-		ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH2 | ADC_CTL_IE |
+		ADCSequenceStepConfigure(ADC0_BASE, 2, 0, ADC_CTL_CH2 | ADC_CTL_IE |
                         ADC_CTL_END);
 		break;
 	case 3:
-		ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH3 | ADC_CTL_IE |
+		ADCSequenceStepConfigure(ADC0_BASE, 2, 0, ADC_CTL_CH3 | ADC_CTL_IE |
                         ADC_CTL_END);
 		break;
 	default: 
 		return 0xFFFF;
 	}
+
 	// Enable sequence
-	ADCSequenceEnable(ADC0_BASE, 3);
+	ADCSequenceEnable(ADC0_BASE, 2);
+
     //
     // Clear the interrupt status flag.  This is done to make sure the
     // interrupt flag is cleared before we sample.
     //
-    ADCIntClear(ADC0_BASE, 3);
+    ADCIntClear(ADC0_BASE, 2);
+
 	//
     // Trigger the ADC conversion.
     //
-    ADCProcessorTrigger(ADC0_BASE, 3);
+    ADCProcessorTrigger(ADC0_BASE, 2);
 
     //
     // Wait for conversion to be completed.
 	//
-	while(!ADCIntStatus(ADC0_BASE, 3, false))
+	while(!ADCIntStatus(ADC0_BASE, 2, false))
 	{
 	}
 
 	//
 	// Read ADC Value.
 	//
-	ADCSequenceDataGet(ADC0_BASE, 3, ulADC0_Value);
+	ADCSequenceDataGet(ADC0_BASE, 2, ulADC0_Value);
 	return (unsigned short)ulADC0_Value[0];
 }
 
 //*****************************************************************************
 //
-//! Retrieves multiple samples from the ADC 
+//! Retrieves multiple samples from the ADC at the specified sampling rate.
+//!
+//! \param channelNum indicates the ADC channel to sample.
+//! \param fs indicates the sampling frequency in Hz
+//! \param buffer[] is an array where the sampled data will be placed
+//! \param numberOfSamples is the number of samples requested and size of the array
+//!
+//! \return SUCCESS or FAIL code
 //
 //*****************************************************************************
 int 
 ADC_Collect(unsigned int channelNum, unsigned int fs, 
        unsigned short buffer[], unsigned int numberOfSamples)  
 {
-	unsigned int clockDivisor;
 	unsigned long ADCSingleSample;
-	int index = 0;
-	g_numADCInterrupts = numberOfSamples;
-	IntMasterEnable();
+	int sampleNum = 0;
+
+	//
+	// Check to see if the number of samples requested can be supported by
+	// the ADC FIFO.
+	//
+	if(numberOfSamples > ADC_MAX_COLLECT_SAMPLES)
+	{
+	 	return FAIL;
+	}
+	NumADCInterrupts = numberOfSamples;
 	
 	//
 	// Enable sample sequence 3 to start a conversion on timer event 
@@ -1603,7 +1636,7 @@ ADC_Collect(unsigned int channelNum, unsigned int fs,
                         ADC_CTL_END);
 		break;
 	default: 
-		return 0xFFFF;
+		return FAIL;
 	}
 
 	//
@@ -1613,56 +1646,67 @@ ADC_Collect(unsigned int channelNum, unsigned int fs,
 	SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
 	
 	//
-	// Configure Timer0B as a 16-bit periodic timer.
+	// Configure Timer0 as a 32-bit periodic timer.
 	//
-	TimerConfigure(TIMER0_BASE, TIMER_CFG_16_BIT_PAIR | TIMER_CFG_B_PERIODIC);
+	TimerConfigure(TIMER0_BASE, TIMER_CFG_32_BIT_PER);
 
 	//
-    // Set the Timer0B load value.
+    // Set the Timer0 load value.
     //
-	// CHANGE ME TO GET FULL RANGE OF SAMPLING RATES!
-	clockDivisor = 1000/fs;
-    TimerLoadSet(TIMER0_BASE, TIMER_B, SysCtlClockGet() / clockDivisor);
-	
+	if(fs < 10000 && fs > 0)
+	{
+    	TimerLoadSet(TIMER0_BASE, TIMER_BOTH, SysCtlClockGet()/fs);
+	}
+	else
+	{
+		return FAIL;
+	}
 	//
 	// Setup the Timer trigger output.
 	//
-	TimerControlTrigger(TIMER0_BASE, TIMER_B, true);
+	TimerControlTrigger(TIMER0_BASE, TIMER_BOTH, true);
 
-
+	//
 	// Enable sample sequencer
+	//
 	ADCSequenceEnable(ADC0_BASE, 3);
 
 	//
 	// Allow ADC to generate an interrupt signal.
 	//
 	ADCIntEnable(ADC0_BASE, 3);
+
 	//
     // Clear the interrupt status flag.  This is done to make sure the
     // interrupt flag is cleared before we sample. 
     //
     ADCIntClear(ADC0_BASE, 3);
+
 	//
 	// Enable processor interrupts on ADC Seq3 vector.
 	//
 	IntEnable(INT_ADC0SS3);
 
+	//
+    // Start Timer0.
+    //
+    TimerEnable(TIMER0_BASE, TIMER_BOTH);
+
+	// Spin while waiting for all samples to complete.
+	// NumADCInterrupts is decremented in the ADC ISR.
+	while(NumADCInterrupts > 0)
+	{
+		SysCtlDelay(SysCtlClockGet()/10);	
+	}
 
 	//
-    // Start Timer0B.
-    //
-    TimerEnable(TIMER0_BASE, TIMER_B);
-
-	while(g_numADCInterrupts != 0)
-	{
-		oLED_Message(2, 3, "Fu Bar", 0);
-	}
-
+	// Copy the ADC data from the ADC fifo, to the passed buffer.
+	//
 	while(ADCDataFifo_Get(&ADCSingleSample)){
-	   buffer[index] = (unsigned short)ADCSingleSample;
-	   index++;
+	   buffer[sampleNum] = (unsigned short)ADCSingleSample;
+	   sampleNum++;
 	}
-	return 1;	
+	return SUCCESS;	
 }
 
 //*****************************************************************************
@@ -1674,16 +1718,16 @@ void
 ADC0Seq3IntHandler(void)
 {
  	unsigned long ulADC0_Value[1];
-	if(g_numADCInterrupts > 0){
+	if(NumADCInterrupts > 0){
 		ADCSequenceDataGet(ADC0_BASE, 3, ulADC0_Value);
 		ADCDataFifo_Put(ulADC0_Value[0]);
-		g_numADCInterrupts--;
+		NumADCInterrupts--;
 	}
 	else{
 		//
-		// Stop Timer0B.
+		// Stop Timer0.
 		//
-		TimerDisable(TIMER0_BASE, TIMER_B);
+		TimerDisable(TIMER0_BASE, TIMER_BOTH);
 		//
 		// Disable processor interrupts on ADC Seq3 vector.
 		//
