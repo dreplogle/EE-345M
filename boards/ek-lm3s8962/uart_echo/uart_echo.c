@@ -34,11 +34,14 @@
 #include "driverlib/adc.h"
 #include "driverlib/fifo.h"
 #include "drivers/rit128x96x4.h"
+#include "string.h"
 
 // Global Variables
 	AddFifo(UARTRx, 32, unsigned char, 1, 0); 	// UARTRx buffer
    	AddFifo(UARTTx, 32, unsigned char, 1, 0); 	// UARTTx buffer
-
+	unsigned char * buffer[100];
+	unsigned int buffer_pointer = 0;
+	unsigned int first_space = 1;
 //*****************************************************************************
 //
 //! \addtogroup example_list
@@ -185,6 +188,59 @@ UARTOutString(unsigned long ulBase, char *string)
 	UARTIntEnable(ulBase, UART_INT_TX);
 }
 
+void UARTSolve(void)
+{
+	char operator = *buffer[buffer_pointer - 2];
+	char * token;
+	int total = 0;
+	switch(operator)
+	{
+		case '+':
+		for ( token = strtok(buffer, " "); token != "\0"; token = strtok(buffer, " ") )
+			total = total + (int)token;
+		UARTOutString(UART0_BASE, total + "\r\n");
+		break;  
+
+
+	}
+	/*char * string[12];
+	unsigned int i;
+	unsigned int j;
+	for(i = 0; i < buffer_pointer; i++)
+	{
+		j = 0;
+		while(buffer[i] != " ")
+		{
+		   string[j] = buffer[i];
+		}	
+	}
+	string = strchr(buffer, 1);*/	
+}
+
+//*****************************************************************************
+//
+// Interpret input from the terminal
+//
+//*****************************************************************************
+void UARTInterpreter(unsigned char nextChar)
+{
+   
+   switch(nextChar)
+   {
+	   case '\b':
+	   	buffer_pointer--;
+		break;
+	   case '=':
+	    first_space = 1;
+		UARTSolve();
+	    break;
+	   default:
+	    buffer[buffer_pointer] = &nextChar;
+		buffer_pointer++;
+	   	break;
+   }
+}
+
 
 //*****************************************************************************
 //
@@ -196,6 +252,7 @@ main(void)
 {
 	unsigned short ADC_sample = 0;
 	unsigned short ADC_buffer[6];
+	unsigned char trigger;
 	UARTRxFifo_Init();
 
 	  
@@ -254,7 +311,7 @@ main(void)
     // Prompt for text to be entered.
     //
     //UARTSend((unsigned char *)"Enter text: ", 12);
-	UARTOutString(UART0_BASE, "Enter some text! aaaa:");
+	UARTOutString(UART0_BASE, "\r\nEnter some text:");
     
 	//
     // Loop forever echoing data through the UART.
@@ -269,7 +326,8 @@ main(void)
 	//oLED_Message(1, 1, "Sample 6", (long)ADC_buffer[5]);
     while(1)
     {
-		
+		UARTRxFifo_Get(&trigger);
+		UARTInterpreter(trigger);
 		ADC_sample = ADC_In(0);
 	//	oLED_Message(0, 0, "ADC Ch0", (long)ADC_sample);
 		SysCtlDelay(SysCtlClockGet() / 20);
