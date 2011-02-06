@@ -204,7 +204,7 @@ void UARTSolve(void)
 	switch(operator)
 	{
 		case '+':
-		for ( token = strtok(buffer, " "); token != "\0"; token = strtok(buffer, " ") )
+		for ( token = strtok(*buffer, " "); token != "\0"; token = strtok("\0" , " ") )
 			total = total + (int)token;
 		UARTOutString(UART0_BASE, total + "\r\n");
 		break;  
