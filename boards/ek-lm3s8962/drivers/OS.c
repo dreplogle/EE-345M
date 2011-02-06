@@ -15,6 +15,7 @@
 #include "driverlib/timer.h"
 #include "driverlib/interrupt.h"
 #include "driverlib/sysctl.h"
+#include "driverlib/gpio.h"
 #include "drivers/OS.h"
 
 
@@ -130,15 +131,69 @@ OS_MsTime(void)
 
 //***********************************************************************
 //
+// OS_DebugProfileInit initializes GPIO port B pins 0 and 1 for time profiling
+//
+// \param none.
+// \return none.
+//
+//***********************************************************************
+void
+OS_DebugProfileInit(void)
+{
+	SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
+	GPIOPinTypeGPIOOutput(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1);	
+}
+
+//***********************************************************************
+//
+// OS_DebugB0Set sets PortB0 to 1
+//
+// \param none.
+// \return none.
+//
+//***********************************************************************
+void
+OS_DebugB0Set(void)
+{
+	GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_0, 1);
+}
+void
+OS_DebugB1Set(void)
+{
+	GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_1, 1);
+}
+
+//***********************************************************************
+//
+// OS_DebugB0Clear sets PortB0 to 1
+//
+// \param none.
+// \return none.
+//
+//***********************************************************************
+void
+OS_DebugB0Clear(void)
+{
+	GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_0, 0);
+}
+void
+OS_DebugB1Clear(void)
+{
+	GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_1, 0);
+}
+//***********************************************************************
+//
 // Timer 3A Interrupt handler, executes the user defined period task.
 //
 //***********************************************************************
 void
 Timer3IntHandler(void)
 {
+	OS_DebugB0Set();
 	TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
 	PeriodicTask(); 
-	MsTime++;	
+	MsTime++;
+	OS_DebugB0Clear();	
 }
 //******************************EOF**************************************
 
