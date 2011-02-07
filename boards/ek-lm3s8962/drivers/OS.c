@@ -165,7 +165,7 @@ OS_DebugB1Set(void)
 
 //***********************************************************************
 //
-// OS_DebugB0Clear sets PortB0 to 1
+// OS_DebugB0Clear sets PortB0 to 0
 //
 // \param none.
 // \return none.
