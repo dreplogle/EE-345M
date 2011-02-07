@@ -38,12 +38,11 @@
 #include "drivers/OS.h"
 
 // Global Variables
-	AddFifo(UARTRx, 32, unsigned char, 1, 0); 	// UARTRx buffer
-   	AddFifo(UARTTx, 32, unsigned char, 1, 0); 	// UARTTx buffer
-	unsigned char buffer[100];
-	unsigned int buffer_pointer = 0;
-	unsigned int first_space = 1;
-	long cnt1 = 0; //For dummy function, for testing OS_AddPeriodicThread
+	AddFifo(UARTRx, 32, unsigned char, 1, 0); 	// UARTRx Buffer
+   	AddFifo(UARTTx, 32, unsigned char, 1, 0); 	// UARTTx Buffer
+	unsigned char Buffer[100];
+	unsigned int BufferPt = 0;
+	unsigned int FirstSpace = 1;
 
 //*****************************************************************************
 //
@@ -200,17 +199,17 @@ UARTOutString(unsigned long ulBase, char *string)
 void UARTSolve(void)
 {
 	
-	char operator = buffer[buffer_pointer - 2];
+	char operator = Buffer[BufferPt - 2];
 	char * token;
 	char * last;
 	char string[10];
 	long total = 0;
 	int first = 1;
-	//UARTOutString(UART0_BASE, buffer);
+	//UARTOutString(UART0_BASE, Buffer);
 	switch(operator)
 	{
 		case '+':
-		for ( token = strtok_r(buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
+		for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
 		{
 			
 			total = total + atoi(token);
@@ -221,7 +220,7 @@ void UARTSolve(void)
 		break;
 				
 		case '-':
-		for ( token = strtok_r(buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
+		for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
 		{
 			if(first)
 			{
@@ -237,7 +236,7 @@ void UARTSolve(void)
 		break;
 		
 		case '*':
-		for ( token = strtok_r(buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
+		for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
 		{
 						if(first)
 			{
@@ -254,7 +253,7 @@ void UARTSolve(void)
 		break;
 		
 		case '/':
-		for ( token = strtok_r(buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
+		for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
 		{
 			if(first)
 			{
@@ -279,7 +278,7 @@ void UARTSolve(void)
 		default:
 		break;  
 	}
-	buffer_pointer = 0;	
+	BufferPt = 0;	
 }
 
 //*****************************************************************************
@@ -294,20 +293,20 @@ void UARTInterpreter(unsigned char nextChar)
    {
 	   case '\b':
 	   	//UARTOutString(UART0_BASE, "backspace");
-		buffer_pointer--;
+		BufferPt--;
 		break;
 	   case '=':
 	    //UARTOutString(UART0_BASE, "equals");
-		first_space = 1;
-		buffer[buffer_pointer] = '=';
+		FirstSpace = 1;
+		Buffer[BufferPt] = '=';
 		UARTSolve();
 	    break;
 	   default:
 	    
-	    buffer[buffer_pointer] = nextChar;
-		//UARTOutString(UART0_BASE, buffer[buffer_pointer]);
+	    Buffer[BufferPt] = nextChar;
+		//UARTOutString(UART0_BASE, Buffer[BufferPt]);
 		//UARTOutString(UART0_BASE, "default");
-		buffer_pointer++;
+		BufferPt++;
 	   	break;
    }
 }
@@ -330,7 +329,7 @@ dummy(void)
 int
 main(void)
 {
-	unsigned short ADC_buffer[6];
+	unsigned short ADC_Buffer[6];
 	unsigned char trigger;
 	unsigned short ADC_SingleSample;
 	int fifo_status = 0;
@@ -402,9 +401,9 @@ main(void)
 		
 		/*ADC_SingleSample = ADC_In(0);
 		oLED_Message(0, 4, "ADC_In(0)", (long)ADC_SingleSample);
-		ADC_Collect(0, 1, ADC_buffer, 3);
-		oLED_Message(1, 0, "ADCSample1", ADC_buffer[0]);
-		oLED_Message(1, 1, "ADCSample2", ADC_buffer[1]);
-		oLED_Message(1, 2, "ADCSample3", ADC_buffer[2]);*/	
+		ADC_Collect(0, 1, ADC_Buffer, 3);
+		oLED_Message(1, 0, "ADCSample1", ADC_Buffer[0]);
+		oLED_Message(1, 1, "ADCSample2", ADC_Buffer[1]);
+		oLED_Message(1, 2, "ADCSample3", ADC_Buffer[2]);*/	
     }
 }
