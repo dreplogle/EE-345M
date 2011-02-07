@@ -1508,7 +1508,7 @@ ADC_Open(void)
 //!
 //! \param channelNum is the ADC channel to sample.
 //!
-//! \return the ADC sample. On error, returns 0xFFFF 
+//! \return the ADC sample. If \p channelNum is unacceptable, returns 0xFFFF 
 //
 //*****************************************************************************
 unsigned short 
@@ -1586,7 +1586,8 @@ ADC_In(unsigned int channelNum)
 //! \param buffer[] is an array where the sampled data will be placed
 //! \param numberOfSamples is the number of samples requested and size of the array
 //!
-//! \return SUCCESS or FAIL code
+//! \return SUCCESS or FAIL code. FAIL is returned if \p channelNum, \p fs,
+//! or \p numberOfSamples is out of acceptable range.
 //
 //*****************************************************************************
 int 

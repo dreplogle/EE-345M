@@ -37,8 +37,8 @@ long MsTime = 0;
 // \param period is the period in milliseconds
 // \param priority is the priority of the task to be used in the NVIC
 //
-// \return the numerical ID for the periodic thread.  If there is no space 
-// for the requested thread, returns NO_THREAD error code.
+// \return the numerical ID for the periodic thread. Error code FAIL returned
+// if \param period or \param priority is out of acceptable range.
 //
 //***********************************************************************
 int 
@@ -74,7 +74,7 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
 	TimerIntEnable(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
 	TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
 	IntEnable(INT_TIMER3A);
-
+                                                                                
 	//
 	// Set priority for the timer interrupt.
 	//
