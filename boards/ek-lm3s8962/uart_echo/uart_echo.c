@@ -228,7 +228,9 @@ void UARTSolve(void)
 				first = 0;
 			}
 			else
+			{
 				total = total - atoi(token);
+			}
 		}
 		Int2Str(total, string);
 		UARTOutString(UART0_BASE, string);
@@ -238,14 +240,18 @@ void UARTSolve(void)
 		case '*':
 		for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
 		{
-						if(first)
+			if(first)
 			{
 				total = atoi(token);
 				first = 0;
 			}
 			else
+			{
 				if(atoi(token) != 0)
-				total = total * atoi(token);
+				{
+					total = total * atoi(token);
+				}
+			}
 		}
 		Int2Str(total, string);
 		UARTOutString(UART0_BASE, string);
@@ -261,8 +267,12 @@ void UARTSolve(void)
 				first = 0;
 			}
 			else
+			{
 				if(atoi(token) != 0)
-				total = total / atoi(token);
+				{
+					total = total / atoi(token);
+				}
+			}
 		}
 		Int2Str(total, string);
 		UARTOutString(UART0_BASE, string);
@@ -272,7 +282,7 @@ void UARTSolve(void)
 		case 't':
 		Int2Str(OS_MsTime(), string);
 		UARTOutString(UART0_BASE, string);
-		UARTOutString(UART0_BASE, "ms \r\n");
+		UARTOutString(UART0_BASE, "tcks \r\n");
 		break;		
 		
 		default:
