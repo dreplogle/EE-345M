@@ -79,6 +79,7 @@ UARTIntHandler(void)
 {
     unsigned long ulStatus;
 	unsigned char UARTData;
+	OS_DebugProfileInit();
 
     //
     // Get the interrrupt status.
@@ -319,8 +320,6 @@ void UARTInterpreter(unsigned char nextChar)
 void
 dummy(void)
 {
- 	oLED_Message(0, 0, "Periodic Cnt", cnt1);
-	cnt1++;
 }
 
 //*****************************************************************************
@@ -393,7 +392,7 @@ main(void)
     //
 	oLED_Message(1, 4, "RT OS LAB:", 1);
 	ADC_Open();
-	OS_AddPeriodicThread(&dummy, 100, 1);
+	OS_AddPeriodicThread(&dummy, 1, 1);
 
     while(1)
     {  	
