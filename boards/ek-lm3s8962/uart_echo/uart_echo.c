@@ -40,7 +40,7 @@
 // Global Variables
 	AddFifo(UARTRx, 32, unsigned char, 1, 0); 	// UARTRx buffer
    	AddFifo(UARTTx, 32, unsigned char, 1, 0); 	// UARTTx buffer
-	unsigned char * buffer[100];
+	unsigned char buffer[100];
 	unsigned int buffer_pointer = 0;
 	unsigned int first_space = 1;
 	long cnt1 = 0; //For dummy function, for testing OS_AddPeriodicThread
@@ -198,31 +198,87 @@ UARTOutString(unsigned long ulBase, char *string)
 
 void UARTSolve(void)
 {
-	char operator = *buffer[buffer_pointer - 2];
+	
+	char operator = buffer[buffer_pointer - 2];
 	char * token;
-	int total = 0;
+	char * last;
+	char string[10];
+	long total = 0;
+	int first = 1;
+	//UARTOutString(UART0_BASE, buffer);
 	switch(operator)
 	{
 		case '+':
-		for ( token = strtok(*buffer, " "); token != "\0"; token = strtok("\0" , " ") )
-			total = total + (int)token;
-		UARTOutString(UART0_BASE, total + "\r\n");
-		break;  
-
-
-	}
-	/*char * string[12];
-	unsigned int i;
-	unsigned int j;
-	for(i = 0; i < buffer_pointer; i++)
-	{
-		j = 0;
-		while(buffer[i] != " ")
+		for ( token = strtok_r(buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
 		{
-		   string[j] = buffer[i];
-		}	
+			
+			total = total + atoi(token);
+		}
+		Int2Str(total, string);
+		UARTOutString(UART0_BASE, string);
+		UARTOutString(UART0_BASE, "\r\n");
+		break;
+				
+		case '-':
+		for ( token = strtok_r(buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
+		{
+			if(first)
+			{
+				total = atoi(token);
+				first = 0;
+			}
+			else
+				total = total - atoi(token);
+		}
+		Int2Str(total, string);
+		UARTOutString(UART0_BASE, string);
+		UARTOutString(UART0_BASE, "\r\n");
+		break;
+		
+		case '*':
+		for ( token = strtok_r(buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
+		{
+						if(first)
+			{
+				total = atoi(token);
+				first = 0;
+			}
+			else
+				if(atoi(token) != 0)
+				total = total * atoi(token);
+		}
+		Int2Str(total, string);
+		UARTOutString(UART0_BASE, string);
+		UARTOutString(UART0_BASE, "\r\n");
+		break;
+		
+		case '/':
+		for ( token = strtok_r(buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
+		{
+			if(first)
+			{
+				total = atoi(token);
+				first = 0;
+			}
+			else
+				if(atoi(token) != 0)
+				total = total / atoi(token);
+		}
+		Int2Str(total, string);
+		UARTOutString(UART0_BASE, string);
+		UARTOutString(UART0_BASE, "\r\n");
+		break;
+		
+		case 't':
+		Int2Str(OS_MsTime(), string);
+		UARTOutString(UART0_BASE, string);
+		UARTOutString(UART0_BASE, "ms \r\n");
+		break;		
+		
+		default:
+		break;  
 	}
-	string = strchr(buffer, 1);*/	
+	buffer_pointer = 0;	
 }
 
 //*****************************************************************************
@@ -236,14 +292,20 @@ void UARTInterpreter(unsigned char nextChar)
    switch(nextChar)
    {
 	   case '\b':
-	   	buffer_pointer--;
+	   	//UARTOutString(UART0_BASE, "backspace");
+		buffer_pointer--;
 		break;
 	   case '=':
-	    first_space = 1;
+	    //UARTOutString(UART0_BASE, "equals");
+		first_space = 1;
+		buffer[buffer_pointer] = '=';
 		UARTSolve();
 	    break;
 	   default:
-	    buffer[buffer_pointer] = &nextChar;
+	    
+	    buffer[buffer_pointer] = nextChar;
+		//UARTOutString(UART0_BASE, buffer[buffer_pointer]);
+		//UARTOutString(UART0_BASE, "default");
 		buffer_pointer++;
 	   	break;
    }
@@ -272,6 +334,7 @@ main(void)
 	unsigned short ADC_buffer[6];
 	unsigned char trigger;
 	unsigned short ADC_SingleSample;
+	int fifo_status = 0;
 	UARTRxFifo_Init();
 	  
     //
@@ -334,13 +397,15 @@ main(void)
 
     while(1)
     {  	
-		UARTRxFifo_Get(&trigger);
+		fifo_status = UARTRxFifo_Get(&trigger);
+		if(fifo_status == 1)
 		UARTInterpreter(trigger);
-		ADC_SingleSample = ADC_In(0);
+		
+		/*ADC_SingleSample = ADC_In(0);
 		oLED_Message(0, 4, "ADC_In(0)", (long)ADC_SingleSample);
 		ADC_Collect(0, 1, ADC_buffer, 3);
 		oLED_Message(1, 0, "ADCSample1", ADC_buffer[0]);
 		oLED_Message(1, 1, "ADCSample2", ADC_buffer[1]);
-		oLED_Message(1, 2, "ADCSample3", ADC_buffer[2]);	
+		oLED_Message(1, 2, "ADCSample3", ADC_buffer[2]);*/	
     }
 }
