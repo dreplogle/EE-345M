@@ -20,3 +20,8 @@ extern int OS_AddPeriodicThread(void(*task)(void),
 								unsigned long priority);
 extern void OS_ClearMsTime(void);
 extern long OS_MsTime(void);
+extern void OS_DebugProfileInit(void);
+extern void OS_DebugB0Set(void);
+extern void OS_DebugB1Set(void);
+extern void OS_DebugB0Clear(void);
+extern void OS_DebugB1Clear(void);

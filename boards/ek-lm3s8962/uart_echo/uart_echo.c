@@ -399,11 +399,11 @@ main(void)
 		if(fifo_status == 1)
 		UARTInterpreter(trigger);
 		
-		/*ADC_SingleSample = ADC_In(0);
+		ADC_SingleSample = ADC_In(0);
 		oLED_Message(0, 4, "ADC_In(0)", (long)ADC_SingleSample);
-		ADC_Collect(0, 1, ADC_Buffer, 3);
+		ADC_Collect(0, 1000, ADC_Buffer, 3);
 		oLED_Message(1, 0, "ADCSample1", ADC_Buffer[0]);
 		oLED_Message(1, 1, "ADCSample2", ADC_Buffer[1]);
-		oLED_Message(1, 2, "ADCSample3", ADC_Buffer[2]);*/	
+		oLED_Message(1, 2, "ADCSample3", ADC_Buffer[2]);	
     }
 }
