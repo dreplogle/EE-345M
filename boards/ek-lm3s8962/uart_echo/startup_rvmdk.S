@@ -82,6 +82,7 @@ __heap_limit
         EXTERN  UARTIntHandler
 		EXTERN  ADC0Seq3IntHandler
 		EXTERN  Timer3IntHandler
+		EXTERN  OSThSwitchIntHandler
 
 ;******************************************************************************
 ;
@@ -129,7 +130,7 @@ __Vectors
         DCD     IntDefaultHandler           ; Timer 0 subtimer B
         DCD     IntDefaultHandler           ; Timer 1 subtimer A
         DCD     IntDefaultHandler           ; Timer 1 subtimer B
-        DCD     IntDefaultHandler           ; Timer 2 subtimer A
+        DCD     OSThSwitchIntHandler           ; Timer 2 subtimer A
         DCD     IntDefaultHandler           ; Timer 2 subtimer B
         DCD     IntDefaultHandler           ; Analog Comparator 0
         DCD     IntDefaultHandler           ; Analog Comparator 1
