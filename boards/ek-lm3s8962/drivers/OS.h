@@ -8,6 +8,17 @@
 
 #define SUCCESS 1
 #define FAIL 0
+#define MAX_THREAD_SW_PER_MS 1000
+#define MIN_THREAD_SW_PER_MS 1
+
+typedef struct tcb{
+	unsigned long stackPtr;
+	struct tcb * next;
+	unsigned char id;
+	unsigned char sleepState;
+	unsigned long prority;
+	unsigned char blockedState;
+}TCB;
 
 //*************************************************************
 //
@@ -18,6 +29,8 @@
 extern int OS_AddPeriodicThread(void(*task)(void), 
 							    unsigned long period, 
 								unsigned long priority);
+extern int OS_PerThreadSwitchInit(unsigned long period,
+								  unsigned long priority);
 extern void OS_ClearMsTime(void);
 extern long OS_MsTime(void);
 extern void OS_DebugProfileInit(void);
