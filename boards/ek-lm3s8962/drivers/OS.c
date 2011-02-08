@@ -27,7 +27,7 @@
 //***********************************************************************
 void(*PeriodicTask)(void);
 long MsTime = 0;
-struct tcb CurrentThread; 
+struct tcb * CurrentThread;     //pointer to the current thread 
  
 
 extern unsigned long PushRegs4to11(unsigned long StkPtr);
@@ -273,18 +273,18 @@ Timer3IntHandler(void)
 
 void
 OSThSwitchIntHandler(void)
-{ 
+{ 	
 	// Disable interrupts for this critical section
 	IntMasterDisable();
 	
 	// Save registers R4 to R11 on the user stack
-	CurrentThread.stackPtr = PushRegs4to11(CurrentThread.stackPtr);
+	(*CurrentThread).stackPtr = PushRegs4to11((*CurrentThread).stackPtr);
 	
-	// Choose the next thread
-//	CurrentThread = (*(CurrentThread.next));
+	// Assign next thread as current thread
+	CurrentThread = (*CurrentThread).next;
 
 	// Set the SP for the new TCB and restore registers R4 to R11
-	PullRegs4to11(CurrentThread.stackPtr);
+	PullRegs4to11((*CurrentThread).stackPtr);
 	
 	// Re-enable interrupts
 	IntMasterEnable();
