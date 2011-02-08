@@ -44,6 +44,9 @@
 	unsigned int BufferPt = 0;
 	unsigned int FirstSpace = 1;
 
+	int IntTerm;  	//For PID.s
+	int PrevError;	//For PID.s
+
 //*****************************************************************************
 //
 //! \addtogroup example_list
