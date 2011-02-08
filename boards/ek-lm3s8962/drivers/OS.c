@@ -16,6 +16,7 @@
 #include "driverlib/interrupt.h"
 #include "driverlib/sysctl.h"
 #include "driverlib/gpio.h"
+#include "driverlib/systick.h"
 #include "drivers/OS.h"
 
 
@@ -101,66 +102,35 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
 
 //***********************************************************************
 //
-// OS_PerThreadSwitchInit initializes Timer2 to interrupt at the 
-// specified period and priority to perform thread switching
+// OS_PerThreadSwitchInit initializes the SysTick timer to interrupt at the 
+// specified period to perform thread switching
 //
 // \param period is the period at which threads will be swtiched
-// \param priority is the priority for the periodic interrupt
 // 
-// \return SUCCESS if function was successful and FAIL if either 
+// \return SUCCESS if function was successful and FAIL if period 
 // paramter is out of range.
 //
 //***********************************************************************
 int 
-OS_PerThreadSwitchInit(unsigned long period, unsigned long priority)
+OS_PerThreadSwitchInit(unsigned long period)
 {
-	//
-	// Enable Timer2 module
-	//
-	SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER2);
+  // Enable SysTick Interrupts
+  SysTickIntEnable();
 
-	//
-	// Configure Timer2 as a 32-bit periodic timer.
-	//
-	TimerConfigure(TIMER2_BASE, TIMER_CFG_32_BIT_PER);
+  // Set the period in ms
+  if(period <= MAX_THREAD_SW_PER_MS && period >= MIN_THREAD_SW_PER_MS)
+  {
+    SysTickPeriodSet((SysCtlClockGet()/1000)*period);
+  }
+  else
+  {  
+    return FAIL;
+  }
+	
+  // Enable the SysTick module	
+  SysTickEnable();
 
-	//
-    // Set the Timer2 load value to generate the period specified by the user.
-    //
-	if(period <= MAX_THREAD_SW_PER_MS && period >= MIN_THREAD_SW_PER_MS)
-	{
-    	TimerLoadSet(TIMER2_BASE, TIMER_BOTH, (SysCtlClockGet()/1000)*period);
-	}
-	else
-	{
-	 	return FAIL; 
-	}
-
-	//
-	// Enable the Timer2 interrupt.
-	//
-	TimerIntEnable(TIMER2_BASE, TIMER_TIMA_TIMEOUT);
-	TimerIntClear(TIMER2_BASE, TIMER_TIMA_TIMEOUT);
-	IntEnable(INT_TIMER2A);
-                                                                                
-	//
-	// Set priority for the timer interrupt.
-	//
-	if(priority < 8)
-	{
-		IntPrioritySet(INT_TIMER2A,(unsigned char)priority);
-	}
-	else
-	{
-	 	return FAIL; 
-	}
-	//
-    // Start Timer2.
-    //
-    TimerEnable(TIMER2_BASE, TIMER_BOTH);
-
-	return SUCCESS;
-
+  return SUCCESS;
 }
 
 //***********************************************************************
@@ -272,7 +242,7 @@ Timer3IntHandler(void)
 //***********************************************************************
 
 void
-OSThSwitchIntHandler(void)
+SysTickThSwIntHandler(void)
 { 	
 	// Disable interrupts for this critical section
 	IntMasterDisable();

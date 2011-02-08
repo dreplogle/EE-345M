@@ -82,7 +82,7 @@ __heap_limit
         EXTERN  UARTIntHandler
 		EXTERN  ADC0Seq3IntHandler
 		EXTERN  Timer3IntHandler
-		EXTERN  OSThSwitchIntHandler
+		EXTERN  SysTickThSwIntHandler
 
 ;******************************************************************************
 ;
@@ -106,7 +106,7 @@ __Vectors
         DCD     IntDefaultHandler           ; Debug monitor handler
         DCD     0                           ; Reserved
         DCD     IntDefaultHandler           ; The PendSV handler
-        DCD     IntDefaultHandler           ; The SysTick handler
+        DCD     SysTickThSwIntHandler       ; The SysTick handler
         DCD     IntDefaultHandler           ; GPIO Port A
         DCD     IntDefaultHandler           ; GPIO Port B
         DCD     IntDefaultHandler           ; GPIO Port C
@@ -130,7 +130,7 @@ __Vectors
         DCD     IntDefaultHandler           ; Timer 0 subtimer B
         DCD     IntDefaultHandler           ; Timer 1 subtimer A
         DCD     IntDefaultHandler           ; Timer 1 subtimer B
-        DCD     OSThSwitchIntHandler           ; Timer 2 subtimer A
+        DCD     IntDefaultHandler           ; Timer 2 subtimer A
         DCD     IntDefaultHandler           ; Timer 2 subtimer B
         DCD     IntDefaultHandler           ; Analog Comparator 0
         DCD     IntDefaultHandler           ; Analog Comparator 1
@@ -142,7 +142,7 @@ __Vectors
         DCD     IntDefaultHandler           ; GPIO Port H
         DCD     IntDefaultHandler           ; UART2 Rx and Tx
         DCD     IntDefaultHandler           ; SSI1 Rx and Tx
-		DCD     Timer3IntHandler           ; Timer 3 subtimer A
+		DCD     Timer3IntHandler            ; Timer 3 subtimer A
         DCD     IntDefaultHandler           ; Timer 3 subtimer B
         DCD     IntDefaultHandler           ; I2C1 Master and Slave
         DCD     IntDefaultHandler           ; Quadrature Encoder 1

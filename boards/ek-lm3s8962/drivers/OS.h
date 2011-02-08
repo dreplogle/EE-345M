@@ -33,8 +33,7 @@ typedef struct Sema4Type{
 extern int OS_AddPeriodicThread(void(*task)(void), 
 							    unsigned long period, 
 								unsigned long priority);
-extern int OS_PerThreadSwitchInit(unsigned long period,
-								  unsigned long priority);
+extern int OS_PerThreadSwitchInit(unsigned long period);
 extern void OS_ClearMsTime(void);
 extern long OS_MsTime(void);
 extern void OS_DebugProfileInit(void);
