@@ -289,6 +289,89 @@ OSThSwitchIntHandler(void)
 	// Re-enable interrupts
 	IntMasterEnable();
 	
+}
+
+//***********************************************************************
+//
+// 	OS_InitSemaphore initializes semaphore within the OS to a given 
+//  value.
+//
+//***********************************************************************
+
+void 
+OS_InitSemaphore(Sema4Type *semaPt, unsigned int value)
+{
+	IntMasterDisable();
+	(semaPt->value) = value;
+	IntMasterEnable();
+}
+
+//***********************************************************************
+//
+// 	OS_Signal signals a given semaphore.
+//
+//***********************************************************************
+
+void 
+OS_Signal(Sema4Type *semaPt)
+{
+ 	IntMasterDisable();
+	(semaPt->value)++;
+	IntMasterEnable();
+}
+
+//***********************************************************************
+//
+// 	OS_Wait waits for a given semaphore.
+//
+//***********************************************************************
+
+void 
+OS_Wait(Sema4Type *semaPt)
+{
+ 	IntMasterDisable();
+	while((semaPt->value) == 0)
+	{
+		IntMasterEnable();
+
+		IntMasterDisable();
+	}
+	(semaPt->value)--;
+	IntMasterEnable();
+}
+
+//***********************************************************************
+//
+// 	OS_bSignal signals binary semaphore. 
+//
+//***********************************************************************
+
+void 
+OS_bSignal(Sema4Type *semaPt)
+{
+ 	IntMasterDisable();
+	(semaPt->value) = 1;
+	IntMasterEnable();
+}
+
+//***********************************************************************
+//
+// 	OS_bSignal waits for binary semaphore.
+//
+//***********************************************************************
+
+void 
+OS_bWait(Sema4Type *semaPt)
+{
+    IntMasterDisable();
+	while((semaPt->value) == 1)
+	{
+		IntMasterEnable();
+
+		IntMasterDisable();
+	}
+	(semaPt->value) = 0;
+	IntMasterEnable();
 } 
 //******************************EOF**************************************
 

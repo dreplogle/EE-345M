@@ -40,6 +40,7 @@
 #include "driverlib/ssi.h"
 #include "driverlib/sysctl.h"
 #include "drivers/rit128x96x4.h"
+#include "drivers/OS.h"
 
 //*****************************************************************************
 //
@@ -102,6 +103,8 @@ static unsigned char g_pucBuffer[8];
 #define RIT_INIT_OFFSET     0x00
 static const unsigned char g_pucRIT128x96x4VerticalInc[]   = { 0xA0, 0x56 };
 static const unsigned char g_pucRIT128x96x4HorizontalInc[] = { 0xA0, 0x52 };
+
+Sema4Type mutex;
 
 //*****************************************************************************
 //
@@ -499,7 +502,7 @@ RIT128x96x4Clear(void)
 //  Written by: Katy Loeffler 1/22/2011
 //*****************************************************************************
 void oLED_Message(int device, int line, char *string, long value){
-
+	OS_bWait(&mutex);
 	if(!device){ 	   	// top display
 		if(line < 5){  	// check bounds for vertical space
 		 	RIT128x96x4StringDraw(string, 0, (line*8), 11);
@@ -526,6 +529,7 @@ void oLED_Message(int device, int line, char *string, long value){
 			RIT128x96x4StringDraw("Line selection error", 2, 0, 11);
 		}
 	}
+	OS_bSignal(&mutex);
 }
 
 //*****************************************************************************
@@ -852,8 +856,9 @@ RIT128x96x4Disable(void)
 void
 RIT128x96x4Init(unsigned long ulFrequency)
 {
-    unsigned long ulIdx;
-
+   
+	unsigned long ulIdx;
+	OS_InitSemaphore(&mutex, 0);
     //
     // Enable the SSI0 and GPIO port blocks as they are needed by this driver.
     //

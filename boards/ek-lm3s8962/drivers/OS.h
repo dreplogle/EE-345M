@@ -16,9 +16,13 @@ typedef struct tcb{
 	struct tcb * next;
 	unsigned char id;
 	unsigned char sleepState;
-	unsigned long prority;
+	unsigned long priority;
 	unsigned char blockedState;
 }TCB;
+
+typedef struct Sema4Type{
+	unsigned short value;
+}Sema4Type;
 
 //*************************************************************
 //
@@ -38,3 +42,8 @@ extern void OS_DebugB0Set(void);
 extern void OS_DebugB1Set(void);
 extern void OS_DebugB0Clear(void);
 extern void OS_DebugB1Clear(void);
+extern void OS_InitSemaphore(Sema4Type *semaPt, unsigned int value);
+extern void OS_Signal(Sema4Type *semaPt);
+extern void OS_Wait(Sema4Type *semaPt);
+extern void OS_bSignal(Sema4Type *semaPt);
+extern void OS_bWait(Sema4Type *semaPt);
