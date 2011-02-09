@@ -334,7 +334,7 @@ void
 OS_bWait(Sema4Type *semaPt)
 {
     IntMasterDisable();
-	while((semaPt->value) == 1)
+	while((semaPt->value) == 0)
 	{
 		IntMasterEnable();
 

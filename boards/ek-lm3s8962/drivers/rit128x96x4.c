@@ -858,7 +858,7 @@ RIT128x96x4Init(unsigned long ulFrequency)
 {
    
 	unsigned long ulIdx;
-	OS_InitSemaphore(&mutex, 0);
+	OS_InitSemaphore(&mutex, 1);
     //
     // Enable the SSI0 and GPIO port blocks as they are needed by this driver.
     //

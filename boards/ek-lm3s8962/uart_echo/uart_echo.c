@@ -199,101 +199,6 @@ UARTOutString(unsigned long ulBase, char *string)
 	UARTIntEnable(ulBase, UART_INT_TX);
 }
 
-void UARTSolve(void)
-{
-	
-	char operator = Buffer[BufferPt - 2];
-	char * token;
-	char * last;
-	char string[10];
-	long total = 0;
-	int first = 1;
-	//UARTOutString(UART0_BASE, Buffer);
-	switch(operator)
-	{
-		case '+':
-		for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
-		{
-			
-			total = total + atoi(token);
-		}
-		Int2Str(total, string);
-		UARTOutString(UART0_BASE, string);
-		UARTOutString(UART0_BASE, "\r\n");
-		break;
-				
-		case '-':
-		for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
-		{
-			if(first)
-			{
-				total = atoi(token);
-				first = 0;
-			}
-			else
-			{
-				total = total - atoi(token);
-			}
-		}
-		Int2Str(total, string);
-		UARTOutString(UART0_BASE, string);
-		UARTOutString(UART0_BASE, "\r\n");
-		break;
-		
-		case '*':
-		for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
-		{
-			if(first)
-			{
-				total = atoi(token);
-				first = 0;
-			}
-			else
-			{
-				if(atoi(token) != 0)
-				{
-					total = total * atoi(token);
-				}
-			}
-		}
-		Int2Str(total, string);
-		UARTOutString(UART0_BASE, string);
-		UARTOutString(UART0_BASE, "\r\n");
-		break;
-		
-		case '/':
-		for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
-		{
-			if(first)
-			{
-				total = atoi(token);
-				first = 0;
-			}
-			else
-			{
-				if(atoi(token) != 0)
-				{
-					total = total / atoi(token);
-				}
-			}
-		}
-		Int2Str(total, string);
-		UARTOutString(UART0_BASE, string);
-		UARTOutString(UART0_BASE, "\r\n");
-		break;
-		
-		case 't':
-		Int2Str(OS_MsTime(), string);
-		UARTOutString(UART0_BASE, string);
-		UARTOutString(UART0_BASE, "tcks \r\n");
-		break;		
-		
-		default:
-		break;  
-	}
-	BufferPt = 0;	
-}
-
 //*****************************************************************************
 //
 // Interpret input from the terminal
@@ -301,7 +206,13 @@ void UARTSolve(void)
 //*****************************************************************************
 void UARTInterpreter(unsigned char nextChar)
 {
-   
+	char operator = Buffer[BufferPt - 2];
+	char * token;
+	char * last;
+	char string[10];
+	long total = 0;
+	short first = 1;
+	short command, equation = 0; 
    switch(nextChar)
    {
 	   case '\b':
@@ -312,8 +223,11 @@ void UARTInterpreter(unsigned char nextChar)
 	    //UARTOutString(UART0_BASE, "equals");
 		FirstSpace = 1;
 		Buffer[BufferPt] = '=';
-		UARTSolve();
+		equation = 1;
 	    break;
+		case '\r':
+		 command = 1;
+		break;
 	   default:
 	    
 	    Buffer[BufferPt] = nextChar;
@@ -322,6 +236,102 @@ void UARTInterpreter(unsigned char nextChar)
 		BufferPt++;
 	   	break;
    }
+
+   	if(equation == 1)
+	{	
+		switch(operator)
+		{
+			case '+':
+			for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
+			{
+				
+				total = total + atoi(token);
+			}
+			Int2Str(total, string);
+			UARTOutString(UART0_BASE, string);
+			UARTOutString(UART0_BASE, "\r\n");
+			break;
+					
+			case '-':
+			for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
+			{
+				if(first)
+				{
+					total = atoi(token);
+					first = 0;
+				}
+				else
+				{
+					total = total - atoi(token);
+				}
+			}
+			Int2Str(total, string);
+			UARTOutString(UART0_BASE, string);
+			UARTOutString(UART0_BASE, "\r\n");
+			break;
+			
+			case '*':
+			for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
+			{
+				if(first)
+				{
+					total = atoi(token);
+					first = 0;
+				}
+				else
+				{
+					if(atoi(token) != 0)
+					{
+						total = total * atoi(token);
+					}
+				}
+			}
+			Int2Str(total, string);
+			UARTOutString(UART0_BASE, string);
+			UARTOutString(UART0_BASE, "\r\n");
+			break;
+			
+			case '/':
+			for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
+			{
+				if(first)
+				{
+					total = atoi(token);
+					first = 0;
+				}
+				else
+				{
+					if(atoi(token) != 0)
+					{
+						total = total / atoi(token);
+					}
+				}
+			}
+			Int2Str(total, string);
+			UARTOutString(UART0_BASE, string);
+			UARTOutString(UART0_BASE, "\r\n");
+			break;
+			
+			case 't':
+			Int2Str(OS_MsTime(), string);
+			UARTOutString(UART0_BASE, string);
+			UARTOutString(UART0_BASE, "tcks \r\n");
+			break;		
+			
+			default:
+			break;
+			  
+		}
+		BufferPt = 0;
+		equation = 0;
+	}
+
+	if(command = 1)
+	{
+
+	}
+
+
 }
 
 //*****************************************************************************
