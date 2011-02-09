@@ -92,7 +92,7 @@ UARTIntHandler(void)
     //
     UARTIntClear(UART0_BASE, ulStatus);
 
-	if(ulStatus == UART_INT_RX)
+	if(ulStatus == UART_INT_RX || ulStatus == UART_INT_RT)
 	{
 		//
 		// Loop while there are characters in the receive FIFO.
@@ -391,7 +391,7 @@ main(void)
     // Enable the UART interrupt.
     //
     IntEnable(INT_UART0);
-    UARTIntEnable(UART0_BASE, UART_INT_RX | UART_INT_RT);
+    UARTIntEnable(UART0_BASE, UART_INT_RX | UART_INT_RT | UART_INT_TX);
 
     //
     // Prompt for text to be entered.
