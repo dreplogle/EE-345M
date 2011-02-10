@@ -1,10 +1,15 @@
-//*************************************************************
+//*****************************************************************************
 //
-// OS.h
+// Filename: OS.c
+// Authors: Dustin Replogle, Katy Loeffler   
+// Initial Creation Date: February 3, 2011 
+// Description: Header file for OS.h    
+// Lab Number. 01    
+// TA: Raffaele Cetrulo      
+// Date of last revision: February 8, 2011    
+// Hardware Configuration: default
 //
-// Created: 2/3/2011 by Katy Loeffler
-//
-//*************************************************************
+//*****************************************************************************
 
 #define SUCCESS 1
 #define FAIL 0
@@ -12,16 +17,16 @@
 #define MIN_THREAD_SW_PER_MS 1
 
 typedef struct tcb{
-	unsigned long stackPtr;
-	struct tcb * next;
-	unsigned char id;
-	unsigned char sleepState;
-	unsigned long priority;
-	unsigned char blockedState;
+  unsigned long stackPtr;
+  struct tcb * next;
+  unsigned char id;
+  unsigned char sleepState;
+  unsigned long priority;
+  unsigned char blockedState;
 }TCB;
 
 typedef struct Sema4Type{
-	unsigned short value;
+  unsigned short value;
 }Sema4Type;
 
 //*************************************************************
@@ -31,8 +36,8 @@ typedef struct Sema4Type{
 //*************************************************************
 
 extern int OS_AddPeriodicThread(void(*task)(void), 
-							    unsigned long period, 
-								unsigned long priority);
+  	  	  	      unsigned long period, 
+  	  	  	  	unsigned long priority);
 extern int OS_PerThreadSwitchInit(unsigned long period);
 extern void OS_ClearMsTime(void);
 extern long OS_MsTime(void);

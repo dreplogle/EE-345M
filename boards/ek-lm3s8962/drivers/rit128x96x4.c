@@ -502,34 +502,34 @@ RIT128x96x4Clear(void)
 //  Written by: Katy Loeffler 1/22/2011
 //*****************************************************************************
 void oLED_Message(int device, int line, char *string, long value){
-	OS_bWait(&mutex);
-	if(!device){ 	   	// top display
-		if(line < 5){  	// check bounds for vertical space
-		 	RIT128x96x4StringDraw(string, 0, (line*8), 11);
-			RIT128x96x4DecOut5(value, 92, (line*8), 11);
-		}
-		else{
-			RIT128x96x4StringDraw("Line selection error", 2, 0, 11);
-		}
-	}
-	else if(device){	// bottom display
-		if(line < 5){	// check bounds for vertical space
-		 	RIT128x96x4StringDraw(string, 0, (line*8)+48, 11);
-			RIT128x96x4DecOut5(value, 92, (line*8)+48, 11);
-		}
-		else{
-			RIT128x96x4StringDraw("Line selection error", 2, 48, 11);
-		}
-	}
-	else{
-		if(line < 5){	// check bounds for vertical space
-			RIT128x96x4StringDraw("Screen segment selection error", 2, (line*8), 11);
-		}
-		else{
-			RIT128x96x4StringDraw("Line selection error", 2, 0, 11);
-		}
-	}
-	OS_bSignal(&mutex);
+  OS_bWait(&mutex);
+  if(!device){        // top display
+  	if(line < 5){    // check bounds for vertical space
+  	   RIT128x96x4StringDraw(string, 0, (line*8), 11);
+  	  RIT128x96x4DecOut5(value, 92, (line*8), 11);
+  	}
+  	else{
+  	  RIT128x96x4StringDraw("Line selection error", 2, 0, 11);
+  	}
+  }
+  else if(device){  // bottom display
+  	if(line < 5){  // check bounds for vertical space
+  	   RIT128x96x4StringDraw(string, 0, (line*8)+48, 11);
+  	  RIT128x96x4DecOut5(value, 92, (line*8)+48, 11);
+  	}
+  	else{
+  	  RIT128x96x4StringDraw("Line selection error", 2, 48, 11);
+  	}
+  }
+  else{
+  	if(line < 5){  // check bounds for vertical space
+  	  RIT128x96x4StringDraw("Screen segment selection error", 2, (line*8), 11);
+  	}
+  	else{
+  	  RIT128x96x4StringDraw("Line selection error", 2, 0, 11);
+  	}
+  }
+  OS_bSignal(&mutex);
 }
 
 //*****************************************************************************
@@ -857,56 +857,56 @@ void
 RIT128x96x4Init(unsigned long ulFrequency)
 {
    
-	unsigned long ulIdx;
-	OS_InitSemaphore(&mutex, 1);
-    //
-    // Enable the SSI0 and GPIO port blocks as they are needed by this driver.
-    //
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_SSI0);
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIO_OLEDDC);
+  unsigned long ulIdx;
+  OS_InitSemaphore(&mutex, 1);
+  //
+  // Enable the SSI0 and GPIO port blocks as they are needed by this driver.
+  //
+  SysCtlPeripheralEnable(SYSCTL_PERIPH_SSI0);
+  SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+  SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIO_OLEDDC);
+  
+  //
+  // Configure the SSI0CLK and SSIOTX pins for SSI operation.
+  //
+  GPIOPinTypeSSI(GPIO_PORTA_BASE, GPIO_PIN_2 | GPIO_PIN_3 | GPIO_PIN_5);
+  GPIOPadConfigSet(GPIO_PORTA_BASE, GPIO_PIN_2 | GPIO_PIN_3 | GPIO_PIN_5,
+                   GPIO_STRENGTH_8MA, GPIO_PIN_TYPE_STD_WPU);
 
-    //
-    // Configure the SSI0CLK and SSIOTX pins for SSI operation.
-    //
-    GPIOPinTypeSSI(GPIO_PORTA_BASE, GPIO_PIN_2 | GPIO_PIN_3 | GPIO_PIN_5);
-    GPIOPadConfigSet(GPIO_PORTA_BASE, GPIO_PIN_2 | GPIO_PIN_3 | GPIO_PIN_5,
-                     GPIO_STRENGTH_8MA, GPIO_PIN_TYPE_STD_WPU);
+  //
+  // Configure the GPIO port pin used as a D/Cn signal for OLED device,
+  // and the port pin used to enable power to the OLED panel.
+  //
+  GPIOPinTypeGPIOOutput(GPIO_OLEDDC_BASE, GPIO_OLEDDC_PIN | GPIO_OLEDEN_PIN);
+  GPIOPadConfigSet(GPIO_OLEDDC_BASE, GPIO_OLEDDC_PIN | GPIO_OLEDEN_PIN,
+                   GPIO_STRENGTH_8MA, GPIO_PIN_TYPE_STD);
+  GPIOPinWrite(GPIO_OLEDDC_BASE, GPIO_OLEDDC_PIN | GPIO_OLEDEN_PIN,
+               GPIO_OLEDDC_PIN | GPIO_OLEDEN_PIN);
+  HWREGBITW(&g_ulSSIFlags, FLAG_DC_HIGH) = 1;
 
-    //
-    // Configure the GPIO port pin used as a D/Cn signal for OLED device,
-    // and the port pin used to enable power to the OLED panel.
-    //
-    GPIOPinTypeGPIOOutput(GPIO_OLEDDC_BASE, GPIO_OLEDDC_PIN | GPIO_OLEDEN_PIN);
-    GPIOPadConfigSet(GPIO_OLEDDC_BASE, GPIO_OLEDDC_PIN | GPIO_OLEDEN_PIN,
-                     GPIO_STRENGTH_8MA, GPIO_PIN_TYPE_STD);
-    GPIOPinWrite(GPIO_OLEDDC_BASE, GPIO_OLEDDC_PIN | GPIO_OLEDEN_PIN,
-                 GPIO_OLEDDC_PIN | GPIO_OLEDEN_PIN);
-    HWREGBITW(&g_ulSSIFlags, FLAG_DC_HIGH) = 1;
+  //
+  // Configure and enable the SSI0 port for master mode.
+  //
+  RIT128x96x4Enable(ulFrequency);
 
-    //
-    // Configure and enable the SSI0 port for master mode.
-    //
-    RIT128x96x4Enable(ulFrequency);
+  //
+  // Clear the frame buffer.
+  //
+  RIT128x96x4Clear();
 
-    //
-    // Clear the frame buffer.
-    //
-    RIT128x96x4Clear();
-
-    //
-    // Initialize the SSD1329 controller.  Loop through the initialization
-    // sequence array, sending each command "string" to the controller.
-    //
-    for(ulIdx = 0; ulIdx < sizeof(g_pucRIT128x96x4Init);
-        ulIdx += g_pucRIT128x96x4Init[ulIdx] + 1)
-    {
-        //
-        // Send this command.
-        //
-        RITWriteCommand(g_pucRIT128x96x4Init + ulIdx + 1,
-                        g_pucRIT128x96x4Init[ulIdx] - 1);
-    }
+  //
+  // Initialize the SSD1329 controller.  Loop through the initialization
+  // sequence array, sending each command "string" to the controller.
+  //
+  for(ulIdx = 0; ulIdx < sizeof(g_pucRIT128x96x4Init);
+      ulIdx += g_pucRIT128x96x4Init[ulIdx] + 1)
+  {
+      //
+      // Send this command.
+      //
+      RITWriteCommand(g_pucRIT128x96x4Init + ulIdx + 1,
+                      g_pucRIT128x96x4Init[ulIdx] - 1);
+  }
 }
 
 //*****************************************************************************
@@ -922,21 +922,20 @@ RIT128x96x4Init(unsigned long ulFrequency)
 void
 RIT128x96x4DisplayOn(void)
 {
-    unsigned long ulIdx;
-
-    //
-    // Initialize the SSD1329 controller.  Loop through the initialization
-    // sequence array, sending each command "string" to the controller.
-    //
-    for(ulIdx = 0; ulIdx < sizeof(g_pucRIT128x96x4Init);
-        ulIdx += g_pucRIT128x96x4Init[ulIdx] + 1)
-    {
-        //
-        // Send this command.
-        //
-        RITWriteCommand(g_pucRIT128x96x4Init + ulIdx + 1,
-                        g_pucRIT128x96x4Init[ulIdx] - 1);
-    }
+  unsigned long ulIdx;
+  //
+  // Initialize the SSD1329 controller.  Loop through the initialization
+  // sequence array, sending each command "string" to the controller.
+  //
+  for(ulIdx = 0; ulIdx < sizeof(g_pucRIT128x96x4Init);
+      ulIdx += g_pucRIT128x96x4Init[ulIdx] + 1)
+  {
+      //
+      // Send this command.
+      //
+      RITWriteCommand(g_pucRIT128x96x4Init + ulIdx + 1,
+                      g_pucRIT128x96x4Init[ulIdx] - 1);
+  }
 }
 
 //*****************************************************************************

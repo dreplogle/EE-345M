@@ -42,7 +42,7 @@ extern "C"
 //
 //*****************************************************************************
 
-#define ADC_MAX_COLLECT_SAMPLES	128
+#define ADC_MAX_COLLECT_SAMPLES  128
 
 //*****************************************************************************
 //
@@ -189,10 +189,10 @@ extern "C"
 //*****************************************************************************
 //struct 
 //{
-// 	tBoolean OnCh0;
-//	tBoolean OnCh1;
-//	tBoolean OnCh2;
-//	tBoolean OnCh3;
+//   tBoolean OnCh0;
+//  tBoolean OnCh1;
+//  tBoolean OnCh2;
+//  tBoolean OnCh3;
 //} ADCChannelConfig;
 
 

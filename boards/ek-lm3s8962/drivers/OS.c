@@ -1,13 +1,17 @@
-//***********************************************************************
+//*****************************************************************************
 //
-// OS.c
+// Filename: OS.c
+// Authors: Dustin Replogle, Katy Loeffler   
+// Initial Creation Date: February 3, 2011 
+// Description: This file includes functions for managing the operating system, such
+// as adding periodic tasks.    
+// Lab Number. 01    
+// TA: Raffaele Cetrulo      
+// Date of last revision: February 9, 2011 (for style modifications)      
+// Hardware Configuration: default
 //
-// This file includes functions for managing the operating system, such
-// as adding periodic tasks.
-//
-// Created: 2/3/2011 by Katy Loeffler
-//
-//***********************************************************************
+//*****************************************************************************
+
 
 #include "inc/hw_ints.h"
 #include "inc/hw_memmap.h"
@@ -50,54 +54,54 @@ extern unsigned long SetStackPointer(unsigned long StkPtr);
 int 
 OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long priority)
 {
-	PeriodicTask = task;
+  PeriodicTask = task;
 
-	//
-	// Enable Timer3 module
-	//
-	SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER3);
+  //
+  // Enable Timer3 module
+  //
+  SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER3);
 
-	//
-	// Configure Timer3 as a 32-bit periodic timer.
-	//
-	TimerConfigure(TIMER3_BASE, TIMER_CFG_32_BIT_PER);
+  //
+  // Configure Timer3 as a 32-bit periodic timer.
+  //
+  TimerConfigure(TIMER3_BASE, TIMER_CFG_32_BIT_PER);
 
-	//
+  //
     // Set the Timer3 load value to generate the period specified by the user.
     //
-	if(period <= 100 && period >= 1)
-	{
-    	TimerLoadSet(TIMER3_BASE, TIMER_BOTH, (SysCtlClockGet()/1000)*period);
-	}
-	else
-	{
-	 	return FAIL; 
-	}
+  if(period <= 100 && period >= 1)
+  {
+      TimerLoadSet(TIMER3_BASE, TIMER_BOTH, (SysCtlClockGet()/1000)*period);
+  }
+  else
+  {
+     return FAIL; 
+  }
 
-	//
-	// Enable the Timer3 interrupt.
-	//
-	TimerIntEnable(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
-	TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
-	IntEnable(INT_TIMER3A);
+  //
+  // Enable the Timer3 interrupt.
+  //
+  TimerIntEnable(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
+  TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
+  IntEnable(INT_TIMER3A);
                                                                                 
-	//
-	// Set priority for the timer interrupt.
-	//
-	if(priority < 8)
-	{
-		IntPrioritySet(INT_TIMER3A,(unsigned char)priority);
-	}
-	else
-	{
-	 	return FAIL; 
-	}
-	//
+  //
+  // Set priority for the timer interrupt.
+  //
+  if(priority < 8)
+  {
+  	IntPrioritySet(INT_TIMER3A,(unsigned char)priority);
+  }
+  else
+  {
+     return FAIL; 
+  }
+  //
     // Start Timer3.
     //
     TimerEnable(TIMER3_BASE, TIMER_BOTH);
 
-	return SUCCESS;
+  return SUCCESS;
 }
 
 //***********************************************************************
@@ -126,8 +130,8 @@ OS_PerThreadSwitchInit(unsigned long period)
   {  
     return FAIL;
   }
-	
-  // Enable the SysTick module	
+  
+  // Enable the SysTick module  
   SysTickEnable();
 
   return SUCCESS;
@@ -147,7 +151,7 @@ OS_PerThreadSwitchInit(unsigned long period)
 void
 OS_ClearMsTime(void)
 {
-	MsTime = 0;
+  MsTime = 0;
 }
 
 //***********************************************************************
@@ -165,7 +169,7 @@ OS_ClearMsTime(void)
 long 
 OS_MsTime(void)
 {
-	return MsTime;
+  return MsTime;
 }
 
 //***********************************************************************
@@ -179,8 +183,8 @@ OS_MsTime(void)
 void
 OS_DebugProfileInit(void)
 {
-	SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
-	GPIOPinTypeGPIOOutput(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1);	
+  SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
+  GPIOPinTypeGPIOOutput(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1);  
 }
 
 //***********************************************************************
@@ -194,12 +198,12 @@ OS_DebugProfileInit(void)
 void
 OS_DebugB0Set(void)
 {
-	GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_0, 1);
+  GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_0, 1);
 }
 void
 OS_DebugB1Set(void)
 {
-	GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_1, 1);
+  GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_1, 1);
 }
 
 //***********************************************************************
@@ -213,12 +217,12 @@ OS_DebugB1Set(void)
 void
 OS_DebugB0Clear(void)
 {
-	GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_0, 0);
+  GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_0, 0);
 }
 void
 OS_DebugB1Clear(void)
 {
-	GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_1, 0);
+  GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_1, 0);
 }
 //***********************************************************************
 //
@@ -228,11 +232,11 @@ OS_DebugB1Clear(void)
 void
 Timer3IntHandler(void)
 {
-	OS_DebugB0Set();
-	TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
-	PeriodicTask(); 
-	MsTime++;
-	OS_DebugB0Clear();	
+  OS_DebugB0Set();
+  TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
+  PeriodicTask(); 
+  MsTime++;
+  OS_DebugB0Clear();  
 }
 
 //***********************************************************************
@@ -243,90 +247,92 @@ Timer3IntHandler(void)
 
 void
 SysTickThSwIntHandler(void)
-{ 	
-	// Disable interrupts for this critical section
-	IntMasterDisable();
-	
-	// Save registers R4 to R11 on the user stack
-	(*CurrentThread).stackPtr = PushRegs4to11((*CurrentThread).stackPtr);
-	
-	// Assign next thread as current thread
-	CurrentThread = (*CurrentThread).next;
+{   
+  // Disable interrupts for this critical section
+  IntMasterDisable();
+  
+  // Save registers R4 to R11 on the user stack
+  (*CurrentThread).stackPtr = PushRegs4to11((*CurrentThread).stackPtr);
+  
+  // Assign next thread as current thread
+  CurrentThread = (*CurrentThread).next;
 
-	// Set the SP for the new TCB and restore registers R4 to R11
-	PullRegs4to11((*CurrentThread).stackPtr);
-	
-	// Re-enable interrupts
-	IntMasterEnable();
-	
+  // Set the SP for the new TCB and restore registers R4 to R11
+  PullRegs4to11((*CurrentThread).stackPtr);
+  
+  // Re-enable interrupts
+  IntMasterEnable();
+  
 }
 
 //***********************************************************************
 //
-// 	OS_InitSemaphore initializes semaphore within the OS to a given 
+//  OS_InitSemaphore initializes semaphore within the OS to a given 
 //  value.
+//
+// /param
 //
 //***********************************************************************
 
 void 
 OS_InitSemaphore(Sema4Type *semaPt, unsigned int value)
 {
-	IntMasterDisable();
-	(semaPt->value) = value;
-	IntMasterEnable();
+  IntMasterDisable();
+  (semaPt->value) = value;
+  IntMasterEnable();
 }
 
 //***********************************************************************
 //
-// 	OS_Signal signals a given semaphore.
+//   OS_Signal signals a given semaphore.
 //
 //***********************************************************************
 
 void 
 OS_Signal(Sema4Type *semaPt)
 {
- 	IntMasterDisable();
-	(semaPt->value)++;
-	IntMasterEnable();
+  IntMasterDisable();
+  (semaPt->value)++;
+  IntMasterEnable();
 }
 
 //***********************************************************************
 //
-// 	OS_Wait waits for a given semaphore.
+//   OS_Wait waits for a given semaphore.
 //
 //***********************************************************************
 
 void 
 OS_Wait(Sema4Type *semaPt)
 {
- 	IntMasterDisable();
-	while((semaPt->value) == 0)
-	{
-		IntMasterEnable();
+  IntMasterDisable();
+  while((semaPt->value) == 0)
+  {
+  	IntMasterEnable();
 
-		IntMasterDisable();
-	}
-	(semaPt->value)--;
-	IntMasterEnable();
+  	IntMasterDisable();
+  }
+  (semaPt->value)--;
+  IntMasterEnable();
 }
 
 //***********************************************************************
 //
-// 	OS_bSignal signals binary semaphore. 
+//   OS_bSignal signals binary semaphore. 
 //
 //***********************************************************************
 
 void 
 OS_bSignal(Sema4Type *semaPt)
 {
- 	IntMasterDisable();
-	(semaPt->value) = 1;
-	IntMasterEnable();
+  IntMasterDisable();
+  (semaPt->value) = 1;
+  IntMasterEnable();
 }
 
 //***********************************************************************
 //
-// 	OS_bSignal waits for binary semaphore.
+//   OS_bSignal waits for binary semaphore.
 //
 //***********************************************************************
 
@@ -334,14 +340,14 @@ void
 OS_bWait(Sema4Type *semaPt)
 {
     IntMasterDisable();
-	while((semaPt->value) == 0)
-	{
-		IntMasterEnable();
+  while((semaPt->value) == 0)
+  {
+  	IntMasterEnable();
 
-		IntMasterDisable();
-	}
-	(semaPt->value) = 0;
-	IntMasterEnable();
+  	IntMasterDisable();
+  }
+  (semaPt->value) = 0;
+  IntMasterEnable();
 } 
 //******************************EOF**************************************
 
