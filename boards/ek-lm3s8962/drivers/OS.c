@@ -22,6 +22,7 @@
 #include "driverlib/gpio.h"
 #include "driverlib/systick.h"
 #include "drivers/OS.h"
+#include "string.h"
 
 
 
@@ -32,12 +33,124 @@
 //***********************************************************************
 void(*PeriodicTask)(void);
 long MsTime = 0;
-struct tcb * CurrentThread;     //pointer to the current thread 
- 
+TCB * CurrentThread;     //pointer to the current thread
+TCB * ThreadList;		 //pointer to the beginning of the circular linked list of TCBs
+struct tcb OSThreads[MAX_NUM_OS_THREADS];  //pointers to all the threads in the OS
+unsigned char ThreadStacks[MAX_NUM_OS_THREADS][STACK_SIZE];
 
-extern unsigned long PushRegs4to11(unsigned long StkPtr);
-extern unsigned long PullRegs4to11(unsigned long StkPtr);
-extern unsigned long SetStackPointer(unsigned long StkPtr);
+
+
+//***********************************************************************
+//
+// OS_Init
+//
+//***********************************************************************
+void
+OS_Init(void)
+{
+  int threadNum;
+
+  //Initialize the OSThreads array to empty
+  for(threadNum = 0; threadNum < MAX_NUM_OS_THREADS; threadNum++)
+  {
+    OSThreads[threadNum].id = DEAD;  
+  }
+  CurrentThread = NULL;	
+  ThreadList = NULL;
+	 
+} 
+
+
+//***********************************************************************
+//
+// OS_AddThread	initializes a TCB in the global TCB array and places the
+// new TCB at the end of a circular linked list.
+//
+// \param task is the program associated with the thread
+// \param stackSize is the size of the thread's stack in bytes
+// \param id is a numerical identifier for the TCB
+//
+// \return SUCCESS if there was room for the thread, FAIL otherwise.
+//
+//***********************************************************************
+int
+OS_AddThread(void(*task)(void), unsigned long stackSize, unsigned char id)
+{
+  int threadNum;
+  int addNum;
+  TCB * searchPtr;
+
+  //OS_CPU_SR  cpu_sr = 0;
+
+  //OS_ENTER_CRITICAL();
+  
+  //
+  // Look for the lowest avaliable slot in the OSThread list, if there is no spot,
+  // return with error code.  If there is a spot, initialize it with the given
+  // parameters.
+  //
+  int addSuccess = FAIL;
+  for(threadNum = MAX_NUM_OS_THREADS-1; threadNum >= 0; threadNum--)
+  {
+    if(OSThreads[threadNum].id == DEAD)  //Indicates corresponding thread is inactive
+    {
+      addNum = threadNum;
+	  addSuccess = SUCCESS;
+    }
+  }
+
+  if(addSuccess == SUCCESS)
+  {
+    //
+    // Initialize the stack pointer for the TCB with the bottom of the 
+    // stack.
+    //
+    OSThreads[addNum].stackPtr = &ThreadStacks[addNum][STACK_SIZE-1];
+    //
+    // Load initial values onto the stack
+    //
+	OSThreads[addNum].stackPtr = OS_StackInit(OSThreads[addNum].stackPtr, task);
+
+	OSThreads[addNum].id = id;
+  }	   
+  
+  //
+  // Add the new thread to the circular linked list of threads
+  //
+  if(ThreadList == NULL) // List is empty, this is the first thread
+  {
+    // Current thread is the start of the list
+	ThreadList = &OSThreads[addNum];
+	
+	// Thread points back to the beginning of the list  
+	OSThreads[addNum].next = ThreadList; 
+
+  }
+  else
+  {
+    searchPtr = (*ThreadList).next;
+
+	// Sets searchPtr to the end element on the list
+	// Find where the list wraps around  
+	while((*searchPtr).next != ThreadList)
+	{
+	  searchPtr = (*searchPtr).next;
+	}
+
+	// Add the new TCB to the end of the list
+	searchPtr->next = &OSThreads[addNum];
+
+	// Advance to the current element
+	searchPtr = (*searchPtr).next;
+
+	// Set the next pointer of the new TCB to the beginning of the list
+	(*searchPtr).next = ThreadList; 
+  }
+
+  return addSuccess;
+  //OS_EXIT_CRITICAL();
+}
+
 
 //***********************************************************************
 //
@@ -103,6 +216,7 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
 
   return SUCCESS;
 }
+
 
 //***********************************************************************
 //
@@ -250,15 +364,7 @@ SysTickThSwIntHandler(void)
 {   
   // Disable interrupts for this critical section
   IntMasterDisable();
-  
-  // Save registers R4 to R11 on the user stack
-  (*CurrentThread).stackPtr = PushRegs4to11((*CurrentThread).stackPtr);
-  
-  // Assign next thread as current thread
-  CurrentThread = (*CurrentThread).next;
 
-  // Set the SP for the new TCB and restore registers R4 to R11
-  PullRegs4to11((*CurrentThread).stackPtr);
   
   // Re-enable interrupts
   IntMasterEnable();

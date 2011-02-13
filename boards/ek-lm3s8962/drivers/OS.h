@@ -1,23 +1,19 @@
 //*****************************************************************************
 //
-// Filename: OS.c
-// Authors: Dustin Replogle, Katy Loeffler   
-// Initial Creation Date: February 3, 2011 
-// Description: Header file for OS.h    
-// Lab Number. 01    
-// TA: Raffaele Cetrulo      
-// Date of last revision: February 8, 2011    
-// Hardware Configuration: default
+// OS.h
 //
 //*****************************************************************************
 
 #define SUCCESS 1
 #define FAIL 0
+#define DEAD 0xFF
+#define MAX_NUM_OS_THREADS 10
+#define STACK_SIZE 128    			//Stack size in bytes
 #define MAX_THREAD_SW_PER_MS 1000
 #define MIN_THREAD_SW_PER_MS 1
 
 typedef struct tcb{
-  unsigned long stackPtr;
+  unsigned char * stackPtr;
   struct tcb * next;
   unsigned char id;
   unsigned char sleepState;
@@ -29,15 +25,17 @@ typedef struct Sema4Type{
   unsigned short value;
 }Sema4Type;
 
-//*************************************************************
+
+//*****************************************************************************
 //
 // Function Prototypes
 //
-//*************************************************************
+//*****************************************************************************
 
-extern int OS_AddPeriodicThread(void(*task)(void), 
-  	  	  	      unsigned long period, 
-  	  	  	  	unsigned long priority);
+extern int OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long priority);
+extern int OS_AddThread(void(*task)(void), unsigned long stackSize, unsigned char id);
+extern void OS_Init(void);
+extern unsigned char * OS_StackInit(unsigned char * ThreadStkPtr, void(*task)(void));
 extern int OS_PerThreadSwitchInit(unsigned long period);
 extern void OS_ClearMsTime(void);
 extern long OS_MsTime(void);
@@ -51,3 +49,7 @@ extern void OS_Signal(Sema4Type *semaPt);
 extern void OS_Wait(Sema4Type *semaPt);
 extern void OS_bSignal(Sema4Type *semaPt);
 extern void OS_bWait(Sema4Type *semaPt);
+
+
+
+
