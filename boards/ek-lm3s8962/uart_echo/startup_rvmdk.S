@@ -83,6 +83,7 @@ __heap_limit
 		EXTERN  ADC0Seq3IntHandler
 		EXTERN  Timer3IntHandler
 		EXTERN  SysTickThSwIntHandler
+		EXTERN  PendSVHandler
 
 ;******************************************************************************
 ;
@@ -105,7 +106,7 @@ __Vectors
         DCD     IntDefaultHandler           ; SVCall handler
         DCD     IntDefaultHandler           ; Debug monitor handler
         DCD     0                           ; Reserved
-        DCD     IntDefaultHandler           ; The PendSV handler
+        DCD     PendSVHandler	            ; The PendSV handler
         DCD     SysTickThSwIntHandler       ; The SysTick handler
         DCD     IntDefaultHandler           ; GPIO Port A
         DCD     IntDefaultHandler           ; GPIO Port B

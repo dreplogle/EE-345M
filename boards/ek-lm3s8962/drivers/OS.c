@@ -151,6 +151,20 @@ OS_AddThread(void(*task)(void), unsigned long stackSize, unsigned char id)
   //OS_EXIT_CRITICAL();
 }
 
+//***********************************************************************
+//
+// OS_Launch
+//
+//***********************************************************************
+void
+OS_Launch(void)
+{
+  //The first thread is the one at the beginning of the list
+  CurrentThread = ThreadList;
+  
+  OS_Launch_Internal(CurrentThread->stackPtr);  //doesn't return  
+
+}
 
 //***********************************************************************
 //
@@ -355,20 +369,25 @@ Timer3IntHandler(void)
 
 //***********************************************************************
 //
-// Timer 2A Interrupt handler, switches OS threads.
+// Timer 2A Interrupt handler, enables PendSV for thread switching.
 //
 //***********************************************************************
 
 void
 SysTickThSwIntHandler(void)
 {   
-  // Disable interrupts for this critical section
-  IntMasterDisable();
+  OS_TriggerPendSV();  
+}
 
-  
-  // Re-enable interrupts
-  IntMasterEnable();
-  
+//***********************************************************************
+//
+// PendSV handler, switches threads.  Disables interrupts during execution.
+//
+//***********************************************************************
+void 
+PendSVHandler(void)
+{
+  OS_SwitchThreads();
 }
 
 //***********************************************************************

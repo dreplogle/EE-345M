@@ -330,6 +330,7 @@ void UARTInterpreter(unsigned char nextChar)
 void
 dummy(void)
 {
+  while(1);
 }
 
 //*****************************************************************************
@@ -353,10 +354,14 @@ main(void)
                  SYSCTL_XTAL_8MHZ);
 
   OS_Init();
+  OS_PerThreadSwitchInit(1000);   //Switch threads every 1000 ms
   OS_AddThread(&dummy, 128, 1);
   OS_AddThread(&dummy, 128, 2);
   OS_AddThread(&dummy, 128, 3);
   OS_AddThread(&dummy, 128, 4);
+
+  IntMasterEnable();
+  OS_Launch();  //doesn't return
   //
   // Initialize the OLED display and write status.
   //

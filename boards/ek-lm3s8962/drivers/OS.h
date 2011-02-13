@@ -32,10 +32,14 @@ typedef struct Sema4Type{
 //
 //*****************************************************************************
 
+extern void OS_Init(void);
 extern int OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long priority);
 extern int OS_AddThread(void(*task)(void), unsigned long stackSize, unsigned char id);
-extern void OS_Init(void);
+extern void OS_SwitchThreads(void);
 extern unsigned char * OS_StackInit(unsigned char * ThreadStkPtr, void(*task)(void));
+extern void OS_Launch_Internal(unsigned char * firstStackPtr);
+extern void OS_Launch(void);
+extern void OS_TriggerPendSV(void);
 extern int OS_PerThreadSwitchInit(unsigned long period);
 extern void OS_ClearMsTime(void);
 extern long OS_MsTime(void);
