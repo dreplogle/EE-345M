@@ -344,7 +344,7 @@ main(void)
   unsigned char trigger;
   unsigned short adc_SingleSample;
   short fifo_status = 0;
-  UARTRxFifo_Init();
+  //UARTRxFifo_Init();
     
   //
   // Set the clocking to run directly from the crystal.
@@ -352,6 +352,21 @@ main(void)
   SysCtlClockSet(SYSCTL_SYSDIV_1 | SYSCTL_USE_OSC | SYSCTL_OSC_MAIN |
                  SYSCTL_XTAL_8MHZ);
 
+  OS_Init();
+  OS_AddThread(&dummy, 128, 1);
+  OS_AddThread(&dummy, 128, 2);
+  OS_AddThread(&dummy, 128, 3);
+  OS_AddThread(&dummy, 128, 4);
+  //
+  // Initialize the OLED display and write status.
+  //
+  RIT128x96x4Init(1000000);
+  while(1)
+  {
+  oLED_Message(1, 2, "ADCSample3", adc_buffer[2]);
+  }
+
+  /*
   //
   // Initialize the OLED display and write status.
   //
@@ -417,4 +432,5 @@ main(void)
     oLED_Message(1, 1, "ADCSample2", adc_buffer[1]);
     oLED_Message(1, 2, "ADCSample3", adc_buffer[2]);  
   }
+  */
 }
