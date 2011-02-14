@@ -39,6 +39,12 @@ struct tcb OSThreads[MAX_NUM_OS_THREADS];  //pointers to all the threads in the 
 unsigned char ThreadStacks[MAX_NUM_OS_THREADS][STACK_SIZE];
 
 
+//***********************************************************************
+//
+// Function prototypes for internal functions
+//
+//***********************************************************************
+int OS_PerThreadSwitchInit(unsigned long period);
 
 //***********************************************************************
 //
@@ -49,7 +55,7 @@ void
 OS_Init(void)
 {
   int threadNum;
-
+  IntMasterDisable();
   //Initialize the OSThreads array to empty
   for(threadNum = 0; threadNum < MAX_NUM_OS_THREADS; threadNum++)
   {
@@ -77,7 +83,7 @@ int
 OS_AddThread(void(*task)(void), unsigned long stackSize, unsigned char id)
 {
   int threadNum;
-  int addNum;
+  int addNum = 0;
   TCB * searchPtr;
 
   //OS_CPU_SR  cpu_sr = 0;
@@ -153,15 +159,48 @@ OS_AddThread(void(*task)(void), unsigned long stackSize, unsigned char id)
 
 //***********************************************************************
 //
+// PerThreadSwitchInit initializes the SysTick timer to interrupt at the 
+// specified period to perform thread switching
+//
+// \param period is the period at which threads will be swtiched
+// 
+// \return SUCCESS if function was successful and FAIL if period 
+// paramter is out of range.
+//
+//***********************************************************************
+int 
+PerThreadSwitchInit(unsigned long period)
+{
+  // Enable SysTick Interrupts
+  SysTickIntEnable();
+
+  // Set the period in ms
+  if(period <= MAX_THREAD_SW_PER_MS && period >= MIN_THREAD_SW_PER_MS)
+  {
+    SysTickPeriodSet((SysCtlClockGet()/1000)*period);
+  }
+  else
+  {  
+    return FAIL;
+  }
+  
+  // Enable the SysTick module  
+  SysTickEnable();
+
+  return SUCCESS;
+}
+
+//***********************************************************************
+//
 // OS_Launch
 //
 //***********************************************************************
 void
-OS_Launch(void)
+OS_Launch(unsigned long period)
 {
   //The first thread is the one at the beginning of the list
   CurrentThread = ThreadList;
-  
+  PerThreadSwitchInit(period);
   OS_Launch_Internal(CurrentThread->stackPtr);  //doesn't return  
 
 }
@@ -227,40 +266,6 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
     // Start Timer3.
     //
     TimerEnable(TIMER3_BASE, TIMER_BOTH);
-
-  return SUCCESS;
-}
-
-
-//***********************************************************************
-//
-// OS_PerThreadSwitchInit initializes the SysTick timer to interrupt at the 
-// specified period to perform thread switching
-//
-// \param period is the period at which threads will be swtiched
-// 
-// \return SUCCESS if function was successful and FAIL if period 
-// paramter is out of range.
-//
-//***********************************************************************
-int 
-OS_PerThreadSwitchInit(unsigned long period)
-{
-  // Enable SysTick Interrupts
-  SysTickIntEnable();
-
-  // Set the period in ms
-  if(period <= MAX_THREAD_SW_PER_MS && period >= MIN_THREAD_SW_PER_MS)
-  {
-    SysTickPeriodSet((SysCtlClockGet()/1000)*period);
-  }
-  else
-  {  
-    return FAIL;
-  }
-  
-  // Enable the SysTick module  
-  SysTickEnable();
 
   return SUCCESS;
 }
@@ -388,6 +393,21 @@ void
 PendSVHandler(void)
 {
   OS_SwitchThreads();
+}
+
+//***********************************************************************
+//
+//  OS_Suspend causes control to be passed to the next thread in the 
+//  list without the allotted timeslice timing out.
+//
+// \param none.
+// \return none.
+//
+//***********************************************************************
+void
+OS_Suspend(void)
+{
+  OS_TriggerPendSV();  
 }
 
 //***********************************************************************

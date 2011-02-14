@@ -36,6 +36,64 @@
   int IntTerm;    //For PID.s
   int PrevError;  //For PID.s
 
+//***********************************************************************
+//
+// Global variables for testing OS
+//
+//***********************************************************************
+unsigned long Count1;   // number of times thread1 loops
+unsigned long Count2;   // number of times thread2 loops
+unsigned long Count3;   // number of times thread3 loops
+unsigned long Count4;   // number of times thread4 loops
+unsigned long Count5;   // number of times thread5 loops
+int NumCreated;
+
+//***********************************************************************
+//
+// OS Testing Functions
+//
+//***********************************************************************
+void Thread1(void){
+  Count1 = 0;          
+  for(;;){
+    Count1++;
+    OS_Suspend();      // cooperative multitasking
+  }
+}
+void Thread2(void){
+  Count2 = 0;          
+  for(;;){
+    Count2++;
+    OS_Suspend();      // cooperative multitasking
+  }
+}
+void Thread3(void){
+  Count3 = 0;          
+  for(;;){
+    Count3++;
+    OS_Suspend();      // cooperative multitasking
+  }
+}
+void Thread1b(void){
+  Count1 = 0;          
+  for(;;){
+    Count1++;
+  }
+}
+void Thread2b(void){
+  Count2 = 0;          
+  for(;;){
+    Count2++;
+  }
+}
+void Thread3b(void){
+  Count3 = 0;          
+  for(;;){
+    Count3++;
+  }
+}
+
+
 //*****************************************************************************
 //
 //! \addtogroup example_list
@@ -339,7 +397,7 @@ dummy(void)
 //
 //*****************************************************************************
 int
-main(void)
+main_orig(void)
 {
   unsigned short adc_buffer[6];
   unsigned char trigger;
@@ -354,14 +412,15 @@ main(void)
                  SYSCTL_XTAL_8MHZ);
 
   OS_Init();
-  OS_PerThreadSwitchInit(1000);   //Switch threads every 1000 ms
   OS_AddThread(&dummy, 128, 1);
   OS_AddThread(&dummy, 128, 2);
   OS_AddThread(&dummy, 128, 3);
   OS_AddThread(&dummy, 128, 4);
 
   IntMasterEnable();
-  OS_Launch();  //doesn't return
+  OS_Launch(TIMESLICE);  //doesn't return
+
+  /*
   //
   // Initialize the OLED display and write status.
   //
@@ -371,7 +430,7 @@ main(void)
   oLED_Message(1, 2, "ADCSample3", adc_buffer[2]);
   }
 
-  /*
+  
   //
   // Initialize the OLED display and write status.
   //
@@ -439,3 +498,25 @@ main(void)
   }
   */
 }
+int testmain1(void){ 
+  OS_Init();           // initialize, disable interrupts
+  NumCreated = 0 ;
+  NumCreated += OS_AddThread(&Thread1,128,1); 
+  NumCreated += OS_AddThread(&Thread2,128,2); 
+  NumCreated += OS_AddThread(&Thread3,128,3); 
+ 
+  OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
+  return 0;             // this never executes
+}
+int main(void){  // testmain2
+  OS_Init();           // initialize, disable interrupts
+  NumCreated = 0 ;
+  NumCreated += OS_AddThread(&Thread1b,128,1); 
+  NumCreated += OS_AddThread(&Thread2b,128,2); 
+  NumCreated += OS_AddThread(&Thread3b,128,3); 
+ 
+  OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
+  return 0;             // this never executes
+}
+
+
