@@ -7,8 +7,6 @@
 #define SUCCESS 1
 #define FAIL 0
 #define DEAD 0xFF
-#define ASLEEP 1
-#define AWAKE 0
 #define BLOCKED 1
 #define UNBLOCKED 0
 #define MAX_NUM_OS_THREADS 10
@@ -21,7 +19,7 @@ typedef struct tcb{
   unsigned char * stackPtr;
   struct tcb * next;
   unsigned char id;
-  volatile unsigned char sleepState;
+  unsigned long sleepCount;
   unsigned long priority;
   unsigned char blockedState;
 }TCB;
@@ -42,7 +40,7 @@ extern int OS_AddThread(void(*task)(void), unsigned long stackSize, unsigned lon
 extern int OS_AddButtonTask(void(*task)(void), unsigned long priority);
 extern int OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long priority);
 extern void OS_Launch(unsigned long period);
-extern int OS_Sleep(unsigned long period);
+extern void OS_Sleep(unsigned long period);
 extern void OS_Suspend(void);
 extern void OS_Kill(void);
 extern void OS_ClearMsTime(void);

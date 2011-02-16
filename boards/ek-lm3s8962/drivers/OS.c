@@ -129,7 +129,7 @@ OS_AddThread(void(*task)(void), unsigned long stackSize, unsigned long priority)
 
 	OSThreads[addNum].id = addNum+1;
 	OSThreads[addNum].priority = priority;
-	OSThreads[addNum].sleepState = AWAKE;
+	OSThreads[addNum].sleepCount = 0;
 	OSThreads[addNum].blockedState = UNBLOCKED;
   }	   
   
@@ -310,40 +310,14 @@ OS_Launch(unsigned long period)
 // OS_Sleep puts a thread to sleep for a given number of milliseconds
 //
 //***********************************************************************
-int
-OS_Sleep(unsigned long period)
+void
+OS_Sleep(unsigned long sleepCount)
 {
-  // Enable Timer1 module
-  SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER1);
+  // Put the thread to sleep by loading a value into the sleep counter
+  CurrentThread->sleepCount = sleepCount;
 
-  // Configure Timer1 as a 32-bit one shot timer.
-  TimerConfigure(TIMER1_BASE, TIMER_CFG_32_BIT_OS);
-
-  // Set the Timer1 load value to generate the period specified by the user.
-  if(period <= 100 && period >= 1)
-  {
-      TimerLoadSet(TIMER1_BASE, TIMER_BOTH, (SysCtlClockGet()/1000)*period);
-  }
-  else
-  {
-     return FAIL; 
-  }
-
-  // Enable the Timer3 interrupt.
-  TimerIntEnable(TIMER1_BASE, TIMER_TIMA_TIMEOUT);
-  TimerIntClear(TIMER1_BASE, TIMER_TIMA_TIMEOUT);
-  IntEnable(INT_TIMER1A);
-
-  CurrentThread->sleepState = ASLEEP;
-  Sleeper = CurrentThread;
-
-  // Start Timer1.
-  TimerEnable(TIMER1_BASE, TIMER_BOTH);
-
-  // Spin until the thread's timeslice is over, or until it wakes up.
-  while(CurrentThread->sleepState == ASLEEP);
-
-  return SUCCESS;
+  // Pass control to the next thread
+  TriggerPendSV();  
 }
 
 //***********************************************************************
@@ -626,21 +600,6 @@ Timer3IntHandler(void)
 
 //***********************************************************************
 //
-// Timer1 interrupts are used for sleeping threads.
-//
-//***********************************************************************
-void
-Timer1IntHandler(void)
-{
-  // Wake up the sleeping thread.
-  Sleeper->sleepState = ASLEEP;
-
-  // Clear the interrupt source.
-  TimerIntClear(TIMER1_BASE, TIMER_TIMA_TIMEOUT);  
-}
-
-//***********************************************************************
-//
 // SysTick handler, enables PendSV for thread switching.
 //
 //***********************************************************************
@@ -663,9 +622,14 @@ PendSVHandler(void)
   SwitchThreads();
 
   // If the new thread is asleep or blocked, pass control to the next thread
-  if(((CurrentThread->sleepState) == ASLEEP) || ((CurrentThread->blockedState) == BLOCKED))
+  if((CurrentThread->sleepCount) != 0)
   {
+    CurrentThread->sleepCount--;
     OS_Suspend();
+  }
+  else if((CurrentThread->blockedState) == BLOCKED)
+  {
+	OS_Suspend();
   }
   IntMasterEnable();
 }
