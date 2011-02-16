@@ -12,10 +12,10 @@
   PRESERVE8
   AREA |.text|, CODE, READONLY, ALIGN=2
 
-  EXPORT  OS_StackInit
-  EXPORT  OS_SwitchThreads
-  EXPORT  OS_TriggerPendSV
-  EXPORT  OS_Launch_Internal
+  EXPORT  StackInit
+  EXPORT  LaunchInternal
+  EXPORT  SwitchThreads
+  EXPORT  TriggerPendSV
 
   IMPORT  CurrentThread
 
@@ -39,7 +39,7 @@ task			RN R1
 ; Written by Katy Loeffler
 ;
 ;*********************************************************************
-OS_StackInit
+StackInit
   CPSID	I
   PUSH  {R4}				; We'll use R4 for manipulation
   MOV	R2, R13				; Save current stack pointer in R2
@@ -96,7 +96,7 @@ OS_StackInit
 ;
 ; Returns: none.
 ;******************************************************************************
-OS_Launch_Internal
+LaunchInternal
   CPSID I
   MOV 	R13, R0						; Load thread SP
   POP	{LR}
@@ -119,7 +119,7 @@ OS_Launch_Internal
 ; Written by Katy Loeffler
 ;
 ;******************************************************************************
-OS_SwitchThreads
+SwitchThreads
   CPSID I
   LDR	R1, =CurrentThread
   LDR   R0,[R1]						; Save LR
@@ -140,7 +140,7 @@ OS_SwitchThreads
 ; Trigger a PendSV exception.  This function was copied from uOSII.
 ;
 ;******************************************************************************
-OS_TriggerPendSV
+TriggerPendSV
     LDR     R0, =NVIC_INT_CTRL ; Trigger the PendSV exception (causes context switch)
     LDR     R1, =NVIC_PENDSVSET
     STR     R1, [R0]

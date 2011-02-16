@@ -82,8 +82,10 @@ __heap_limit
         EXTERN  UARTIntHandler
 		EXTERN  ADC0Seq3IntHandler
 		EXTERN  Timer3IntHandler
+		EXTERN  Timer1IntHandler
 		EXTERN  SysTickThSwIntHandler
 		EXTERN  PendSVHandler
+		EXTERN  SelectSwitchIntHandler
 
 ;******************************************************************************
 ;
@@ -129,7 +131,7 @@ __Vectors
         DCD     IntDefaultHandler           ; Watchdog timer
         DCD     IntDefaultHandler           ; Timer 0 subtimer A
         DCD     IntDefaultHandler           ; Timer 0 subtimer B
-        DCD     IntDefaultHandler           ; Timer 1 subtimer A
+        DCD     Timer1IntHandler           ; Timer 1 subtimer A
         DCD     IntDefaultHandler           ; Timer 1 subtimer B
         DCD     IntDefaultHandler           ; Timer 2 subtimer A
         DCD     IntDefaultHandler           ; Timer 2 subtimer B
@@ -138,7 +140,7 @@ __Vectors
         DCD     IntDefaultHandler           ; Analog Comparator 2
         DCD     IntDefaultHandler           ; System Control (PLL, OSC, BO)
         DCD     IntDefaultHandler           ; FLASH Control
-        DCD     IntDefaultHandler           ; GPIO Port F
+        DCD     SelectSwitchIntHandler           ; GPIO Port F
         DCD     IntDefaultHandler           ; GPIO Port G
         DCD     IntDefaultHandler           ; GPIO Port H
         DCD     IntDefaultHandler           ; UART2 Rx and Tx

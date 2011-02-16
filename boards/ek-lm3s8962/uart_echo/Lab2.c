@@ -14,10 +14,8 @@
 #include "driverlib/interrupt.h"
 #include "driverlib/sysctl.h"
 #include "driverlib/uart.h"
-#include "driverlib/adc.h"
 #include "driverlib/fifo.h"
 #include "drivers/rit128x96x4.h"
-#include "string.h"
 #include "drivers/OS.h"
 
 //***********************************************************************

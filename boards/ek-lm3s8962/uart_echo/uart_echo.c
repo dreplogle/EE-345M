@@ -4,11 +4,22 @@
 // Authors: Dustin Replogle, Katy Loeffler   
 // Initial Creation Date: January 26, 2011 
 // Description: Main function for Lab 01. Exercises the ADC and the interpreter
-//   as well as a periodic interrupt.   
+//   as well as a periodic interrupt.   	 
 // Lab Number. 01    
 // TA: Raffaele Cetrulo      
 // Date of last revision: February 9, 2011 (for style modifications)      
 // Hardware Configuration: default
+//
+// Modules used:
+//		1. GPTimers:
+//			a. GPTimer3 is used for periodic tasks (see OS_AddPeriodicThread)
+//			b. GPTimer1 is used for sleeping threads.
+//			c. GPTimer0 is used for ADC triggering (see ADC_Collect)
+//      2. SysTick: The period of the SysTick is used to dictate the TIMESLICE
+//		   for thread switching.  Systick handler causes thread switch.
+//		3. ADC: all 4 channels may be accessed.
+//		4. UART: UART0 is used for communication with a console.
+// 
 //
 //*****************************************************************************
 
@@ -35,64 +46,6 @@
 
   int IntTerm;    //For PID.s
   int PrevError;  //For PID.s
-
-//***********************************************************************
-//
-// Global variables for testing OS
-//
-//***********************************************************************
-unsigned long Count1;   // number of times thread1 loops
-unsigned long Count2;   // number of times thread2 loops
-unsigned long Count3;   // number of times thread3 loops
-unsigned long Count4;   // number of times thread4 loops
-unsigned long Count5;   // number of times thread5 loops
-int NumCreated;
-
-//***********************************************************************
-//
-// OS Testing Functions
-//
-//***********************************************************************
-void Thread1(void){
-  Count1 = 0;          
-  for(;;){
-    Count1++;
-    OS_Suspend();      // cooperative multitasking
-  }
-}
-void Thread2(void){
-  Count2 = 0;          
-  for(;;){
-    Count2++;
-    OS_Suspend();      // cooperative multitasking
-  }
-}
-void Thread3(void){
-  Count3 = 0;          
-  for(;;){
-    Count3++;
-    OS_Suspend();      // cooperative multitasking
-  }
-}
-void Thread1b(void){
-  Count1 = 0;          
-  for(;;){
-    Count1++;
-  }
-}
-void Thread2b(void){
-  Count2 = 0;          
-  for(;;){
-    Count2++;
-  }
-}
-void Thread3b(void){
-  Count3 = 0;          
-  for(;;){
-    Count3++;
-  }
-}
-
 
 //*****************************************************************************
 //
@@ -411,15 +364,6 @@ main_orig(void)
   SysCtlClockSet(SYSCTL_SYSDIV_1 | SYSCTL_USE_OSC | SYSCTL_OSC_MAIN |
                  SYSCTL_XTAL_8MHZ);
 
-  OS_Init();
-  OS_AddThread(&dummy, 128, 1);
-  OS_AddThread(&dummy, 128, 2);
-  OS_AddThread(&dummy, 128, 3);
-  OS_AddThread(&dummy, 128, 4);
-
-  IntMasterEnable();
-  OS_Launch(TIMESLICE);  //doesn't return
-
   /*
   //
   // Initialize the OLED display and write status.
@@ -498,25 +442,8 @@ main_orig(void)
   }
   */
 }
-int testmain1(void){ 
-  OS_Init();           // initialize, disable interrupts
-  NumCreated = 0 ;
-  NumCreated += OS_AddThread(&Thread1,128,1); 
-  NumCreated += OS_AddThread(&Thread2,128,2); 
-  NumCreated += OS_AddThread(&Thread3,128,3); 
- 
-  OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
-  return 0;             // this never executes
-}
-int main(void){  // testmain2
-  OS_Init();           // initialize, disable interrupts
-  NumCreated = 0 ;
-  NumCreated += OS_AddThread(&Thread1b,128,1); 
-  NumCreated += OS_AddThread(&Thread2b,128,2); 
-  NumCreated += OS_AddThread(&Thread3b,128,3); 
- 
-  OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
-  return 0;             // this never executes
-}
+
+
+
 
 
