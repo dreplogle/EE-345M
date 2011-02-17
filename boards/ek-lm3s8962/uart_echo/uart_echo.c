@@ -44,9 +44,6 @@
   unsigned int BufferPt = 0;
   unsigned short FirstSpace = 1;
 
-  int IntTerm;    //For PID.s
-  int PrevError;  //For PID.s
-
 //*****************************************************************************
 //
 //! \addtogroup example_list
@@ -325,7 +322,7 @@ void UARTInterpreter(unsigned char nextChar)
     equation = 0;
   }
 
-  if(command = 1)
+  if(command == 1)
   {
 	 // In the future, this will contain commands from the serial terminal
   }
@@ -349,13 +346,9 @@ dummy(void)
 // This example demonstrates how to send a string of data to the UART.
 //
 //*****************************************************************************
-int
+void
 main_orig(void)
 {
-  unsigned short adc_buffer[6];
-  unsigned char trigger;
-  unsigned short adc_SingleSample;
-  short fifo_status = 0;
   //UARTRxFifo_Init();
     
   //

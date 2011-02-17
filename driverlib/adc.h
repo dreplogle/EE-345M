@@ -270,7 +270,7 @@ extern unsigned long ADCPhaseDelayGet(unsigned long ulBase);
 extern int ADC_Open(void);
 extern unsigned short ADC_In(unsigned int channelNum);
 extern int ADC_Collect(unsigned int channelNum, unsigned int fs, 
-       unsigned short buffer[], unsigned int numberOfSamples);
+       void (*task)(unsigned short));
 //*****************************************************************************
 //
 // Mark the end of the C bindings section for C++ compilers.

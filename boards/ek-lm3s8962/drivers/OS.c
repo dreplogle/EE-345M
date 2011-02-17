@@ -21,6 +21,8 @@
 #include "driverlib/sysctl.h"
 #include "driverlib/gpio.h"
 #include "driverlib/systick.h"
+#include "driverlib/fifo.h"
+#include "driverlib/adc.h"
 #include "drivers/OS.h"
 #include "drivers/rit128x96x4.h"
 #include "string.h"
@@ -40,7 +42,14 @@ TCB * Sleeper;			 //pointer to a sleeping thread
 TCB * ThreadList;		 //pointer to the beginning of the circular linked list of TCBs
 struct tcb OSThreads[MAX_NUM_OS_THREADS];  //pointers to all the threads in the OS
 unsigned char ThreadStacks[MAX_NUM_OS_THREADS][STACK_SIZE];
+unsigned long MailBox1;
 
+// OS_Fifo variables, this code segment copied from Valvano, lecture1
+typedef unsigned long dataType;
+dataType volatile *PutPt; // put next
+dataType volatile *GetPt; // get next
+dataType static Fifo[MAX_OS_FIFOSIZE];
+unsigned long FifoSize;
 
 //***********************************************************************
 //
@@ -65,6 +74,7 @@ OS_Init(void)
 {
   int threadNum;
   IntMasterDisable();
+
   //Initialize the OSThreads array to empty
   for(threadNum = 0; threadNum < MAX_NUM_OS_THREADS; threadNum++)
   {
@@ -72,6 +82,11 @@ OS_Init(void)
   }
   CurrentThread = NULL;	
   ThreadList = NULL;
+
+  // Initialize oLED display
+  RIT128x96x4Init(1000000);
+  // Initialize ADC
+  ADC_Open();
 	 
 } 
 
@@ -219,11 +234,11 @@ OS_AddButtonTask(void(*task)(void), unsigned long priority)
 // OS_AddPeriodicThread 
 //
 // \param task is a pointer to the function to be executed at a periodic rate
-// \param period is the period in milliseconds
+// \param period is the period to be loaded to timer register
 // \param priority is the priority of the task to be used in the NVIC
 //
 // \return the numerical ID for the periodic thread. Error code FAIL returned
-// if \param period or \param priority is out of acceptable range.
+// if \param priority is out of acceptable range.
 //
 //***********************************************************************
 int 
@@ -247,14 +262,7 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
   //
   // Set the Timer3 load value to generate the period specified by the user.
   //
-  if(period <= 100 && period >= 1)
-  {
-    TimerLoadSet(TIMER3_BASE, TIMER_BOTH, (SysCtlClockGet()/1000)*period);
-  }
-  else
-  {
-    return FAIL; 
-  }
+  TimerLoadSet(TIMER3_BASE, TIMER_BOTH, period);
 
   //
   // Enable the Timer3 interrupt.
@@ -376,6 +384,107 @@ OS_Kill(void)
 
 //***********************************************************************
 //
+// OS_Id
+//
+//***********************************************************************
+unsigned char
+OS_Id(void)
+{
+  return CurrentThread->id;
+}
+
+//***********************************************************************
+//
+// OS_Fifo_Init
+//
+//***********************************************************************
+void
+OS_Fifo_Init(unsigned int size)
+{
+  IntMasterDisable();
+  PutPt = GetPt = &Fifo[0];
+  FifoSize = size;
+  IntMasterEnable();  
+}
+
+//***********************************************************************
+//
+// OS_Fifo_Get
+//
+//***********************************************************************
+unsigned int
+OS_Fifo_Get(unsigned long * dataPtr)
+{
+  if(PutPt == GetPt ){
+    return FAIL;// Empty if PutPt=GetPt
+  }
+  else{
+  *dataPtr = *(GetPt++);
+    if(GetPt==&Fifo[FifoSize]){
+      GetPt = &Fifo[0]; // wrap
+    }
+    return SUCCESS;
+  }
+}
+
+//***********************************************************************
+//
+// OS_Fifo_Put
+//
+//***********************************************************************
+unsigned int
+OS_Fifo_Put(unsigned long data)
+{
+  dataType volatile *nextPutPt;
+  nextPutPt = PutPt+1;
+  if(nextPutPt ==&Fifo[FifoSize]){
+    nextPutPt = &Fifo[0]; // wrap
+  }
+  if(nextPutPt == GetPt){
+    return FAIL; // Failed, fifo full
+  }
+  else{
+    *(PutPt) = data; // Put
+    PutPt = nextPutPt; // Success, update
+    return SUCCESS;
+  }
+}
+
+//***********************************************************************
+//
+// OS_MailBox_Init
+//
+//***********************************************************************
+void
+OS_MailBox_Init(void)
+{
+  MailBox1 = 0;
+}
+
+//***********************************************************************
+//
+// OS_MailBox_Send
+//
+//***********************************************************************
+void
+OS_MailBox_Send(unsigned long data)
+{
+  MailBox1 = data;
+}
+
+//***********************************************************************
+//
+// OS_MailBox_Recv
+//
+//***********************************************************************
+unsigned long
+OS_MailBox_Recv(void)
+{
+  return MailBox1;
+}
+
+//***********************************************************************
+//
 // OS_ClearMsTime
 //
 // \param none
@@ -409,6 +518,39 @@ OS_MsTime(void)
   return MsTime;
 }
 
+//***********************************************************************
+//
+// OS_MsTime
+//
+// \param none
+//
+// This function returns the current value of the SysTick timer used to 
+// switch threads.
+//
+// \return counter value.
+//
+//***********************************************************************
+unsigned long OS_Time(void)
+{
+  return SysTickValueGet();
+}
+
+//***********************************************************************
+//
+// OS_TimeDifference returns the time difference in usec.
+//
+//***********************************************************************
+unsigned long OS_TimeDifference(unsigned long time1, unsigned long time2)
+{
+  if(time2 > time1)
+  {
+  	return (time2-time1);
+  }
+  else
+  {
+    return (time2 + (TIMESLICE - time1));      
+  } 
+}
 //***********************************************************************
 //
 // OS_DebugProfileInit initializes GPIO port B pins 0 and 1 for time profiling
@@ -566,14 +708,7 @@ PerThreadSwitchInit(unsigned long period)
   SysTickIntEnable();
 
   // Set the period in ms
-  if(period <= MAX_THREAD_SW_PER_MS && period >= MIN_THREAD_SW_PER_MS)
-  {
-    SysTickPeriodSet((SysCtlClockGet()/1000)*period);
-  }
-  else
-  {  
-    return FAIL;
-  }
+  SysTickPeriodSet(period);
   
   // Enable the SysTick module  
   SysTickEnable();
