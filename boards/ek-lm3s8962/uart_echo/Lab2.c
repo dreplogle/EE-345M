@@ -267,9 +267,8 @@ void Interpreter(void)
 //*******************final user main DEMONTRATE THIS TO TA**********
 int main(void){ 
 
-  // Set the clocking to run directly from the crystal.
-  SysCtlClockSet(SYSCTL_SYSDIV_1 | SYSCTL_USE_OSC | SYSCTL_OSC_MAIN |
-                 SYSCTL_XTAL_8MHZ);
+  // Set the clocking to run from PLL at 50 MHz 
+  SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_8MHZ);
 
   OS_Init();           // initialize, disable interrupts
 
