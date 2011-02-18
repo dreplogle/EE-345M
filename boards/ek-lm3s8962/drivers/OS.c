@@ -10,12 +10,23 @@
 // Date of last revision: February 9, 2011 (for style modifications)      
 // Hardware Configuration: default
 //
+// Modules used:
+//		1. GPTimers:
+//			a. GPTimer3 is used for periodic tasks (see OS_AddPeriodicThread)
+//			b. GPTimer1 is like a general TCNT
+//			c. GPTimer0 is used for ADC triggering (see ADC_Collect)
+//      2. SysTick: The period of the SysTick is used to dictate the TIMESLICE
+//		   for thread switching.  Systick handler causes thread switch.
+//		3. ADC: all 4 channels may be accessed.
+//		4. UART: UART0 is used for communication with a console.
+//
 //*****************************************************************************
 
 
 #include "inc/hw_ints.h"
 #include "inc/hw_memmap.h"
 #include "inc/hw_types.h"
+#include "inc/hw_nvic.h"
 #include "driverlib/timer.h"
 #include "driverlib/interrupt.h"
 #include "driverlib/sysctl.h"
@@ -83,10 +94,26 @@ OS_Init(void)
   CurrentThread = NULL;	
   ThreadList = NULL;
 
+  OS_DebugProfileInit();
   // Initialize oLED display
   RIT128x96x4Init(1000000);
   // Initialize ADC
   ADC_Open();
+
+  //Initialize a TCNT-like countdown timer on timer 1
+ 
+  // Enable Timer1 module
+  SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER1);
+
+  // Configure Timer1 as a 32-bit periodic timer.
+  TimerConfigure(TIMER1_BASE, TIMER_CFG_32_BIT_PER);
+
+  // Set the Timer1 load value to generate the period specified by the user.
+  TimerLoadSet(TIMER1_BASE, TIMER_A, MAX_TCNT);
+
+  // Start Timer1.
+  TimerEnable(TIMER1_BASE, TIMER_A);
+
 	 
 } 
 
@@ -310,7 +337,6 @@ OS_Launch(unsigned long period)
   CurrentThread = ThreadList;
   PerThreadSwitchInit(period);
   LaunchInternal(CurrentThread->stackPtr);  //doesn't return  
-
 }
 
 //***********************************************************************
@@ -532,7 +558,7 @@ OS_MsTime(void)
 //***********************************************************************
 unsigned long OS_Time(void)
 {
-  return SysTickValueGet();
+  return TimerValueGet(TIMER1_BASE, TIMER_A);
 }
 
 //***********************************************************************
@@ -540,15 +566,15 @@ unsigned long OS_Time(void)
 // OS_TimeDifference returns the time difference in usec.
 //
 //***********************************************************************
-unsigned long OS_TimeDifference(unsigned long time1, unsigned long time2)
+long OS_TimeDifference(unsigned long time1, unsigned long time2)
 {
   if(time2 > time1)
   {
-  	return (time2-time1);
+  	return (long)(time2-time1);
   }
   else
   {
-    return (time2 + (TIMESLICE - time1));      
+    return (long)(time2 + (MAX_TCNT-time1));      
   } 
 }
 //***********************************************************************
@@ -724,13 +750,9 @@ PerThreadSwitchInit(unsigned long period)
 void
 Timer3IntHandler(void)
 {
-  IntMasterDisable();
-//  OS_DebugB0Set();
   TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
   PeriodicTask(); 
-  MsTime++;
-//  OS_DebugB0Clear();
-  IntMasterEnable();  
+  MsTime++;  
 }
 
 //***********************************************************************
@@ -742,7 +764,7 @@ Timer3IntHandler(void)
 void
 SysTickThSwIntHandler(void)
 {   
-  TriggerPendSV();  
+  TriggerPendSV();
 }
 
 //***********************************************************************
@@ -753,8 +775,11 @@ SysTickThSwIntHandler(void)
 void 
 PendSVHandler(void)
 {
-  IntMasterDisable();
   SwitchThreads();
+
+  IntMasterDisable();
+
+  HWREG(NVIC_ST_CURRENT) = 0;
 
   // If the new thread is asleep or blocked, pass control to the next thread
   if((CurrentThread->sleepCount) != 0)
