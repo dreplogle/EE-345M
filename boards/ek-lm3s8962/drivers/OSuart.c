@@ -41,9 +41,6 @@
 // Global Variables
   AddFifo(UARTRx, 32, unsigned char, 1, 0);   // UARTRx Buffer
   AddFifo(UARTTx, 32, unsigned char, 1, 0);   // UARTTx Buffer
-  unsigned char Buffer[100];
-  unsigned int BufferPt = 0;
-  unsigned short FirstSpace = 1;
 
 // Private Functions
 void UARTSend(const unsigned char *pucBuffer, unsigned long ulCount);
@@ -103,7 +100,10 @@ UARTIntHandler(void)
       // and place it in the receive SW FIFO.
       //
       uartData =  (char)UARTCharGetNonBlocking(UART0_BASE);
-      UARTCharPutNonBlocking(UART0_BASE,uartData); //echo data
+      if(uartData != '\r')
+	  {
+	  	UARTCharPutNonBlocking(UART0_BASE,uartData); //echo data
+	  }
 
       if(!UARTRxFifo_Put(uartData))
       {
@@ -197,144 +197,7 @@ OSuart_OutString(unsigned long ulBase, char *string)
   UARTIntEnable(ulBase, UART_INT_TX);
 }
 
-//*****************************************************************************
-//
-// Interpret input from the terminal. Supported functions include
-// addition, subtraction, division, and multiplication in the post-fix format.
-//
-// \param nextChar specifies the next character to be put in the global buffer
-//
-// \return none.
-//
-//*****************************************************************************
-void
-OSuart_Interpreter(unsigned char nextChar)
-{
-  char operator = Buffer[BufferPt - 2];
-  char * token;
-  char * last;
-  char string[10];
-  long total = 0;
-  short first = 1;
-  short command, equation = 0; 
-  switch(nextChar)
-  {
-    case '\b':
-     BufferPt--;
-     break;
-    case '=':
-      FirstSpace = 1;
-      Buffer[BufferPt] = '=';
-     equation = 1;
-     break;
-    case '\r':
-     command = 1;
-     break;
-    default:
-     Buffer[BufferPt] = nextChar;
-     BufferPt++;
-     break;
-  }
 
-  if(equation == 1)
-  {  
-    switch(operator)
-    {
-      case '+':
-        for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
-        {
-          total = total + atoi(token);
-        }
-        Int2Str(total, string);
-        OSuart_OutString(UART0_BASE, string);
-        OSuart_OutString(UART0_BASE, "\r\n");
-        break;  
-          
-        case '-':
-        for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
-        {
-          if(first)
-          {
-            total = atoi(token);
-            first = 0;
-          }
-          else
-          {
-            total = total - atoi(token);
-          }
-        }
-        Int2Str(total, string);
-		OSuart_OutString(UART0_BASE, string);
-        OSuart_OutString(UART0_BASE, "\r\n");
-        break;
-      
-      case '*':
-        for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
-        {
-          if(first)
-          {
-            total = atoi(token);
-            first = 0;
-          }
-          else
-          {
-            if(atoi(token) != 0)
-            {
-              total = total * atoi(token);
-            }
-          }
-        }
-        Int2Str(total, string);
-		OSuart_OutString(UART0_BASE, string);
-        OSuart_OutString(UART0_BASE, "\r\n");
-        break;
-      
-      case '/':
-        for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
-        {
-          if(first)
-          {
-            total = atoi(token);
-            first = 0;
-          }
-          else
-          {
-            if(atoi(token) != 0)
-            {
-              total = total / atoi(token);
-            }
-          }
-        }
-        Int2Str(total, string);
-        OSuart_OutString(UART0_BASE, string);
-        OSuart_OutString(UART0_BASE, "\r\n");
-        break;
-      
-      case 't':
-        Int2Str(OS_MsTime(), string);
-        OSuart_OutString(UART0_BASE, string);
-        OSuart_OutString(UART0_BASE, "\r\n");
-        break;
-
-      case 'j':
-	    break;
-	      
-      
-      default:
-        break;
-        
-    }
-    BufferPt = 0;
-    equation = 0;
-  }
-
-  if(command == 1)
-  {
-	 // In the future, this will contain commands from the serial terminal
-  }
-
-
-}
 
 
 //*****************************************************************************
