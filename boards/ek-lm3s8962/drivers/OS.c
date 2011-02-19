@@ -238,6 +238,8 @@ OS_AddButtonTask(void(*task)(void), unsigned long priority)
 
   // Make the switch pin an input
   GPIOPinTypeGPIOInput(GPIO_PORTF_BASE, GPIO_PIN_1);
+  GPIOPadConfigSet(GPIO_PORTF_BASE, GPIO_PIN_1, GPIO_STRENGTH_2MA,
+                     GPIO_PIN_TYPE_STD_WPU);
 
   // Enable interrupts associated with the switch
   GPIOPinIntEnable(GPIO_PORTF_BASE, GPIO_PIN_1);

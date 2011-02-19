@@ -181,18 +181,12 @@ unsigned long myId = OS_Id();
 // outputs: none
 void Display(void){ 
 unsigned long data,voltage;
-  IntMasterDisable(); 
   oLED_Message(0,0,"Run length is",(RUNLENGTH)/1000);   // top half used for Display
-  IntMasterEnable();
-  while(NumSamples < RUNLENGTH) {
-    IntMasterDisable(); 
+  while(NumSamples < RUNLENGTH) { 
     oLED_Message(0,1,"Time left is",(RUNLENGTH-NumSamples)/1000);   // top half used for Display
-    IntMasterEnable();
     data = OS_MailBox_Recv();
-    voltage = 3000*data/1024;               // calibrate your device so voltage is in mV
-    IntMasterDisable(); 
+    voltage = 3000*data/1024;               // calibrate your device so voltage is in mV 
     oLED_Message(0,2,"v(mV) =",voltage);
-    IntMasterEnable();  
   }
   OS_Kill();  // done
 } 
@@ -288,10 +282,10 @@ int main(void){
 
 //********initialize communication channels
   OS_MailBox_Init();
-  OS_Fifo_Init(16);    // ***note*** 4 is not big enough*****
+  OS_Fifo_Init(4);    // ***note*** 4 is not big enough*****
 
 //*******attach background tasks***********
-//  OS_AddButtonTask(&ButtonPush,2);
+  OS_AddButtonTask(&ButtonPush,2);
   OS_AddPeriodicThread(&DAS,PERIOD,1); // 2 kHz real time sampling
 
   NumCreated = 0 ;
