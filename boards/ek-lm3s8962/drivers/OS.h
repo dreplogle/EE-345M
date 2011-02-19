@@ -10,15 +10,16 @@
 #define BLOCKED 1
 #define UNBLOCKED 0
 #define MAX_NUM_OS_THREADS 10
-#define STACK_SIZE 128    			//Stack size in bytes
+#define STACK_SIZE 256    			//Stack size in bytes
 #define MAX_THREAD_SW_PER_MS 1000
 #define MIN_THREAD_SW_PER_MS 1
-#define MAX_OS_FIFOSIZE 128 // can be any size
-#define CLOCK_PERIOD 125	// clock period in ns
+#define MAX_OS_FIFOSIZE 128 		// can be any size
+#define CLOCK_PERIOD 20  			// clock period in ns
+#define MAX_TCNT 0x0EE6B280			// @50Mhz, this is 5 seconds
 
-#define TIME_1MS 8000		  // #clock cycles per ms in 8kHz mode
-#define TIMESLICE TIME_1MS*2  //Thread switching period in ms
-#define PERIOD TIME_1MS     // 2kHz sampling period in system time units
+#define TIME_1MS 50000		  		// #clock cycles per ms in 50MHz mode
+#define TIMESLICE TIME_1MS*2  		//Thread switching period in ms
+#define PERIOD TIME_1MS/2       	// 2kHz sampling period in system time units
 // 10-sec finite time experiment duration 
 #define RUNLENGTH 10000   // display results and quit when NumSamples==RUNLENGTH
 
@@ -60,7 +61,7 @@ extern unsigned long OS_MailBox_Recv(void);
 extern void OS_ClearMsTime(void);
 extern long OS_MsTime(void);
 extern unsigned long OS_Time(void);
-extern unsigned long OS_TimeDifference(unsigned long time1, unsigned long time2);
+extern long OS_TimeDifference(unsigned long time1, unsigned long time2);
 extern void OS_DebugProfileInit(void);
 extern void OS_DebugB0Set(void);
 extern void OS_DebugB1Set(void);

@@ -1600,7 +1600,7 @@ ADC_Collect(unsigned int channelNum, unsigned int fs, void (*task)(unsigned shor
 
   // Enable sample sequence 3 to start a conversion on timer event 
   // with priority 0.
-  ADCSequenceConfigure(ADC0_BASE, 3, ADC_TRIGGER_TIMER, 0);
+  ADCSequenceConfigure(ADC0_BASE, 3, ADC_TRIGGER_TIMER, 2);
   
 
   // Configure step 0 on sequence 3.  Sample channel 0, 1, 2, or 3 in
@@ -1688,8 +1688,9 @@ ADC_Collect(unsigned int channelNum, unsigned int fs, void (*task)(unsigned shor
 //*****************************************************************************
 void 
 ADC0Seq3IntHandler(void)
-{
+{ 
   unsigned long ulADC0_Value[1];
+  OS_DebugB0Set();
   ADCSequenceDataGet(ADC0_BASE, 3, ulADC0_Value);
   ADCSingleSampleTask(ulADC0_Value[0]);
 
@@ -1697,7 +1698,7 @@ ADC0Seq3IntHandler(void)
 //   	TimerDisable(TIMER0_BASE, TIMER_BOTH);
   	// Disable processor interrupts on ADC Seq3 vector.
 //   	IntDisable(INT_ADC0SS3);
-
+  OS_DebugB0Clear();
   ADCIntClear(ADC0_BASE, 3);
 }
 //*****************************************************************************

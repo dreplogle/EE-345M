@@ -141,9 +141,11 @@ SwitchThreads
 ;
 ;******************************************************************************
 TriggerPendSV
+	CPSID  	I
     LDR     R0, =NVIC_INT_CTRL ; Trigger the PendSV exception (causes context switch)
     LDR     R1, =NVIC_PENDSVSET
     STR     R1, [R0]
+	CPSIE	I
     BX      LR
 
 ;******************************************************************************
