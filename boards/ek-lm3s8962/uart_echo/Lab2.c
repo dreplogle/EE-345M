@@ -65,13 +65,15 @@ unsigned short DASoutput;
 void DAS(void)
 { 
   int index;
-  unsigned short input;  
-  unsigned static long LastTime;  // time at previous ADC sample
+  static int i = 0;
+  unsigned short input;
+  static unsigned long LastTime;  // time at previous ADC sample  
   unsigned long thisTime;         // time at current ADC sample
   long jitter;                    // time between measured and expected
     if(NumSamples < RUNLENGTH){   // finite time run
-      input = ADC_In(1);
-      thisTime = OS_Time();       // current time, 20 ns
+	OS_DebugB0Set();
+      input = ADC_In(1);    
+	  thisTime = OS_Time();       // current time, 20 ns
       DASoutput = Filter(input);
       FilterWork++;        // calculation finished
       if(FilterWork>1){    // ignore timing of first interrupt
@@ -87,8 +89,9 @@ void DAS(void)
         if(index>=JitterSize)index = JITTERSIZE-1;
         JitterHistogram[index]++; 
       }
-      LastTime = thisTime;
+      LastTime = thisTime; 
     }
+	OS_DebugB0Clear();
 }
 //--------------end of Task 1-----------------------------
 
@@ -105,7 +108,7 @@ unsigned long myId = OS_Id();
   IntMasterEnable(); 
   if(NumSamples < RUNLENGTH){   // finite time run
     for(i=0;i<20;i++){  // runs for 2 seconds
-      OS_Sleep(20);     // set this to sleep for 0.1 sec
+      //OS_Sleep(20);     // set this to sleep for 0.1 sec
     }
   }
   IntMasterDisable();
@@ -144,13 +147,13 @@ void ButtonPush(void){
 // sends data to the consumer, runs periodically at 1 kHz
 // inputs:  none
 // outputs: none
-void Producer(unsigned short data){  
+void Producer(unsigned short data){
   if(NumSamples < RUNLENGTH){   // finite time run
     NumSamples++;               // number of samples
     if(OS_Fifo_Put(data) == 0){ // send to consumer
       DataLost++;
     } 
-  } 
+  }  
 }
 void Display(void); 
 
@@ -174,7 +177,6 @@ unsigned long myId = OS_Id();
     DCcomponent = y[0]&0xFFFF; // Real part at frequency 0, imaginary part should be zero
     OS_MailBox_Send(DCcomponent);
   }
-  while(1);
   OS_Kill();  // done
 }
 //******** Display *************** 
@@ -184,18 +186,12 @@ unsigned long myId = OS_Id();
 // outputs: none
 void Display(void){ 
 unsigned long data,voltage;
-  IntMasterDisable(); 
   oLED_Message(0,0,"Run length is",(RUNLENGTH)/1000);   // top half used for Display
-  IntMasterEnable();
-  while(NumSamples < RUNLENGTH) {
-    IntMasterDisable(); 
+  while(NumSamples < RUNLENGTH) { 
     oLED_Message(0,1,"Time left is",(RUNLENGTH-NumSamples)/1000);   // top half used for Display
-    IntMasterEnable();
     data = OS_MailBox_Recv();
-    voltage = 3000*data/1024;               // calibrate your device so voltage is in mV
-    IntMasterDisable(); 
+    voltage = 3000*data/1024;               // calibrate your device so voltage is in mV 
     oLED_Message(0,2,"v(mV) =",voltage);
-    IntMasterEnable();  
   }
   OS_Kill();  // done
 } 
@@ -280,6 +276,7 @@ OS_Interpret(unsigned char nextChar)
      if(BufferPt != 0)
 	 {
 	   BufferPt--;
+	   Buffer[BufferPt] = '\0';
 	 }
      break;
     case '=':
@@ -473,6 +470,13 @@ void Interpreter(void)
 // 2) print debugging parameters 
 //    i.e., x[], y[] 
 //--------------end of Task 5-----------------------------
+unsigned long Count1;   // number of times thread1 loops
+void Thread1b(void){
+  Count1 = 0;          
+  for(;;){
+    Count1++;
+  }
+}
 
 //*******************final user main DEMONTRATE THIS TO TA**********
 int main(void){ 
@@ -489,18 +493,20 @@ int main(void){
 
 //********initialize communication channels
   OS_MailBox_Init();
-  OS_Fifo_Init(16);    // ***note*** 4 is not big enough*****
+  OS_Fifo_Init(4);    // ***note*** 4 is not big enough*****
 
 //*******attach background tasks***********
   OS_AddButtonTask(&ButtonPush,2);
+  
   OS_AddPeriodicThread(&DAS,PERIOD,1); // 2 kHz real time sampling
 
   NumCreated = 0 ;
 // create initial foreground threads
   NumCreated += OS_AddThread(&Interpreter,128,2); 
   NumCreated += OS_AddThread(&Consumer,128,1); 
-  NumCreated += OS_AddThread(&PID,128,3); 
+  NumCreated += OS_AddThread(&PID,128,3);
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
+  while(1);
   return 0;             // this never executes
 }
 
@@ -516,7 +522,6 @@ int main(void){
 // no select interrupts
 // no ADC serial port or oLED output
 // no calls to semaphores
-unsigned long Count1;   // number of times thread1 loops
 unsigned long Count2;   // number of times thread2 loops
 unsigned long Count3;   // number of times thread3 loops
 unsigned long Count4;   // number of times thread4 loops
@@ -563,12 +568,7 @@ int testmain1(void){
 // no select switch interrupts
 // no ADC serial port or oLED output
 // no calls to semaphores
-void Thread1b(void){
-  Count1 = 0;          
-  for(;;){
-    Count1++;
-  }
-}
+
 void Thread2b(void){
   Count2 = 0;          
   for(;;){

@@ -10,12 +10,23 @@
 // Date of last revision: February 9, 2011 (for style modifications)      
 // Hardware Configuration: default
 //
+// Modules used:
+//		1. GPTimers:
+//			a. GPTimer3 is used for periodic tasks (see OS_AddPeriodicThread)
+//			b. GPTimer1 is like a general TCNT
+//			c. GPTimer0 is used for ADC triggering (see ADC_Collect)
+//      2. SysTick: The period of the SysTick is used to dictate the TIMESLICE
+//		   for thread switching.  Systick handler causes thread switch.
+//		3. ADC: all 4 channels may be accessed.
+//		4. UART: UART0 is used for communication with a console.
+//
 //*****************************************************************************
 
 
 #include "inc/hw_ints.h"
 #include "inc/hw_memmap.h"
 #include "inc/hw_types.h"
+#include "inc/hw_nvic.h"
 #include "driverlib/timer.h"
 #include "driverlib/interrupt.h"
 #include "driverlib/sysctl.h"
@@ -83,10 +94,26 @@ OS_Init(void)
   CurrentThread = NULL;	
   ThreadList = NULL;
 
+  OS_DebugProfileInit();
   // Initialize oLED display
   RIT128x96x4Init(1000000);
   // Initialize ADC
   ADC_Open();
+
+  //Initialize a TCNT-like countdown timer on timer 1
+ 
+  // Enable Timer1 module
+  SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER1);
+
+  // Configure Timer1 as a 32-bit periodic timer.
+  TimerConfigure(TIMER1_BASE, TIMER_CFG_32_BIT_PER);
+
+  // Set the Timer1 load value to generate the period specified by the user.
+  TimerLoadSet(TIMER1_BASE, TIMER_A, MAX_TCNT);
+
+  // Start Timer1.
+  TimerEnable(TIMER1_BASE, TIMER_A);
+
 	 
 } 
 
@@ -205,15 +232,18 @@ OS_AddButtonTask(void(*task)(void), unsigned long priority)
   // Assign the task function pointer to the global pointer to be
   // accessed in the ISR.
   ButtonTask = task;
-
+  
   // Enable GPIO PortF module
   SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
 
   // Make the switch pin an input
   GPIOPinTypeGPIOInput(GPIO_PORTF_BASE, GPIO_PIN_1);
+  GPIOPadConfigSet(GPIO_PORTF_BASE, GPIO_PIN_1, GPIO_STRENGTH_2MA,
+                     GPIO_PIN_TYPE_STD_WPU);
 
   // Enable interrupts associated with the switch
   GPIOPinIntEnable(GPIO_PORTF_BASE, GPIO_PIN_1);
+  
   // Set priority for the button interrupt.
   if(priority < 8)
   {
@@ -221,7 +251,7 @@ OS_AddButtonTask(void(*task)(void), unsigned long priority)
   }
   else
   {
-    return FAIL; 
+	return FAIL; 
   }
   GPIOPinIntClear(GPIO_PORTF_BASE, GPIO_PIN_1);
   IntEnable(INT_GPIOF); 
@@ -258,7 +288,6 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
   // Configure Timer3 as a 32-bit periodic timer.
   //
   TimerConfigure(TIMER3_BASE, TIMER_CFG_32_BIT_PER);
-
   //
   // Set the Timer3 load value to generate the period specified by the user.
   //
@@ -279,7 +308,8 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
   }
   else
   {
-     return FAIL; 
+     IntMasterEnable();
+	 return FAIL; 
   }
   //
   // Start Timer3.
@@ -310,7 +340,6 @@ OS_Launch(unsigned long period)
   CurrentThread = ThreadList;
   PerThreadSwitchInit(period);
   LaunchInternal(CurrentThread->stackPtr);  //doesn't return  
-
 }
 
 //***********************************************************************
@@ -532,7 +561,7 @@ OS_MsTime(void)
 //***********************************************************************
 unsigned long OS_Time(void)
 {
-  return SysTickValueGet();
+  return TimerValueGet(TIMER1_BASE, TIMER_A);
 }
 
 //***********************************************************************
@@ -540,15 +569,15 @@ unsigned long OS_Time(void)
 // OS_TimeDifference returns the time difference in usec.
 //
 //***********************************************************************
-unsigned long OS_TimeDifference(unsigned long time1, unsigned long time2)
+long OS_TimeDifference(unsigned long time1, unsigned long time2)
 {
   if(time2 > time1)
   {
-  	return (time2-time1);
+  	return (long)(time2-time1);
   }
   else
   {
-    return (time2 + (TIMESLICE - time1));      
+    return (long)(time2 + (MAX_TCNT-time1));      
   } 
 }
 //***********************************************************************
@@ -724,12 +753,41 @@ PerThreadSwitchInit(unsigned long period)
 void
 Timer3IntHandler(void)
 {
-  IntMasterDisable();
-//  OS_DebugB0Set();
   TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
   PeriodicTask(); 
-  MsTime++;
-//  OS_DebugB0Clear();
+  MsTime++;  
+}
+
+//***********************************************************************
+//
+// Timer 2A Interrupt handler, executes the user defined period task.
+//
+//***********************************************************************
+void
+Timer2IntHandler(void)
+{
+  IntMasterDisable();
+  
+  //If the button is still pressed, execute the user task.
+  if(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1))
+  {
+    ButtonTask();
+  }
+  //Wait for the user to release the button
+  //while(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1));
+  
+  //Debounce for 10ms
+  //SysCtlDelay((SysCtlClockGet()/1000)*10);
+
+  //Re-read switch to make sure it is unpressed.
+  //while(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1));
+
+  //Clear the interrupt
+  GPIOPinIntClear(GPIO_PORTF_BASE, GPIO_PIN_1);
+  
+  TimerIntClear(TIMER2_BASE, TIMER_TIMA_TIMEOUT);
+  GPIOPinIntEnable(GPIO_PORTF_BASE, GPIO_PIN_1);
+
   IntMasterEnable();  
 }
 
@@ -742,7 +800,7 @@ Timer3IntHandler(void)
 void
 SysTickThSwIntHandler(void)
 {   
-  TriggerPendSV();  
+  TriggerPendSV();
 }
 
 //***********************************************************************
@@ -753,8 +811,11 @@ SysTickThSwIntHandler(void)
 void 
 PendSVHandler(void)
 {
-  IntMasterDisable();
   SwitchThreads();
+
+  IntMasterDisable();
+
+  HWREG(NVIC_ST_CURRENT) = 0;
 
   // If the new thread is asleep or blocked, pass control to the next thread
   if((CurrentThread->sleepCount) != 0)
@@ -777,26 +838,33 @@ PendSVHandler(void)
 void
 SelectSwitchIntHandler(void)
 {
-  //Debounce for 10ms
-  SysCtlDelay((SysCtlClockGet()/1000)*10);
+  //
+  // Enable Timer2 module
+  //
+  SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER2);
 
-  //If the button is still pressed, execute the user task.
-  if(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1))
-  {
-    ButtonTask();
-  }
+  //
+  // Configure Timer2 as a 32-bit one-shot timer.
+  //
+  TimerConfigure(TIMER2_BASE, TIMER_CFG_32_BIT_OS);
 
-  //Wait for the user to release the button
-  while(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1));
-  
-  //Debounce for 10ms
-  SysCtlDelay((SysCtlClockGet()/1000)*10);
+  //
+  // Set the Timer2 load value to generate the period specified by the user.
+  //
+  // 1000 at 50Mhz = 20us
+  TimerLoadSet(TIMER2_BASE, TIMER_BOTH, 100000);
 
-  //Re-read switch to make sure it is unpressed.
-  while(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1));
-
-  //Clear the interrupt
-  GPIOPinIntClear(GPIO_PORTF_BASE, GPIO_PIN_1);
+  //
+  // Enable the Timer2 interrupt.
+  //
+  TimerIntEnable(TIMER2_BASE, TIMER_TIMA_TIMEOUT);
+  TimerIntClear(TIMER2_BASE, TIMER_TIMA_TIMEOUT);
+  IntEnable(INT_TIMER2A);                                                                                
+  //
+  // Start Timer2.
+  //
+  TimerEnable(TIMER2_BASE, TIMER_BOTH);
+  GPIOPinIntDisable(GPIO_PORTF_BASE, GPIO_PIN_1);
 }
  
 //******************************EOF**************************************
