@@ -1690,7 +1690,6 @@ void
 ADC0Seq3IntHandler(void)
 { 
   unsigned long ulADC0_Value[1];
-  OS_DebugB0Set();
   ADCSequenceDataGet(ADC0_BASE, 3, ulADC0_Value);
   ADCSingleSampleTask(ulADC0_Value[0]);
 
@@ -1698,7 +1697,6 @@ ADC0Seq3IntHandler(void)
 //   	TimerDisable(TIMER0_BASE, TIMER_BOTH);
   	// Disable processor interrupts on ADC Seq3 vector.
 //   	IntDisable(INT_ADC0SS3);
-  OS_DebugB0Clear();
   ADCIntClear(ADC0_BASE, 3);
 }
 //*****************************************************************************

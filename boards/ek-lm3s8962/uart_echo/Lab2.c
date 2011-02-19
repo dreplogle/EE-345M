@@ -36,6 +36,9 @@ unsigned char Buffer[100];  // Buffer size for interpreter input
 unsigned int BufferPt = 0;	// Buffer pointer
 unsigned short FirstSpace = 1; // Boolean to determine if first space has occured
 
+#define GPIO_B0 (*((volatile unsigned long *)(0x40005004)))
+#define GPIO_B1 (*((volatile unsigned long *)(0x40005008)))
+
 long x[64],y[64];         // input and output arrays for FFT
 void cr4_fft_64_stm32(void *pssOUT, void *pssIN, unsigned short Nbin);
 
@@ -71,7 +74,7 @@ void DAS(void)
   unsigned long thisTime;         // time at current ADC sample
   long jitter;                    // time between measured and expected
     if(NumSamples < RUNLENGTH){   // finite time run
-	OS_DebugB0Set();
+	GPIO_B0 ^= 0x01;
       input = ADC_In(1);    
 	  thisTime = OS_Time();       // current time, 20 ns
       DASoutput = Filter(input);
@@ -91,7 +94,6 @@ void DAS(void)
       }
       LastTime = thisTime; 
     }
-	OS_DebugB0Clear();
 }
 //--------------end of Task 1-----------------------------
 
@@ -102,20 +104,16 @@ void DAS(void)
 // ***********ButtonWork*************
 void ButtonWork(void){
 unsigned long i;
-unsigned long myId = OS_Id();
-  IntMasterDisable(); 
+unsigned long myId = OS_Id(); 
   oLED_Message(1,0,"NumCreated =",NumCreated); 
-  IntMasterEnable(); 
   if(NumSamples < RUNLENGTH){   // finite time run
     for(i=0;i<20;i++){  // runs for 2 seconds
       OS_Sleep(20);     // set this to sleep for 0.1 sec
     }
   }
-  IntMasterDisable();
   oLED_Message(1,1,"PIDWork    =",PIDWork);
   oLED_Message(1,2,"DataLost   =",DataLost);
   oLED_Message(1,3,"Jitter(us) =",MaxJitter-MinJitter);
-  IntMasterEnable(); 
   OS_Kill();  // done
 } 
 
