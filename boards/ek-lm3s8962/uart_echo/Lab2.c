@@ -108,7 +108,7 @@ unsigned long myId = OS_Id();
   oLED_Message(1,0,"NumCreated =",NumCreated); 
   if(NumSamples < RUNLENGTH){   // finite time run
     for(i=0;i<20;i++){  // runs for 2 seconds
-      OS_Sleep(20);     // set this to sleep for 0.1 sec
+      //OS_Sleep(20);     // set this to sleep for 0.1 sec
     }
   }
   oLED_Message(1,1,"PIDWork    =",PIDWork);
@@ -274,6 +274,7 @@ OS_Interpret(unsigned char nextChar)
      if(BufferPt != 0)
 	 {
 	   BufferPt--;
+	   Buffer[BufferPt] = '\0';
 	 }
      break;
     case '=':
@@ -494,6 +495,7 @@ int main(void){
 
 //*******attach background tasks***********
   OS_AddButtonTask(&ButtonPush,2);
+  
   OS_AddPeriodicThread(&DAS,PERIOD,1); // 2 kHz real time sampling
 
   NumCreated = 0 ;
