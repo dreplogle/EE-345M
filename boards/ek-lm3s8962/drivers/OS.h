@@ -30,11 +30,11 @@ typedef struct tcb{
   unsigned char id;
   unsigned long sleepCount;
   unsigned long priority;
-  unsigned char blockedState;
+  struct Sema4Type * BlockPt;
 }TCB;
 
 typedef struct Sema4Type{
-  unsigned short value;
+  short value;
 }Sema4Type;
 
 
@@ -47,6 +47,7 @@ typedef struct Sema4Type{
 extern void OS_Init(void);
 extern int OS_AddThread(void(*task)(void), unsigned long stackSize, unsigned long priority);
 extern int OS_AddButtonTask(void(*task)(void), unsigned long priority);
+extern int OS_AddDownTask(void(*task)(void), unsigned long priority);
 extern int OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long priority);
 extern void OS_Launch(unsigned long period);
 extern void OS_Sleep(unsigned long period);

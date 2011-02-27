@@ -10,22 +10,25 @@
 // PE1/PWM5 is user input down switch 
 #include <stdio.h>
 #include <string.h>
+#include "inc/hw_ints.h"
+#include "inc/hw_memmap.h"
 #include "inc/hw_types.h"
-#include "serial.h"
+//#include "serial.h"
 #include "rit128x96x4.h"
 #include "adc.h"
-#include "os.h"
+#include "drivers/os.h"
 #include "lm3s8962.h"
+#include "drivers/OSuart.h"
 
 unsigned long NumCreated;   // number of foreground threads created
 unsigned long PIDWork;      // current number of PID calculations finished
 unsigned long FilterWork;   // number of digital filter calculations finished
 unsigned long NumSamples;   // incremented every sample
 unsigned long DataLost;     // data sent by Producer, but not received by Consumer
-extern long MaxJitter;    // largest time difference between interrupt trigger and running thread
-extern long MinJitter;    // smallest time difference between interrupt trigger and running thread
+long MaxJitter;    // largest time difference between interrupt trigger and running thread     //extern for the next 4
+long MinJitter;    // smallest time difference between interrupt trigger and running thread
 extern unsigned long const JitterSize;
-extern unsigned long JitterHistogram[];
+unsigned long JitterHistogram[];
 
 #define TIMESLICE 2*TIME_1MS  // thread switch time in system time units
 #define PERIOD TIME_1MS/2     // 2kHz sampling period in system time units
@@ -33,6 +36,10 @@ extern unsigned long JitterHistogram[];
 #define RUNLENGTH 10000   // display results and quit when NumSamples==RUNLENGTH
 long x[64],y[64];         // input and output arrays for FFT
 void cr4_fft_64_stm32(void *pssOUT, void *pssIN, unsigned short Nbin);
+
+unsigned char Buffer[100];  // Buffer size for interpreter input
+unsigned int BufferPt = 0;	// Buffer pointer
+unsigned short FirstSpace = 1; // Boolean to determine if first space has occured
 
 
 //------------------Task 1--------------------------------
@@ -147,7 +154,7 @@ unsigned long myId = OS_Id();
   NumCreated += OS_AddThread(&Display,128,0); 
   while(NumSamples < RUNLENGTH) { 
     for(t = 0; t < 64; t++){   // collect 64 ADC samples
-      data = OS_Fifo_Get();    // get from producer
+      OS_Fifo_Get(&data);    // get from producer
       x[t] = data;             // real part is 0 to 1023, imaginary part is 0
     }
     cr4_fft_64_stm32(y,x,64);  // complex FFT of last 64 ADC values
@@ -225,7 +232,222 @@ extern void Interpreter(void);    // just a prototype, link to your interpreter
 // 1) print performance measures 
 //    time-jitter, number of data points lost, number of calculations performed
 //    i.e., NumSamples, NumCreated, MaxJitter-MinJitter, DataLost, FilterWork, PIDwork
+//*****************************************************************************
+//
+// Interpret input from the terminal. Supported functions include
+// addition, subtraction, division, and multiplication in the post-fix format.
+//
+// \param nextChar specifies the next character to be put in the global buffer
+//
+// \return none.
+//
+//*****************************************************************************
+void
+OS_Interpret(unsigned char nextChar)
+{
+  char operator = Buffer[BufferPt - 2];
+  char * token;
+  char * last;
+  char string[10];
+  int a;
+  long total = 0;
+  short first = 1;
+  short command, equation = 0; 
+  switch(nextChar)
+  {
+    case '\b':
+     if(BufferPt != 0)
+	 {
+	   BufferPt--;
+	   Buffer[BufferPt] = '\0';
+	 }
+     break;
+    case '=':
+     FirstSpace = 1;
+     Buffer[BufferPt] = '=';
+     equation = 1;
+     break;
+    case '\r':
+     command = 1;
+	 //Buffer[BufferPt] = ' ';
+     break;
+    default:
+     Buffer[BufferPt] = nextChar;
+     BufferPt++;
+     break;
+  }
+
+  if(equation == 1)
+  {  
+    switch(operator)
+    {
+      case '+':
+        for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
+        {
+          total = total + atoi(token);
+        }
+        Int2Str(total, string);
+        OSuart_OutString(UART0_BASE, string);
+        OSuart_OutString(UART0_BASE, "\r\n");
+        break;  
+          
+        case '-':
+        for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
+        {
+          if(first)
+          {
+            total = atoi(token);
+            first = 0;
+          }
+          else
+          {
+            total = total - atoi(token);
+          }
+        }
+        Int2Str(total, string);
+		OSuart_OutString(UART0_BASE, string);
+        OSuart_OutString(UART0_BASE, "\r\n");
+        break;
       
+      case '*':
+        for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
+        {
+          if(first)
+          {
+            total = atoi(token);
+            first = 0;
+          }
+          else
+          {
+            if(atoi(token) != 0)
+            {
+              total = total * atoi(token);
+            }
+          }
+        }
+        Int2Str(total, string);
+		OSuart_OutString(UART0_BASE, string);
+        OSuart_OutString(UART0_BASE, "\r\n");
+        break;
+      
+      case '/':
+        for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
+        {
+          if(first)
+          {
+            total = atoi(token);
+            first = 0;
+          }
+          else
+          {
+            if(atoi(token) != 0)
+            {
+              total = total / atoi(token);
+            }
+          }
+        }
+        Int2Str(total, string);
+        OSuart_OutString(UART0_BASE, string);
+        OSuart_OutString(UART0_BASE, "\r\n");
+        break;
+      
+      case 't':
+        Int2Str(OS_Time(), string);
+        OSuart_OutString(UART0_BASE, string);
+        OSuart_OutString(UART0_BASE, "\r\n");
+        break;
+
+      case 'j':
+	    break;
+	      
+      
+      default:
+        break;
+        
+    }
+	equation = 0;
+    BufferPt = 0;
+	memset(Buffer,'\0',100);
+  }
+  if(command == 1)
+  {
+    // Interpret all of the commands in the line
+	//    time-jitter, number of data points lost, number of calculations performed
+    //    i.e., NumSamples, NumCreated, MaxJitter-MinJitter, DataLost, FilterWork, PIDwork
+    for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
+    {
+	   //strcat(token, "\");
+	   //string = "PIDWork";
+	   // Display the number of samples
+	   /*a = strcasecmp(token, "PIDWork");
+	   Int2Str(a, string);
+	   OSuart_OutString(UART0_BASE, string);*/
+	   if(strcasecmp(token, "NumSamples") == 0)
+	   {	 
+		 Int2Str(NumSamples, string);
+		 OSuart_OutString(UART0_BASE, " ="); 
+		 OSuart_OutString(UART0_BASE, string);	
+	   }
+
+	   // Display number of samples created
+	   if(strcasecmp(token, "NumCreated") == 0)
+	   {	 
+		 Int2Str(NumCreated, string); 
+		 OSuart_OutString(UART0_BASE, " =");
+		 OSuart_OutString(UART0_BASE, string);	
+	   }
+
+	   // Displays delta jitter
+	   if(strcasecmp(token, "MaxJitter-MinJitter") == 0)
+	   {	 
+		 Int2Str(MaxJitter-MinJitter, string);
+		 OSuart_OutString(UART0_BASE, " =");
+		 OSuart_OutString(UART0_BASE, string);	
+	   }
+	   
+	   // Display the amount of data lost
+	   if(strcasecmp(token, "DataLost") == 0)
+	   {	 
+		 Int2Str(DataLost, string);
+		 OSuart_OutString(UART0_BASE, " =");
+		 OSuart_OutString(UART0_BASE, string);	
+	   }
+
+	   // Display the variable FilterWork
+	   if(strcasecmp(token, "FilterWork") == 0)
+	   {	 
+		 Int2Str(FilterWork, string);
+		 OSuart_OutString(UART0_BASE, " =");
+		 OSuart_OutString(UART0_BASE, string);	
+	   }
+
+	   // Display the variable PIDWork
+	   if(strcasecmp(token, "PIDWork") == 0)
+	   {	 
+		 Int2Str(PIDWork, string);
+		 OSuart_OutString(UART0_BASE, " =");
+		 OSuart_OutString(UART0_BASE, string);	
+	   } 
+    }
+	  command = 0; 
+  	BufferPt = 0;
+	  memset(Buffer,'\0',100);
+    OSuart_OutString(UART0_BASE, "\r\n");
+  }
+}  
+
+void Interpreter(void)
+{
+  unsigned char trigger;
+  short fifo_status = 0;
+  OSuart_Open();
+  for(;;)
+  {    
+    fifo_status = UARTRxFifo_Get(&trigger);
+    if(fifo_status == 1)
+    OS_Interpret(trigger);
+  }
+}      
 // 2) print debugging parameters 
 //    i.e., x[], y[] 
 //--------------end of Task 5-----------------------------
@@ -506,11 +728,11 @@ void Thread6(void){  // foreground thread
     GPIO_PB0 ^= 0x01;        // debugging toggle bit 0  
   }
 }
-extern void Jitter(void);   // prints jitter information (write this)
+//extern void Jitter(void);   // prints jitter information (write this)
 void Thread7(void){  // foreground thread
   printf("\n\rEE345M/EE380L, Lab 3 Preparation 2\n\r");
   OS_Sleep(5000);   // 10 seconds        
-  Jitter();         // print jitter information
+  //Jitter();         // print jitter information
   printf("\n\r\n\r");
   OS_Kill();
 }

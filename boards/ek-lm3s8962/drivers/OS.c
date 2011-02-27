@@ -74,6 +74,7 @@ long MinJitterB;             // smallest time jitter between interrupts in usec
 // For Button Tasks
 //***********************************************************************
 void(*ButtonTask)(void);
+void(*DownTask)(void);
 
 //***********************************************************************
 // For Thread Switcher
@@ -217,7 +218,7 @@ OS_AddThread(void(*task)(void), unsigned long stackSize, unsigned long priority)
 	OSThreads[addNum].id = addNum+1;
 	OSThreads[addNum].priority = priority;
 	OSThreads[addNum].sleepCount = 0;
-	OSThreads[addNum].blockedState = UNBLOCKED;
+	OSThreads[addNum].BlockPt = NULL;
   }	   
   
   //
@@ -302,6 +303,80 @@ OS_AddButtonTask(void(*task)(void), unsigned long priority)
   IntEnable(INT_GPIOF); 
   
   return SUCCESS;
+}
+
+//***********************************************************************
+//
+// OS_AddDownTask initializes an interrupt to occur on PE1,
+// the down switch.
+//
+// \param task is the function to be executed when the switch is pressed
+// \param priority is the priority for the switch interrupt.
+//
+// \return SUCCESS if priority is within valid limits, FAIL otherwise.
+//
+//***********************************************************************
+int 
+OS_AddDownTask(void(*task)(void), unsigned long priority)
+{
+  // Assign the task function pointer to the global pointer to be
+  // accessed in the ISR.
+  DownTask = task;
+  
+  // Enable GPIO PortF module
+  SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);
+
+  // Make the switch pin an input
+  GPIOPinTypeGPIOInput(GPIO_PORTE_BASE, GPIO_PIN_1);
+  GPIOPadConfigSet(GPIO_PORTE_BASE, GPIO_PIN_1, GPIO_STRENGTH_2MA,
+                     GPIO_PIN_TYPE_STD_WPU);
+
+  // Enable interrupts associated with the switch
+  GPIOPinIntEnable(GPIO_PORTE_BASE, GPIO_PIN_1);
+  
+  // Set priority for the button interrupt.
+  if(priority < 8)
+  {
+  	IntPrioritySet(INT_GPIOE,(unsigned char)priority);
+  }
+  else
+  {
+	return FAIL; 
+  }
+  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
+  IntEnable(INT_GPIOE); 
+  
+  return SUCCESS;
+}
+
+//***********************************************************************
+//
+// OS_RemoveButtonTask removes the interrupt occuring on PE1,
+// the down switch.
+//
+// \param task is the function to be executed when the switch is pressed
+// \param priority is the priority for the switch interrupt.
+//
+// \return SUCCESS if priority is within valid limits, FAIL otherwise.
+//
+//***********************************************************************
+
+OS_RemoveButtonTask(void(*task)(void))
+{
+  // Remove the task pointer associated with the down button
+  DownTask = NULL;
+  
+  // Disable GPIO PortF module
+  //SysCtlPeripheralDisable(SYSCTL_PERIPH_GPIOE);
+
+  // Disable interrupts associated with the switch
+  GPIOPinIntDisable(GPIO_PORTE_BASE, GPIO_PIN_1);
+  
+  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
+  IntDisable(INT_GPIOE); 
+  
+  return SUCCESS;
+
 }
 
 //***********************************************************************
@@ -678,6 +753,32 @@ OS_InitSemaphore(Sema4Type *semaPt, unsigned int value)
   IntMasterEnable();
 }
 
+
+/* 
+
+OS_Wait(Sema4Type *semaPt)
+1) Disable interrupts, I=1
+2) Decrement the semaphore counter, S=S-1
+(semaPt->Value)--;
+then this thread will be blocked Value<0 3) If the 
+specify this thread is blocked to this semaphore
+RunPt->BlockPt = semaPt;
+; suspend thread
+4) Enable interrupts, I=0
+
+
+OS_Signal(Sema4Type *semaPt)
+1) Save I bit, then disable interrupts
+2) Increment the semaphore Value, S=S+1
+(semaPt->Value)++;
+then  0 = Value  3) If 
+linked list  TCB wake up one thread from the 
+(no bounded waiting)
+OS_Signal do not suspend the thread that called 
+BlockPt == semaPt search TCBs for thread with 
+null to  TCB of this  BlockPt set the 
+4) Restore I bit
+*/
 //***********************************************************************
 //
 //   OS_Signal signals a given semaphore.
@@ -687,8 +788,21 @@ OS_InitSemaphore(Sema4Type *semaPt, unsigned int value)
 void 
 OS_Signal(Sema4Type *semaPt)
 {
+  TCB * temp = ThreadList;
   IntMasterDisable();
   (semaPt->value)++;
+  if((semaPt->value) <= 0)
+  {
+     do
+     {
+       if(temp->BlockPt == semaPt)
+       {
+         temp->BlockPt = NULL;
+       }
+       temp = temp->next;
+     }
+     while(temp != ThreadList);
+  }
   IntMasterEnable();
 }
 
@@ -702,13 +816,12 @@ void
 OS_Wait(Sema4Type *semaPt)
 {
   IntMasterDisable();
-  while((semaPt->value) == 0)
-  {
-  	IntMasterEnable();
-
-  	IntMasterDisable();
-  }
   (semaPt->value)--;
+  if((semaPt->value) < 0)
+  {
+     CurrentThread->BlockPt = semaPt;
+     //OS_Suspend();
+  }
   IntMasterEnable();
 }
 
@@ -904,7 +1017,7 @@ PendSVHandler(void)
   do
   {
     // Find lowest active priority level
-    if((TempPt->blockedState != BLOCKED)&&(TempPt->priority < RunPriorityLevel))
+    if((TempPt->BlockPt == NULL)&&(TempPt->priority < RunPriorityLevel))
 	{
       RunPriorityLevel = TempPt->priority;
 	}
@@ -922,7 +1035,7 @@ PendSVHandler(void)
   // (2) Blocked or
   // (3) Too low in priority
   NextThread = CurrentThread->next;
-  while((NextThread->sleepCount != 0)||(NextThread->blockedState == BLOCKED)||(NextThread->priority > RunPriorityLevel))
+  while((NextThread->sleepCount != 0)||(NextThread->BlockPt != NULL)||(NextThread->priority > RunPriorityLevel))
   {
     NextThread = NextThread->next;
   }
