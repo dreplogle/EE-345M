@@ -29,8 +29,6 @@ volatile unsigned long NumSamples;   // incremented every sample
 unsigned long DataLost;     // data sent by Producer, but not received by Consumer
 long MaxJitter;             // largest time jitter between interrupts in usec
 long MinJitter;             // smallest time jitter between interrupts in usec
-#define JITTERSIZE 64
-unsigned long const JitterSize=JITTERSIZE;
 unsigned long JitterHistogram[JITTERSIZE]={0,};
 unsigned char Buffer[100];  // Buffer size for interpreter input
 unsigned int BufferPt = 0;	// Buffer pointer
@@ -38,6 +36,8 @@ unsigned short FirstSpace = 1; // Boolean to determine if first space has occure
 
 #define GPIO_B0 (*((volatile unsigned long *)(0x40005004)))
 #define GPIO_B1 (*((volatile unsigned long *)(0x40005008)))
+#define GPIO_B2 (*((volatile unsigned long *)(0x40005010)))
+#define GPIO_B3 (*((volatile unsigned long *)(0x40005020)))
 
 long x[64],y[64];         // input and output arrays for FFT
 void cr4_fft_64_stm32(void *pssOUT, void *pssIN, unsigned short Nbin);
@@ -74,6 +74,7 @@ void DAS(void)
   unsigned long thisTime;         // time at current ADC sample
   long jitter;                    // time between measured and expected
     if(NumSamples < RUNLENGTH){   // finite time run
+	/*
 	GPIO_B0 ^= 0x01;
       input = ADC_In(1);    
 	  thisTime = OS_Time();       // current time, 20 ns
@@ -93,6 +94,7 @@ void DAS(void)
         JitterHistogram[index]++; 
       }
       LastTime = thisTime; 
+	  */
     }
 }
 //--------------end of Task 1-----------------------------
@@ -146,6 +148,7 @@ void ButtonPush(void){
 // inputs:  none
 // outputs: none
 void Producer(unsigned short data){
+  GPIO_B1 ^= 0x02;
   if(NumSamples < RUNLENGTH){   // finite time run
     NumSamples++;               // number of samples
     if(OS_Fifo_Put(data) == 0){ // send to consumer
@@ -163,17 +166,18 @@ void Display(void);
 void Consumer(void){ 
 unsigned long data,DCcomponent; // 10-bit raw ADC sample, 0 to 1023
 unsigned long t;  // time in ms
-unsigned long myId = OS_Id(); 
+unsigned long myId = OS_Id();
   ADC_Collect(0, 1000, &Producer); // start ADC sampling, channel 0, 1000 Hz
   NumCreated += OS_AddThread(&Display,128,0); 
-  while(NumSamples < RUNLENGTH) { 
+  while(NumSamples < RUNLENGTH) {
     for(t = 0; t < 64; t++){   // collect 64 ADC samples
-      OS_Fifo_Get(&data);    // get from producer
+      OS_Fifo_Get(&data);    // get from producer 
       x[t] = data;             // real part is 0 to 1023, imaginary part is 0
     }
     cr4_fft_64_stm32(y,x,64);  // complex FFT of last 64 ADC values
     DCcomponent = y[0]&0xFFFF; // Real part at frequency 0, imaginary part should be zero
     OS_MailBox_Send(DCcomponent);
+	GPIO_B2 ^= 0x04; 
   }
   OS_Kill();  // done
 }
@@ -218,7 +222,8 @@ unsigned long myId = OS_Id();
   Coeff[0] = 384;   // 1.5 = 384/256 proportional coefficient
   Coeff[1] = 128;   // 0.5 = 128/256 integral coefficient
   Coeff[2] = 64;    // 0.25 = 64/256 derivative coefficient*
-  while(NumSamples < RUNLENGTH) { 
+  while(NumSamples < RUNLENGTH) {
+    GPIO_B3 ^= 0x08; 
     for(err = -1000; err <= 1000; err++){    // made-up data
       Actuator = PID_stm32(err,Coeff)/256;
     }
@@ -367,7 +372,7 @@ OS_Interpret(unsigned char nextChar)
         break;
       
       case 't':
-        Int2Str(OS_MsTime(), string);
+        Int2Str(OS_Time(), string);
         OSuart_OutString(UART0_BASE, string);
         OSuart_OutString(UART0_BASE, "\r\n");
         break;
@@ -477,7 +482,7 @@ void Thread1b(void){
 }
 
 //*******************final user main DEMONTRATE THIS TO TA**********
-int main(void){ 
+int Mainmain(void){ 
 
   // Set the clocking to run from PLL at 50 MHz 
   SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_8MHZ);
@@ -491,12 +496,12 @@ int main(void){
 
 //********initialize communication channels
   OS_MailBox_Init();
-  OS_Fifo_Init(4);    // ***note*** 4 is not big enough*****
+  OS_Fifo_Init(32);    // ***note*** 4 is not big enough*****
 
 //*******attach background tasks***********
   OS_AddButtonTask(&ButtonPush,2);
   
-  OS_AddPeriodicThread(&DAS,PERIOD,1); // 2 kHz real time sampling
+  OS_AddPeriodicThread(&DAS,PERIOD,0); // 2 kHz real time sampling
 
   NumCreated = 0 ;
 // create initial foreground threads
@@ -579,12 +584,22 @@ void Thread3b(void){
     Count3++;
   }
 }
-int testmain2(void){  // testmain2
+
+void Dummy1(void){
+  Count4++;
+}
+
+void Dummy2(void){
+  Count5++;
+}
+int main(void){  // testmain2
   OS_Init();           // initialize, disable interrupts
   NumCreated = 0 ;
   NumCreated += OS_AddThread(&Thread1b,128,1); 
-  NumCreated += OS_AddThread(&Thread2b,128,2); 
-  NumCreated += OS_AddThread(&Thread3b,128,3); 
+  NumCreated += OS_AddThread(&Thread2b,128,1); 
+  NumCreated += OS_AddThread(&Thread3b,128,3);
+  OS_AddPeriodicThread(&Dummy1, PERIOD, 1);
+  OS_AddPeriodicThread(&Dummy2, PERIOD, 2); 
  
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes

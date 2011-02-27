@@ -18,6 +18,7 @@
   EXPORT  TriggerPendSV
 
   IMPORT  CurrentThread
+  IMPORT  NextThread
 
 NVIC_INT_CTRL   EQU     0xE000ED04     ; Interrupt control state register.
 NVIC_PENDSVSET  EQU     0x10000000     ; Value to trigger PendSV exception.
@@ -26,6 +27,26 @@ NEXT_PTR_OFFSET EQU		4
 
 ThreadStkPtr	RN R0
 task			RN R1
+
+
+;*********************************************************************
+;
+; Enter a critical section.  Copied from uCOSII.
+;
+;*********************************************************************
+SRSave
+  MRS	R0, PRIMASK
+  CPSID I
+  BX  	LR
+
+;*********************************************************************
+;
+; Exit a critical section.  Copied from uCOSII.
+;
+;*********************************************************************
+SRRestore
+  MSR  PRIMASK, R0
+  BX	LR
 
 ;*********************************************************************
 ;
@@ -113,7 +134,7 @@ LaunchInternal
 ; Switch Threads: Push R4-R11 on the stack and save the SP of the old thread
 ; in the TCB, then restore the SP of the new thread and pop R4-R11.
 ;
-; R0 is first parameter, holds a pointer to the current TCB
+; Input: none
 ;
 ; Returns: R0 is the SP of the outgoing thread to be saved in the TCB
 ; Written by Katy Loeffler
@@ -122,11 +143,11 @@ LaunchInternal
 SwitchThreads
   CPSID I
   LDR	R1, =CurrentThread
-  LDR   R0,[R1]						; Save LR
+  LDR   R0,[R1]						
   PUSH 	{R11,R10,R9,R8,R7,R6,R5,R4}	; Push registers for old thread
   PUSH	{LR}
   STR	R13,[R0]			 		; Save new SP in TCB, it is the first entry
-  ADD	R0, #NEXT_PTR_OFFSET		; R0 now points to next thread
+  LDR   R0, =NextThread
   LDR   R0,[R0]						; Dereference
   STR	R0,[R1]
   LDR	R13,[R0]					; Get stack pointer

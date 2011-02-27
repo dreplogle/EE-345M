@@ -38,24 +38,61 @@
 #include "drivers/rit128x96x4.h"
 #include "string.h"
 
-
-
+//***********************************************************************
+//
+// For setting interrupts
+//
+//***********************************************************************
+#define NVIC_PRI11_REG (*((volatile unsigned long *)(0xE000E42C)))	//#46 GPIOF	  Reg:(44-47)
+#define NVIC_PRI12_REG (*((volatile unsigned long *)(0xE000E430)))  //#51 Timer3A Reg:(48-51)
+#define OS_ENTERCRITICAL(){sr = SRSave();}
+#define OS_EXITCRITICAL(){SRRestore(sr);}
 //***********************************************************************
 // 
 // Global Variables
 //
 //***********************************************************************
-void(*PeriodicTask)(void);
+
+//***********************************************************************
+// For Periodic Tasks
+//***********************************************************************
+void(*PeriodicTaskA)(void);
+void(*PeriodicTaskB)(void);
+unsigned char TimerAFree;
+unsigned char TimerBFree;
+Sema4Type PeriodicTimerMutex;
+
+unsigned long const JitterSize=JITTERSIZE;
+unsigned long JitterHistogramA[JITTERSIZE]={0,};
+unsigned long JitterHistogramB[JITTERSIZE]={0,};
+long MaxJitterA;             // largest time jitter between interrupts in usec
+long MinJitterA;             // smallest time jitter between interrupts in usec
+long MaxJitterB;             // largest time jitter between interrupts in usec
+long MinJitterB;             // smallest time jitter between interrupts in usec
+
+//***********************************************************************
+// For Button Tasks
+//***********************************************************************
 void(*ButtonTask)(void);
-long MsTime = 0;
+
+//***********************************************************************
+// For Thread Switcher
+//***********************************************************************
 TCB * CurrentThread;     //pointer to the current thread
+TCB * NextThread;		 //pointer to the next thread to run
 TCB * Sleeper;			 //pointer to a sleeping thread
 TCB * ThreadList;		 //pointer to the beginning of the circular linked list of TCBs
 struct tcb OSThreads[MAX_NUM_OS_THREADS];  //pointers to all the threads in the OS
 unsigned char ThreadStacks[MAX_NUM_OS_THREADS][STACK_SIZE];
+
+//***********************************************************************
+// Miscellaneous
+//***********************************************************************
 unsigned long MailBox1;
 
+//***********************************************************************
 // OS_Fifo variables, this code segment copied from Valvano, lecture1
+//***********************************************************************
 typedef unsigned long dataType;
 dataType volatile *PutPt; // put next
 dataType volatile *GetPt; // get next
@@ -72,6 +109,9 @@ unsigned char * StackInit(unsigned char * ThreadStkPtr, void(*task)(void));
 void SwitchThreads(void);
 void LaunchInternal(unsigned char * firstStackPtr);
 void TriggerPendSV(void);
+long SRSave (void);
+void SRRestore(long sr);
+
 //***********************************************************************
 //
 // OS_Init initializes the array of TCBs, diables interrupts
@@ -99,6 +139,11 @@ OS_Init(void)
   RIT128x96x4Init(1000000);
   // Initialize ADC
   ADC_Open();
+
+  // For periodic threads
+  OS_InitSemaphore(&PeriodicTimerMutex, 1);
+  TimerAFree = 1;
+  TimerBFree = 1;
 
   //Initialize a TCNT-like countdown timer on timer 1
  
@@ -277,49 +322,66 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
   //Enter critical 
   IntMasterDisable();
 
-  PeriodicTask = task;
-
-  //
-  // Enable Timer3 module
-  //
-  SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER3);
-
-  //
-  // Configure Timer3 as a 32-bit periodic timer.
-  //
-  TimerConfigure(TIMER3_BASE, TIMER_CFG_32_BIT_PER);
-  //
-  // Set the Timer3 load value to generate the period specified by the user.
-  //
-  TimerLoadSet(TIMER3_BASE, TIMER_BOTH, period);
-
-  //
-  // Enable the Timer3 interrupt.
-  //
-  TimerIntEnable(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
-  TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
-  IntEnable(INT_TIMER3A);                                                                                
-  //
-  // Set priority for the timer interrupt.
-  //
-  if(priority < 8)
-  {
-  	IntPrioritySet(INT_TIMER3A,(unsigned char)priority);
+  //Check for timer availiability
+  OS_bWait(&PeriodicTimerMutex);
+  if(TimerAFree){
+    TimerAFree = 0;  //False
+	OS_bSignal(&PeriodicTimerMutex);
+	PeriodicTaskA = task;
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER3);
+	TimerDisable(TIMER3_BASE, TIMER_A);
+    // Set the global timer configuration.
+    HWREG(TIMER3_BASE + 0x00000000) = (TIMER_CFG_16_BIT_PAIR|TIMER_CFG_A_PERIODIC) >> 24;
+    // Set the configuration of the A and B timers.  Note that the B timer
+    // configuration is ignored by the hardware in 32-bit modes.
+    HWREG(TIMER3_BASE + 0x00000004) = (TIMER_CFG_16_BIT_PAIR|TIMER_CFG_A_PERIODIC) & 255;
+    TimerLoadSet(TIMER3_BASE, TIMER_A, period);
+    TimerIntEnable(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
+    TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
+    IntEnable(INT_TIMER3A);                                                                                
+    if(priority < 8){
+      IntPrioritySet(INT_TIMER3A,(((unsigned char)priority)<<5)&0xF0);
+    }
+    else{
+       IntMasterEnable();
+	   return FAIL; 
+    }
+    TimerEnable(TIMER3_BASE, TIMER_A);
+	//Exit critical 
+    IntMasterEnable();
+	return SUCCESS;
   }
-  else
-  {
-     IntMasterEnable();
-	 return FAIL; 
+  if(TimerBFree){
+    TimerBFree = 0;  //False
+	OS_bSignal(&PeriodicTimerMutex);
+	PeriodicTaskB = task;
+	TimerDisable(TIMER3_BASE, TIMER_B);
+    // Set the global timer configuration.
+    HWREG(TIMER3_BASE + 0x00000000) = (TIMER_CFG_16_BIT_PAIR|TIMER_CFG_B_PERIODIC) >> 24;
+    // Set the configuration of the A and B timers.  Note that the B timer
+    // configuration is ignored by the hardware in 32-bit modes.
+    HWREG(TIMER3_BASE + 0x00000008) = ((TIMER_CFG_16_BIT_PAIR|TIMER_CFG_B_PERIODIC)>> 8) & 255;
+    TimerLoadSet(TIMER3_BASE, TIMER_B, period);
+    TimerIntEnable(TIMER3_BASE, TIMER_TIMB_TIMEOUT);
+    TimerIntClear(TIMER3_BASE, TIMER_TIMB_TIMEOUT);
+    IntEnable(INT_TIMER3B);                                                                                
+    if(priority < 8){
+      IntPrioritySet(INT_TIMER3B,(((unsigned char)priority)<<5)&0xF0);
+    }
+    else{
+       IntMasterEnable();
+	   return FAIL; 
+    }
+    TimerEnable(TIMER3_BASE, TIMER_B);
+	//Exit critical 
+    IntMasterEnable();
+	return SUCCESS;
   }
-  //
-  // Start Timer3.
-  //
-  TimerEnable(TIMER3_BASE, TIMER_BOTH);
-
+  
+  OS_bSignal(&PeriodicTimerMutex);
   //Exit critical 
   IntMasterEnable();
-
-  return SUCCESS;
+  return FAIL;
 }
 
 //***********************************************************************
@@ -514,41 +576,6 @@ OS_MailBox_Recv(void)
 
 //***********************************************************************
 //
-// OS_ClearMsTime
-//
-// \param none
-// 
-// This function resets the counter for the scheduled periodic task.
-//
-// \return none
-//
-//***********************************************************************
-void
-OS_ClearMsTime(void)
-{
-  MsTime = 0;
-}
-
-//***********************************************************************
-//
-// OS_MsTime
-//
-// \param none
-//
-// This function returns the current value of the counter for the 
-// scheduled periodic task.
-//
-// \return counter value.
-//
-//***********************************************************************
-long 
-OS_MsTime(void)
-{
-  return MsTime;
-}
-
-//***********************************************************************
-//
 // OS_MsTime
 //
 // \param none
@@ -592,7 +619,7 @@ void
 OS_DebugProfileInit(void)
 {
   SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
-  GPIOPinTypeGPIOOutput(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1);  
+  GPIOPinTypeGPIOOutput(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3);  
 }
 
 //***********************************************************************
@@ -694,9 +721,9 @@ OS_Wait(Sema4Type *semaPt)
 void 
 OS_bSignal(Sema4Type *semaPt)
 {
-  IntMasterDisable();
+//  IntMasterDisable();
   (semaPt->value) = 1;
-  IntMasterEnable();
+//  IntMasterEnable();
 }
 
 //***********************************************************************
@@ -738,6 +765,10 @@ PerThreadSwitchInit(unsigned long period)
 
   // Set the period in ms
   SysTickPeriodSet(period);
+
+  // Set Systick priority to high, PendSV priority to low
+  IntPrioritySet(FAULT_SYSTICK,(((unsigned char)0)<<5)&0xF0);
+  IntPrioritySet(FAULT_PENDSV,(((unsigned char)7)<<5)&0xF0);
   
   // Enable the SysTick module  
   SysTickEnable();
@@ -751,11 +782,64 @@ PerThreadSwitchInit(unsigned long period)
 //
 //***********************************************************************
 void
-Timer3IntHandler(void)
+Timer3AIntHandler(void)
 {
+  static unsigned long LastTime;  // time at previous ADC sample  
+  unsigned long thisTime;         // time at current ADC sample
+  long jitter;                    // time between measured and expected
+  int index;
+
+  // Jitter calculation:
+  thisTime = OS_Time();       // current time, 20 ns
+  jitter = ((OS_TimeDifference(thisTime,LastTime)-PERIOD)*CLOCK_PERIOD)/1000;  // in usec
+  if(jitter > MaxJitterA){
+    MaxJitterA = jitter;
+  }
+  if(jitter < MinJitterA){
+    MinJitterA = jitter;
+  }        // jitter should be 0
+  index = jitter+JITTERSIZE/2;   // us units
+  if(index<0)index = 0;
+  if(index>=JitterSize)index = JITTERSIZE-1;
+  JitterHistogramA[index]++; 
+  LastTime = thisTime; 
+
+  // Execute the periodic thread
   TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
-  PeriodicTask(); 
-  MsTime++;  
+  PeriodicTaskA();  
+}
+
+//***********************************************************************
+//
+// Timer 3B Interrupt handler, executes the user defined period task.
+//
+//***********************************************************************
+void
+Timer3BIntHandler(void)
+{
+  static unsigned long LastTime;  // time at previous ADC sample  
+  unsigned long thisTime;         // time at current ADC sample
+  long jitter;                    // time between measured and expected
+  int index;
+
+  // Jitter calculation:
+  thisTime = OS_Time();       // current time, 20 ns
+  jitter = ((OS_TimeDifference(thisTime,LastTime)-PERIOD)*CLOCK_PERIOD)/1000;  // in usec
+  if(jitter > MaxJitterB){
+    MaxJitterB = jitter;
+  }
+  if(jitter < MinJitterB){
+    MinJitterB = jitter;
+  }        // jitter should be 0
+  index = jitter+JITTERSIZE/2;   // us units
+  if(index<0)index = 0;
+  if(index>=JitterSize)index = JITTERSIZE-1;
+  JitterHistogramB[index]++; 
+  LastTime = thisTime;
+
+  // Execute Periodic task
+  TimerIntClear(TIMER3_BASE, TIMER_TIMB_TIMEOUT);
+  PeriodicTaskB();  
 }
 
 //***********************************************************************
@@ -811,23 +895,39 @@ SysTickThSwIntHandler(void)
 void 
 PendSVHandler(void)
 {
+  TCB * TempPt;
+  static unsigned long RunPriorityLevel;
+
+  //Determine the priority level to run	and update sleeping threads
+  RunPriorityLevel = 100;     //Initialize to rediculously low priority
+  TempPt = ThreadList;
+  do
+  {
+    // Find lowest active priority level
+    if((TempPt->blockedState != BLOCKED)&&(TempPt->priority < RunPriorityLevel))
+	{
+      RunPriorityLevel = TempPt->priority;
+	}
+	// Decrement sleep counter on sleeping threads
+    if(TempPt->sleepCount > 0)
+	{
+      (TempPt->sleepCount)--;
+	}
+	TempPt = TempPt->next;
+  }while(TempPt != ThreadList);
+
+
+  // Find the next thread that is not...
+  // (1) Sleeping
+  // (2) Blocked or
+  // (3) Too low in priority
+  NextThread = CurrentThread->next;
+  while((NextThread->sleepCount != 0)||(NextThread->blockedState == BLOCKED)||(NextThread->priority > RunPriorityLevel))
+  {
+    NextThread = NextThread->next;
+  }
   SwitchThreads();
-
-  IntMasterDisable();
-
   HWREG(NVIC_ST_CURRENT) = 0;
-
-  // If the new thread is asleep or blocked, pass control to the next thread
-  if((CurrentThread->sleepCount) != 0)
-  {
-    CurrentThread->sleepCount--;
-    OS_Suspend();
-  }
-  else if((CurrentThread->blockedState) == BLOCKED)
-  {
-	OS_Suspend();
-  }
-  IntMasterEnable();
 }
 
 //***********************************************************************

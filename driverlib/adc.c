@@ -1654,6 +1654,9 @@ ADC_Collect(unsigned int channelNum, unsigned int fs, void (*task)(unsigned shor
   // Allow ADC to generate an interrupt signal.
   ADCIntEnable(ADC0_BASE, 3);
 
+  // Set Priority for the ADC interrupt
+  IntPrioritySet(INT_ADC1SS3, 1);
+
   // Clear the interrupt status flag.  This is done to make sure the
   // interrupt flag is cleared before we sample. 
   ADCIntClear(ADC0_BASE, 3);

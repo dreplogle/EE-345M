@@ -16,6 +16,7 @@
 #define MAX_OS_FIFOSIZE 128 		// can be any size
 #define CLOCK_PERIOD 20  			// clock period in ns
 #define MAX_TCNT 0x0EE6B280			// @50Mhz, this is 5 seconds
+#define JITTERSIZE 64
 
 #define TIME_1MS 50000		  		// #clock cycles per ms in 50MHz mode
 #define TIMESLICE TIME_1MS*2  		//Thread switching period in ms
@@ -58,8 +59,6 @@ extern unsigned int OS_Fifo_Put(unsigned long data);
 extern void OS_MailBox_Init(void);
 extern void OS_MailBox_Send(unsigned long data);
 extern unsigned long OS_MailBox_Recv(void);
-extern void OS_ClearMsTime(void);
-extern long OS_MsTime(void);
 extern unsigned long OS_Time(void);
 extern long OS_TimeDifference(unsigned long time1, unsigned long time2);
 extern void OS_DebugProfileInit(void);
