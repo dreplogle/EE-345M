@@ -39,8 +39,8 @@
 #include "drivers/OSuart.h"
 
 // Global Variables
-  AddFifo(UARTRx, 32, unsigned char, 1, 0);   // UARTRx Buffer
-  AddFifo(UARTTx, 32, unsigned char, 1, 0);   // UARTTx Buffer
+  AddFifo(UARTRx, 128, unsigned char, 1, 0);   // UARTRx Buffer
+  AddFifo(UARTTx, 128, unsigned char, 1, 0);   // UARTTx Buffer
 
 // Private Functions
 void UARTSend(const unsigned char *pucBuffer, unsigned long ulCount);
@@ -171,7 +171,7 @@ OSuart_OutString(unsigned long ulBase, char *string)
   {
     if(!UARTTxFifo_Put(string[i]))
     {
-       oLED_Message(0, 0, "UART TX", 0);
+      oLED_Message(0, 0, "UART TX", 0);
       oLED_Message(0, 1, "FIFO FULL", 0);
     }
      i++;
@@ -229,6 +229,7 @@ OSuart_Open(void)
   // Enable the UART interrupt.
   IntEnable(INT_UART0);
   UARTIntEnable(UART0_BASE, UART_INT_RX | UART_INT_RT | UART_INT_TX);
+  IntPrioritySet(INT_UART0,(((unsigned char)5)<<5)&0xF0);
 
 }
 

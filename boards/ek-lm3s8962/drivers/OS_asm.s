@@ -16,6 +16,8 @@
   EXPORT  LaunchInternal
   EXPORT  SwitchThreads
   EXPORT  TriggerPendSV
+  EXPORT  SRSave
+  EXPORT  SRRestore
 
   IMPORT  CurrentThread
   IMPORT  NextThread
