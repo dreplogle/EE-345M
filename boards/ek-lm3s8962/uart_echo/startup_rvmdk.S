@@ -87,9 +87,6 @@ __heap_limit
 		EXTERN  SysTickThSwIntHandler
 		EXTERN  PendSVHandler
 		EXTERN  SelectSwitchIntHandler
-		;EXTERN  IntGPIOa                    ; GPIO Port A (PriorityCHecker.c)
-    ;    EXTERN  IntGPIOb                    ; GPIO Port B
-    ;    EXTERN     IntGPIOc                 ; GPIO Port C
 
 ;******************************************************************************
 ;

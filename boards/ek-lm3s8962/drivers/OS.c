@@ -45,8 +45,8 @@
 //***********************************************************************
 #define NVIC_PRI11_REG (*((volatile unsigned long *)(0xE000E42C)))	//#46 GPIOF	  Reg:(44-47)
 #define NVIC_PRI12_REG (*((volatile unsigned long *)(0xE000E430)))  //#51 Timer3A Reg:(48-51)
-#define OS_ENTERCRITICAL(){sr = SRSave();}
-#define OS_EXITCRITICAL(){SRRestore(sr);}
+#define OS_ENTERCRITICAL(){sr = SRSave(); timeIoff = OS_Time();}
+#define OS_EXITCRITICAL(){TimeIbitDisabled += OS_TimeDifference(OS_Time(),timeIoff); SRRestore(sr);}
 //***********************************************************************
 // 
 // Global Variables
@@ -69,6 +69,13 @@ long MaxJitterA;             // largest time jitter between interrupts in usec
 long MinJitterA;             // smallest time jitter between interrupts in usec
 long MaxJitterB;             // largest time jitter between interrupts in usec
 long MinJitterB;             // smallest time jitter between interrupts in usec
+unsigned long PeriodTimerA;
+unsigned long PeriodTimerB;
+
+// For Lab3.c
+long MaxJitter;    // largest time difference between interrupt trigger and running thread
+long MinJitter;    // smallest time difference between interrupt trigger and running thread
+unsigned long JitterHistogram[];
 
 //***********************************************************************
 // For Button Tasks
@@ -90,6 +97,7 @@ unsigned char ThreadStacks[MAX_NUM_OS_THREADS][STACK_SIZE];
 // Miscellaneous
 //***********************************************************************
 unsigned long MailBox1;
+unsigned long TimeIbitDisabled;
 
 //***********************************************************************
 // OS_Fifo variables, this code segment copied from Valvano, lecture1
@@ -127,6 +135,26 @@ OS_Init(void)
   int threadNum;
   IntMasterDisable();
 
+  // Set the clocking to run from PLL at 50 MHz 
+  SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_8MHZ);
+  
+  //Initialize a TCNT-like countdown timer on timer 1
+ 
+  // Enable Timer1 module
+  SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER1);
+
+  // Configure Timer1 as a 32-bit periodic timer.
+  TimerConfigure(TIMER1_BASE, TIMER_CFG_32_BIT_PER);
+
+  // Set the Timer1 load value to generate the period specified by the user.
+  TimerLoadSet(TIMER1_BASE, TIMER_A, MAX_TCNT);
+
+  // Start Timer1.
+  TimerEnable(TIMER1_BASE, TIMER_BOTH);
+
+  // For profiling the time interrupts are disabled.
+  TimeIbitDisabled = 0;
+
   //Initialize the OSThreads array to empty
   for(threadNum = 0; threadNum < MAX_NUM_OS_THREADS; threadNum++)
   {
@@ -140,27 +168,13 @@ OS_Init(void)
   RIT128x96x4Init(1000000);
   // Initialize ADC
   ADC_Open();
+  // Initialize serial communication
+  OSuart_Open();
 
   // For periodic threads
   OS_InitSemaphore(&PeriodicTimerMutex, 1);
   TimerAFree = 1;
   TimerBFree = 1;
-
-  //Initialize a TCNT-like countdown timer on timer 1
- 
-  // Enable Timer1 module
-  SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER1);
-
-  // Configure Timer1 as a 32-bit periodic timer.
-  TimerConfigure(TIMER1_BASE, TIMER_CFG_32_BIT_PER);
-
-  // Set the Timer1 load value to generate the period specified by the user.
-  TimerLoadSet(TIMER1_BASE, TIMER_A, MAX_TCNT);
-
-  // Start Timer1.
-  TimerEnable(TIMER1_BASE, TIMER_A);
-
-	 
 } 
 
 
@@ -187,7 +201,9 @@ OS_AddThread(void(*task)(void), unsigned long stackSize, unsigned long priority)
   //OS_CPU_SR  cpu_sr = 0;
 
   //Enter critical
-  IntMasterDisable();
+  long sr = 0;
+  unsigned long timeIoff;
+  OS_ENTERCRITICAL();
   
   //
   // Look for the lowest avaliable slot in the OSThread list, if there is no spot,
@@ -255,7 +271,7 @@ OS_AddThread(void(*task)(void), unsigned long stackSize, unsigned long priority)
   }
 
   //Exit critical
-  IntMasterEnable();
+  OS_EXITCRITICAL();
 
   return addSuccess;
 
@@ -395,7 +411,9 @@ int
 OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long priority)
 {
   //Enter critical 
-  IntMasterDisable();
+  long sr = 0;
+  unsigned long timeIoff;
+  OS_ENTERCRITICAL();
 
   //Check for timer availiability
   OS_bWait(&PeriodicTimerMutex);
@@ -411,6 +429,7 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
     // configuration is ignored by the hardware in 32-bit modes.
     HWREG(TIMER3_BASE + 0x00000004) = (TIMER_CFG_16_BIT_PAIR|TIMER_CFG_A_PERIODIC) & 255;
     TimerLoadSet(TIMER3_BASE, TIMER_A, period);
+	PeriodTimerA = period;
     TimerIntEnable(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
     TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
     IntEnable(INT_TIMER3A);                                                                                
@@ -426,7 +445,7 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
     IntMasterEnable();
 	return SUCCESS;
   }
-  if(TimerBFree){
+  else if(TimerBFree){
     TimerBFree = 0;  //False
 	OS_bSignal(&PeriodicTimerMutex);
 	PeriodicTaskB = task;
@@ -437,6 +456,7 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
     // configuration is ignored by the hardware in 32-bit modes.
     HWREG(TIMER3_BASE + 0x00000008) = ((TIMER_CFG_16_BIT_PAIR|TIMER_CFG_B_PERIODIC)>> 8) & 255;
     TimerLoadSet(TIMER3_BASE, TIMER_B, period);
+	PeriodTimerB = period;
     TimerIntEnable(TIMER3_BASE, TIMER_TIMB_TIMEOUT);
     TimerIntClear(TIMER3_BASE, TIMER_TIMB_TIMEOUT);
     IntEnable(INT_TIMER3B);                                                                                
@@ -455,7 +475,7 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
   
   OS_bSignal(&PeriodicTimerMutex);
   //Exit critical 
-  IntMasterEnable();
+  OS_EXITCRITICAL();
   return FAIL;
 }
 
@@ -567,10 +587,14 @@ OS_Id(void)
 void
 OS_Fifo_Init(unsigned int size)
 {
-  IntMasterDisable();
+  long sr = 0;
+  unsigned long timeIoff;
+  OS_ENTERCRITICAL();
+
   PutPt = GetPt = &Fifo[0];
   FifoSize = size;
-  IntMasterEnable();  
+
+  OS_EXITCRITICAL();  
 }
 
 //***********************************************************************
@@ -673,7 +697,7 @@ unsigned long OS_Time(void)
 //***********************************************************************
 long OS_TimeDifference(unsigned long time1, unsigned long time2)
 {
-  if(time2 > time1)
+  if(time2 >= time1)
   {
   	return (long)(time2-time1);
   }
@@ -748,9 +772,13 @@ OS_DebugB1Clear(void)
 void 
 OS_InitSemaphore(Sema4Type *semaPt, unsigned int value)
 {
-  IntMasterDisable();
+  long sr = 0;
+  unsigned long timeIoff;
+  OS_ENTERCRITICAL();
+
   (semaPt->value) = value;
-  IntMasterEnable();
+
+  OS_EXITCRITICAL();
 }
 
 
@@ -789,7 +817,9 @@ void
 OS_Signal(Sema4Type *semaPt)
 {
   TCB * temp = ThreadList;
-  IntMasterDisable();
+  long sr = 0;
+  unsigned long timeIoff;
+  OS_ENTERCRITICAL();
   (semaPt->value)++;
   if((semaPt->value) <= 0)
   {
@@ -803,7 +833,7 @@ OS_Signal(Sema4Type *semaPt)
      }
      while(temp != ThreadList);
   }
-  IntMasterEnable();
+  OS_EXITCRITICAL();
 }
 
 //***********************************************************************
@@ -904,7 +934,7 @@ Timer3AIntHandler(void)
 
   // Jitter calculation:
   thisTime = OS_Time();       // current time, 20 ns
-  jitter = ((OS_TimeDifference(thisTime,LastTime)-PERIOD)*CLOCK_PERIOD)/1000;  // in usec
+  jitter = ((OS_TimeDifference(thisTime,LastTime)-PeriodTimerA)*CLOCK_PERIOD)/1000;  // in usec
   if(jitter > MaxJitterA){
     MaxJitterA = jitter;
   }
@@ -937,7 +967,7 @@ Timer3BIntHandler(void)
 
   // Jitter calculation:
   thisTime = OS_Time();       // current time, 20 ns
-  jitter = ((OS_TimeDifference(thisTime,LastTime)-PERIOD)*CLOCK_PERIOD)/1000;  // in usec
+  jitter = ((OS_TimeDifference(thisTime,LastTime)-PeriodTimerB)*CLOCK_PERIOD)/1000;  // in usec
   if(jitter > MaxJitterB){
     MaxJitterB = jitter;
   }
@@ -1017,16 +1047,16 @@ PendSVHandler(void)
   do
   {
     // Find lowest active priority level
-    if((TempPt->BlockPt == NULL)&&(TempPt->priority < RunPriorityLevel))
-	{
-      RunPriorityLevel = TempPt->priority;
-	}
-	// Decrement sleep counter on sleeping threads
+    if((TempPt->BlockPt == NULL)&&(TempPt->priority < RunPriorityLevel)&&(TempPt->sleepCount == 0))
+	  {
+        RunPriorityLevel = TempPt->priority;
+	  }
+	  // Decrement sleep counter on sleeping threads
     if(TempPt->sleepCount > 0)
-	{
+	  {
       (TempPt->sleepCount)--;
-	}
-	TempPt = TempPt->next;
+	  }
+	  TempPt = TempPt->next;
   }while(TempPt != ThreadList);
 
 
