@@ -568,6 +568,7 @@ int testmain1(void){
 // no UART interrupts
 // SYSTICK interrupts, with or without period established by OS_Launch
 // no timer interrupts
+
 // no select switch interrupts
 // no ADC serial port or oLED output
 // no calls to semaphores

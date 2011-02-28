@@ -781,32 +781,6 @@ OS_InitSemaphore(Sema4Type *semaPt, unsigned int value)
   OS_EXITCRITICAL();
 }
 
-
-/* 
-
-OS_Wait(Sema4Type *semaPt)
-1) Disable interrupts, I=1
-2) Decrement the semaphore counter, S=S-1
-(semaPt->Value)--;
-then this thread will be blocked Value<0 3) If the 
-specify this thread is blocked to this semaphore
-RunPt->BlockPt = semaPt;
-; suspend thread
-4) Enable interrupts, I=0
-
-
-OS_Signal(Sema4Type *semaPt)
-1) Save I bit, then disable interrupts
-2) Increment the semaphore Value, S=S+1
-(semaPt->Value)++;
-then  0 = Value  3) If 
-linked list  TCB wake up one thread from the 
-(no bounded waiting)
-OS_Signal do not suspend the thread that called 
-BlockPt == semaPt search TCBs for thread with 
-null to  TCB of this  BlockPt set the 
-4) Restore I bit
-*/
 //***********************************************************************
 //
 //   OS_Signal signals a given semaphore.
@@ -816,7 +790,9 @@ null to  TCB of this  BlockPt set the
 void 
 OS_Signal(Sema4Type *semaPt)
 {
-  TCB * temp = ThreadList;
+  TCB * temp = ThreadList;  // pointer to all threads in the threadlist
+  TCB * toUnblock;          // pointer to thread to unblock
+  unsigned long highest_priority = 100; 
   long sr = 0;
   unsigned long timeIoff;
   OS_ENTERCRITICAL();
@@ -825,13 +801,19 @@ OS_Signal(Sema4Type *semaPt)
   {
      do
      {
-       if(temp->BlockPt == semaPt)
+       if(((temp->BlockPt) == semaPt) && (temp->priority < highest_priority)) 
        {
-         temp->BlockPt = NULL;
+         toUnblock = temp;   // If a thread is blocked by this semaphore and 
+                             // is the highest priority, unblock the thread
+         highest_priority = toUnblock->priority;
        }
        temp = temp->next;
      }
      while(temp != ThreadList);
+     if(toUnblock->BlockPt != NULL)
+     {
+       toUnblock->BlockPt = NULL;
+     }
   }
   OS_EXITCRITICAL();
 }
@@ -850,7 +832,7 @@ OS_Wait(Sema4Type *semaPt)
   if((semaPt->value) < 0)
   {
      CurrentThread->BlockPt = semaPt;
-     //OS_Suspend();
+     OS_Suspend();
   }
   IntMasterEnable();
 }
