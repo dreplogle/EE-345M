@@ -35,6 +35,8 @@ unsigned long DataLost;     // data sent by Producer, but not received by Consum
 
 extern unsigned long JitterHistogramA[];
 extern unsigned long JitterHistogramB[];
+extern long MaxJitterA;
+extern long MinJitterA;
 
 Sema4Type MailBoxFull;
 Sema4Type MailBoxEmpty;
@@ -92,14 +94,14 @@ void ButtonWork(void){
 unsigned long i;
 unsigned long myId = OS_Id(); 
   oLED_Message(1,0,"NumCreated =",NumCreated); 
-  if(NumSamples < RUNLENGTH){   // finite time run
-    for(i=0;i<20;i++){  // runs for 2 seconds
-      OS_Sleep(50);     // set this to sleep for 0.1 sec
-    }
-  }
+//  if(NumSamples < RUNLENGTH){   // finite time run
+//    for(i=0;i<20;i++){  // runs for 2 seconds
+//      OS_Sleep(50);     // set this to sleep for 0.1 sec
+//    }
+// }
   oLED_Message(1,1,"PIDWork    =",PIDWork);
   oLED_Message(1,2,"DataLost   =",DataLost);
-//  oLED_Message(1,3,"0.1u Jitter=",MaxJitter-MinJitter);
+  oLED_Message(1,3,"0.1u Jitter=",MaxJitterA-MinJitterA);
   OS_Kill();  // done
 } 
 
@@ -227,6 +229,7 @@ unsigned long myId = OS_Id();
       Actuator = PID_stm32(err,Coeff)/256;
     }
     PIDWork++;        // calculation finished
+	OS_Sleep(2);
   }
   for(;;){ }          // done
 }
@@ -465,7 +468,7 @@ void Interpreter(void)
     fifo_status = UARTRxFifo_Get(&trigger);
     if(fifo_status == 1)
     OS_Interpret(trigger);
-	OS_Sleep(2);   //Give PID a chance to run
+	OS_Sleep(3);   //Give PID a chance to run
 	Count1++;
   }
 }      

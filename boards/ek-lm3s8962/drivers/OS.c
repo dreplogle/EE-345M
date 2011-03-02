@@ -71,6 +71,8 @@ long MaxJitterB;             // largest time jitter between interrupts in usec
 long MinJitterB;             // smallest time jitter between interrupts in usec
 long PeriodTimerA;
 long PeriodTimerB;
+unsigned char firstJitterA;
+unsigned char firstJitterB;
 extern unsigned long NumSamples;
 
 // Following code copied from game logic 
@@ -203,6 +205,8 @@ OS_Init(void)
   OS_InitSemaphore(&PeriodicTimerMutex, 1);
   TimerAFree = 1;
   TimerBFree = 1;
+  firstJitterA = 1;
+  firstJitterB = 1;
 } 
 
 
@@ -962,17 +966,20 @@ Timer3AIntHandler(void)
     thisTime = OS_Time();       // current time, 20 ns
     timeCheck = OS_TimeDifference(thisTime, LastTime);
     jitter = ((OS_TimeDifference(thisTime, LastTime)-PeriodTimerA)*CLOCK_PERIOD)/1000;  // in usec
-	if(jitter > MaxJitterA){
-      MaxJitterA = jitter;
-    }
-    if(jitter < MinJitterA){
-      MinJitterA = jitter;
-    }        // jitter should be 0
-    index = jitter+JITTERSIZE/2;   // us units
-    if(index<0)index = 0;
-    if(index>=JitterSize)index = JITTERSIZE-1;
-    JitterHistogramA[index]++; 
-    LastTime = thisTime;
+	if(!firstJitterA){
+	  if(jitter > MaxJitterA){
+        MaxJitterA = jitter;
+      }
+      if(jitter < MinJitterA){
+        MinJitterA = jitter;
+      }        // jitter should be 0
+      index = jitter+JITTERSIZE/2;   // us units
+      if(index<0)index = 0;
+      if(index>=JitterSize)index = JITTERSIZE-1;
+      JitterHistogramA[index]++; 
+      LastTime = thisTime;
+	}
+	firstJitterA = 0;
   }
   // Execute the periodic thread
   TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
@@ -997,17 +1004,20 @@ Timer3BIntHandler(void)
     thisTime = OS_Time();       // current time, 20 ns
     timeCheck = OS_TimeDifference(thisTime, LastTime);
     jitter = ((OS_TimeDifference(thisTime, LastTime)-PeriodTimerB)*CLOCK_PERIOD)/1000;  // in usec
-	if(jitter > MaxJitterB){
-      MaxJitterA = jitter;
-    }
-    if(jitter < MinJitterB){
-      MinJitterA = jitter;
-    }        // jitter should be 0
-    index = jitter+JITTERSIZE/2;   // us units
-    if(index<0)index = 0;
-    if(index>=JitterSize)index = JITTERSIZE-1;
-    JitterHistogramB[index]++; 
-    LastTime = thisTime;
+	if(!firstJitterB){
+	  if(jitter > MaxJitterB){
+        MaxJitterB = jitter;
+      }
+      if(jitter < MinJitterB){
+        MinJitterB = jitter;
+      }        // jitter should be 0
+      index = jitter+JITTERSIZE/2;   // us units
+      if(index<0)index = 0;
+      if(index>=JitterSize)index = JITTERSIZE-1;
+      JitterHistogramB[index]++; 
+      LastTime = thisTime;
+	}
+	firstJitterB = 0;
   }
   // Execute Periodic task
   TimerIntClear(TIMER3_BASE, TIMER_TIMB_TIMEOUT);
@@ -1035,7 +1045,9 @@ void
 SysTickThSwIntHandler(void)
 {   
   unsigned long ulData, ulDelta; 
-  IntMasterDisable();
+  long sr = 0;
+  unsigned long timeIoff;
+  OS_ENTERCRITICAL();
 
     //
     // Read the state of the push buttons.
@@ -1114,7 +1126,7 @@ SysTickThSwIntHandler(void)
   //TimerIntClear(TIMER2_BASE, TIMER_TIMA_TIMEOUT);
   //GPIOPinIntEnable(GPIO_PORTF_BASE, GPIO_PIN_1);
 
-  IntMasterEnable();  
+  OS_EXITCRITICAL();  
   
   TriggerPendSV();
 }
@@ -1156,11 +1168,11 @@ PendSVHandler(void)
   // (1) Sleeping
   // (2) Blocked or
   // (3) Too low in priority
-  NextThread = CurrentThread->next;
-  while((NextThread->sleepCount != 0)||(NextThread->BlockPt != NULL)||(NextThread->priority > RunPriorityLevel))
+  NextThread = CurrentThread;
+  do
   {
     NextThread = NextThread->next;
-  }
+  }while(((NextThread->sleepCount != 0)||(NextThread->BlockPt != NULL)||(NextThread->priority > RunPriorityLevel))&&NextThread!=CurrentThread);
   
   HWREG(NVIC_ST_CURRENT) = 0;
   OS_EXITCRITICAL();
