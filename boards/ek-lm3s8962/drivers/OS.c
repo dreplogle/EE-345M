@@ -77,12 +77,44 @@ long MaxJitter;    // largest time difference between interrupt trigger and runn
 long MinJitter;    // smallest time difference between interrupt trigger and running thread
 unsigned long JitterHistogram[];
 
+// Following code copied from game logic 
+//*****************************************************************************
+//
+// The debounced state of the five push buttons.  The bit positions correspond
+// to:
+//
+//     0 - Up
+//     1 - Down
+//     2 - Left
+//     3 - Right
+//     4 - Select
+//
+//*****************************************************************************
+unsigned char g_ucSwitches = 0x1f;
+
+//*****************************************************************************
+//
+// The vertical counter used to debounce the push buttons.  The bit positions
+// are the same as g_ucSwitches.
+//
+//*****************************************************************************
+static unsigned char g_ucSwitchClockA = 0;
+static unsigned char g_ucSwitchClockB = 0;
+
+//*****************************************************************************
+//
+// Handles the SysTick timeout interrupt.
+//
+//*****************************************************************************
+
 //***********************************************************************
 // For Button Tasks
 //***********************************************************************
-void(*ButtonTask)(void);
-void(*DownTask)(void);
-
+void(*ButtonTask)(void) = NULL;
+void(*DownTask)(void) = NULL;
+void(*UpTask)(void) = NULL;
+void(*LeftTask)(void) = NULL;
+void(*RightTask)(void) = NULL;
 //***********************************************************************
 // For Thread Switcher
 //***********************************************************************
@@ -304,20 +336,20 @@ OS_AddButtonTask(void(*task)(void), unsigned long priority)
                      GPIO_PIN_TYPE_STD_WPU);
 
   // Enable interrupts associated with the switch
-  GPIOPinIntEnable(GPIO_PORTF_BASE, GPIO_PIN_1);
+  //GPIOPinIntEnable(GPIO_PORTF_BASE, GPIO_PIN_1);
   
   // Set priority for the button interrupt.
-  if(priority < 8)
-  {
-  	IntPrioritySet(INT_GPIOF,(unsigned char)priority);
-  }
-  else
-  {
-	return FAIL; 
-  }
-  GPIOPinIntClear(GPIO_PORTF_BASE, GPIO_PIN_1);
-  IntEnable(INT_GPIOF); 
-  
+  //if(priority < 8)
+  //{
+  //	IntPrioritySet(INT_TIMER2A,(unsigned char)priority);
+  //}
+  //else
+  //{
+	//  return FAIL; 
+  //}
+  //GPIOPinIntClear(GPIO_PORTF_BASE, GPIO_PIN_1);
+  //IntEnable(INT_GPIOF); 
+  //IntEnable(INT_TIMER2A);
   return SUCCESS;
 }
 
@@ -339,7 +371,7 @@ OS_AddDownTask(void(*task)(void), unsigned long priority)
   // accessed in the ISR.
   DownTask = task;
   
-  // Enable GPIO PortF module
+  // Enable GPIO PortE module
   SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);
 
   // Make the switch pin an input
@@ -348,20 +380,21 @@ OS_AddDownTask(void(*task)(void), unsigned long priority)
                      GPIO_PIN_TYPE_STD_WPU);
 
   // Enable interrupts associated with the switch
-  GPIOPinIntEnable(GPIO_PORTE_BASE, GPIO_PIN_1);
+  //GPIOPinIntEnable(GPIO_PORTE_BASE, GPIO_PIN_1);
   
   // Set priority for the button interrupt.
   if(priority < 8)
   {
-  	IntPrioritySet(INT_GPIOE,(unsigned char)priority);
+  	IntPrioritySet(INT_TIMER2A,(unsigned char)priority);
   }
   else
   {
-	return FAIL; 
+	  return FAIL; 
   }
-  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
-  IntEnable(INT_GPIOE); 
-  
+  //GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
+  //IntEnable(INT_GPIOE); 
+  IntEnable(INT_TIMER2A);
+
   return SUCCESS;
 }
 
@@ -975,12 +1008,65 @@ Timer3BIntHandler(void)
 void
 Timer2IntHandler(void)
 {
+  unsigned long ulData, ulDelta; 
   IntMasterDisable();
+
+    //
+    // Read the state of the push buttons.
+    //
+    ulData = (GPIOPinRead(GPIO_PORTE_BASE, (GPIO_PIN_0 | GPIO_PIN_1 |
+                                            GPIO_PIN_2 | GPIO_PIN_3)) |
+              (GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1) << 3));
+
+    //
+    // Determine the switches that are at a different state than the debounced
+    // state.
+    //
+    ulDelta = ulData ^ g_ucSwitches;
+
+    //
+    // Increment the clocks by one.
+    //
+    g_ucSwitchClockA ^= g_ucSwitchClockB;
+    g_ucSwitchClockB = ~g_ucSwitchClockB;
+
+    //
+    // Reset the clocks corresponding to switches that have not changed state.
+    //
+    g_ucSwitchClockA &= ulDelta;
+    g_ucSwitchClockB &= ulDelta;
+
+    //
+    // Get the new debounced switch state.
+    //
+    g_ucSwitches &= g_ucSwitchClockA | g_ucSwitchClockB;
+    g_ucSwitches |= (~(g_ucSwitchClockA | g_ucSwitchClockB)) & ulData;
+
+    //
+    // Determine the switches that just changed debounced state.
+    //
+    ulDelta ^= (g_ucSwitchClockA | g_ucSwitchClockB);
   
   //If the button is still pressed, execute the user task.
-  if(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1))
+  if((ulDelta & 0x10) && !(g_ucSwitches & 0x10))
   {
     ButtonTask();
+  }
+  if((ulDelta & 0x08) && !(g_ucSwitches & 0x08))
+  {
+    RightTask();
+  }
+  if((ulDelta & 0x04) && !(g_ucSwitches & 0x04))
+  {
+    LeftTask();
+  }
+  if((ulDelta & 0x02) && !(g_ucSwitches & 0x02))
+  {
+    DownTask();
+  }
+  if((ulDelta & 0x01) && !(g_ucSwitches & 0x01))
+  {
+    UpTask();
   }
   //Wait for the user to release the button
   //while(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1));
@@ -992,10 +1078,15 @@ Timer2IntHandler(void)
   //while(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1));
 
   //Clear the interrupt
-  GPIOPinIntClear(GPIO_PORTF_BASE, GPIO_PIN_1);
-  
+  /*GPIOPinIntClear(GPIO_PORTF_BASE, GPIO_PIN_1);
+  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
+  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
+  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
+  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);*/
+
+
   TimerIntClear(TIMER2_BASE, TIMER_TIMA_TIMEOUT);
-  GPIOPinIntEnable(GPIO_PORTF_BASE, GPIO_PIN_1);
+  //GPIOPinIntEnable(GPIO_PORTF_BASE, GPIO_PIN_1);
 
   IntMasterEnable();  
 }
@@ -1009,6 +1100,88 @@ Timer2IntHandler(void)
 void
 SysTickThSwIntHandler(void)
 {   
+  unsigned long ulData, ulDelta; 
+  IntMasterDisable();
+
+    //
+    // Read the state of the push buttons.
+    //
+    ulData = (GPIOPinRead(GPIO_PORTE_BASE, (GPIO_PIN_0 | GPIO_PIN_1 |
+                                            GPIO_PIN_2 | GPIO_PIN_3)) |
+              (GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1) << 3));
+
+    //
+    // Determine the switches that are at a different state than the debounced
+    // state.
+    //
+    ulDelta = ulData ^ g_ucSwitches;
+
+    //
+    // Increment the clocks by one.
+    //
+    g_ucSwitchClockA ^= g_ucSwitchClockB;
+    g_ucSwitchClockB = ~g_ucSwitchClockB;
+
+    //
+    // Reset the clocks corresponding to switches that have not changed state.
+    //
+    g_ucSwitchClockA &= ulDelta;
+    g_ucSwitchClockB &= ulDelta;
+
+    //
+    // Get the new debounced switch state.
+    //
+    g_ucSwitches &= g_ucSwitchClockA | g_ucSwitchClockB;
+    g_ucSwitches |= (~(g_ucSwitchClockA | g_ucSwitchClockB)) & ulData;
+
+    //
+    // Determine the switches that just changed debounced state.
+    //
+    ulDelta ^= (g_ucSwitchClockA | g_ucSwitchClockB);
+  
+  //If the button is still pressed, execute the user task.
+  if((ulDelta & 0x10) && !(g_ucSwitches & 0x10) && (ButtonTask != NULL))
+  {
+    ButtonTask();
+  }
+  if((ulDelta & 0x08) && !(g_ucSwitches & 0x08) && (RightTask != NULL))
+  {
+    RightTask();
+  }
+  if((ulDelta & 0x04) && !(g_ucSwitches & 0x04) && (LeftTask != NULL))
+  {
+    LeftTask();
+  }
+  if((ulDelta & 0x02) && !(g_ucSwitches & 0x02) && (DownTask != NULL))
+  {
+    DownTask();
+  }
+  if((ulDelta & 0x01) && !(g_ucSwitches & 0x01) && (UpTask != NULL))
+  {
+    UpTask();
+  }
+  //Wait for the user to release the button
+  //while(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1));
+  
+  //Debounce for 10ms
+  //SysCtlDelay((SysCtlClockGet()/1000)*10);
+
+  //Re-read switch to make sure it is unpressed.
+  //while(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1));
+
+  //Clear the interrupt
+  /*GPIOPinIntClear(GPIO_PORTF_BASE, GPIO_PIN_1);
+  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
+  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
+  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
+  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);*/
+
+
+  //TimerIntClear(TIMER2_BASE, TIMER_TIMA_TIMEOUT);
+  //GPIOPinIntEnable(GPIO_PORTF_BASE, GPIO_PIN_1);
+
+  IntMasterEnable();  
+  
   TriggerPendSV();
 }
 
@@ -1061,7 +1234,7 @@ PendSVHandler(void)
 //
 //***********************************************************************
 void
-SelectSwitchIntHandler(void)
+SwitchIntHandler(void)
 {
   //
   // Enable Timer2 module
@@ -1089,7 +1262,11 @@ SelectSwitchIntHandler(void)
   // Start Timer2.
   //
   TimerEnable(TIMER2_BASE, TIMER_BOTH);
-  GPIOPinIntDisable(GPIO_PORTF_BASE, GPIO_PIN_1);
+  /*GPIOPinIntDisable(GPIO_PORTF_BASE, GPIO_PIN_1);
+  GPIOPinIntDisable(GPIO_PORTE_BASE, GPIO_PIN_0);
+  GPIOPinIntDisable(GPIO_PORTE_BASE, GPIO_PIN_1);
+  GPIOPinIntDisable(GPIO_PORTE_BASE, GPIO_PIN_2);
+  GPIOPinIntDisable(GPIO_PORTE_BASE, GPIO_PIN_3);*/
 }
  
 //******************************EOF**************************************

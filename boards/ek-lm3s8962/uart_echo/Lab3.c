@@ -462,7 +462,7 @@ void Interpreter(void)
 //--------------end of Task 5-----------------------------
 
 //*******************final user main DEMONTRATE THIS TO TA**********
-int realmain(void){        // lab 3 real main
+int main(void){        // lab 3 real main
   OS_Init();           // initialize, disable interrupts
 
   DataLost = 0;        // lost data between producer and consumer
@@ -474,7 +474,7 @@ int realmain(void){        // lab 3 real main
 
 //*******attach background tasks***********
   OS_AddButtonTask(&ButtonPush,2);
-  OS_AddButtonTask(&DownPush,3);
+  OS_AddDownTask(&DownPush,3);
   OS_AddPeriodicThread(&DAS,PERIOD,1); // 2 kHz real time sampling
 
   NumCreated = 0 ;
@@ -630,7 +630,7 @@ void BackgroundThread5c(void){   // called when Select button pushed
   NumCreated += OS_AddThread(&Thread4c,128,3); 
 }
       
-int Testmain3(void){   // Testmain3
+int testmain3(void){   // Testmain3
   Count4 = 0;          
   OS_Init();           // initialize, disable interrupts
 // Count2 + Count5 should equal Count1 (Count5 may be zero)
@@ -794,7 +794,7 @@ void TaskB(void){       // called every pB in background
   GPIO_PB2 = 0x00;      // debugging profile  
 }
 
-int main(void){       // Testmain5
+int testmain5(void){       // Testmain5
   volatile unsigned long delay;
 //  SYSCTL_RCGC2_R |= SYSCTL_RCGC2_GPIOB; // activate port B
 //  delay = SYSCTL_RCGC2_R;     // allow time to finish activating

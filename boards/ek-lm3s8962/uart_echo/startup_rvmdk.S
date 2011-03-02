@@ -86,7 +86,7 @@ __heap_limit
 		EXTERN  Timer2IntHandler
 		EXTERN  SysTickThSwIntHandler
 		EXTERN  PendSVHandler
-		EXTERN  SelectSwitchIntHandler
+		EXTERN  SwitchIntHandler
 
 ;******************************************************************************
 ;
@@ -134,19 +134,19 @@ __Vectors
         DCD     IntDefaultHandler           ; Timer 0 subtimer B
         DCD     IntDefaultHandler           ; Timer 1 subtimer A
         DCD     IntDefaultHandler           ; Timer 1 subtimer B
-        DCD     Timer2IntHandler            ; Timer 2 subtimer A
+        DCD     IntDefaultHandler            ; Timer 2 subtimer A
         DCD     IntDefaultHandler           ; Timer 2 subtimer B
         DCD     IntDefaultHandler           ; Analog Comparator 0
         DCD     IntDefaultHandler           ; Analog Comparator 1
         DCD     IntDefaultHandler           ; Analog Comparator 2
         DCD     IntDefaultHandler           ; System Control (PLL, OSC, BO)
         DCD     IntDefaultHandler           ; FLASH Control
-        DCD     SelectSwitchIntHandler      ; GPIO Port F
+        DCD     IntDefaultHandler           ; GPIO Port F
         DCD     IntDefaultHandler           ; GPIO Port G
         DCD     IntDefaultHandler           ; GPIO Port H
         DCD     IntDefaultHandler           ; UART2 Rx and Tx
         DCD     IntDefaultHandler           ; SSI1 Rx and Tx
-		DCD     Timer3AIntHandler            ; Timer 3 subtimer A
+		    DCD     Timer3AIntHandler            ; Timer 3 subtimer A
         DCD     Timer3BIntHandler            ; Timer 3 subtimer B
         DCD     IntDefaultHandler           ; I2C1 Master and Slave
         DCD     IntDefaultHandler           ; Quadrature Encoder 1
