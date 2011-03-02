@@ -977,9 +977,9 @@ Timer3AIntHandler(void)
       if(index<0)index = 0;
       if(index>=JitterSize)index = JITTERSIZE-1;
       JitterHistogramA[index]++; 
-      LastTime = thisTime;
 	}
 	firstJitterA = 0;
+  LastTime = thisTime;
   }
   // Execute the periodic thread
   TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
@@ -1172,7 +1172,7 @@ PendSVHandler(void)
   do
   {
     NextThread = NextThread->next;
-  }while(((NextThread->sleepCount != 0)||(NextThread->BlockPt != NULL)||(NextThread->priority > RunPriorityLevel))&&NextThread!=CurrentThread);
+  }while(((NextThread->sleepCount != 0)||(NextThread->BlockPt != NULL)||(NextThread->priority > RunPriorityLevel))NextThread!=CurrentThread);
   
   HWREG(NVIC_ST_CURRENT) = 0;
   OS_EXITCRITICAL();

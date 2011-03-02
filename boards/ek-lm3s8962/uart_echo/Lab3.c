@@ -231,7 +231,8 @@ unsigned long myId = OS_Id();
     PIDWork++;        // calculation finished
 	OS_Sleep(2);
   }
-  for(;;){ }          // done
+  for(;;){ 
+  }          // done
 }
 //--------------end of Task 4-----------------------------
 
@@ -786,14 +787,14 @@ void Jitter(void)   // prints jitter information (write this)
   for(i = 0; i<JITTERSIZE; i++)
   {
     if(JitterHistogramB[i] != 0)
-	{
-	  Int2Str((i-32), printInd);
-	  Int2Str(JitterHistogramB[i], string);
-	  OSuart_OutString(UART0_BASE,printInd);
-	  OSuart_OutString(UART0_BASE,": ");
+  	{
+  	  Int2Str((i-32), printInd);
+  	  Int2Str(JitterHistogramB[i], string);
+  	  OSuart_OutString(UART0_BASE,printInd);
+  	  OSuart_OutString(UART0_BASE,": ");
       OSuart_OutString(UART0_BASE,string);
-	  OSuart_OutString(UART0_BASE,"\n\r"); 
-	}
+  	  OSuart_OutString(UART0_BASE,"\n\r"); 
+  	}
   }
     
 }
