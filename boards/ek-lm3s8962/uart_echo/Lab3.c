@@ -78,6 +78,7 @@ unsigned short input;
     input = ADC_In(1);
     DASoutput = Filter(input);
     FilterWork++;        // calculation finished
+
   }
 }
 //--------------end of Task 1-----------------------------
@@ -475,7 +476,7 @@ void Interpreter(void)
 //--------------end of Task 5-----------------------------
 
 //*******************final user main DEMONTRATE THIS TO TA**********
-int main(void){        // lab 3 real main
+int Mainmain(void){        // lab 3 real main
   OS_Init();           // initialize, disable interrupts
 
   OS_InitSemaphore(&MailBoxEmpty,1);
@@ -743,7 +744,7 @@ unsigned long Count1;   // number of times thread1 loops
 // Output: none
 long timeDif;
 void PseudoWork(unsigned short work){
-unsigned short startTime;
+unsigned long startTime;
   startTime = OS_Time();    // time in 100ns units
   timeDif = OS_TimeDifference(OS_Time(),startTime); 
   while(timeDif <= (long)work)
@@ -800,7 +801,7 @@ void Thread7(void){  // foreground thread
   OSuart_OutString(UART0_BASE,"\n\r\n\r");
   OS_Kill();
 }
-#define workA 500       // {5,50,500 us} work in Task A
+#define workA 200       // {5,50,500 us} work in Task A
 #define counts1us 50    // number of OS_Time counts per 1us
 void TaskA(void){       // called every {1000, 2990us} in background
   GPIO_PB1 = 0x02;      // debugging profile  
@@ -808,7 +809,7 @@ void TaskA(void){       // called every {1000, 2990us} in background
   PseudoWork(workA*counts1us); //  do work (100ns time resolution)
   GPIO_PB1 = 0x00;      // debugging profile  
 }
-#define workB 250       // 250 us work in Task B
+#define workB 125       // 250 us work in Task B
 void TaskB(void){       // called every pB in background
   GPIO_PB2 = 0x04;      // debugging profile  
   CountB++;
@@ -816,14 +817,14 @@ void TaskB(void){       // called every pB in background
   GPIO_PB2 = 0x00;      // debugging profile  
 }
 
-int testmain5(void){       // Testmain5
+int main(void){       // Testmain5
   volatile unsigned long delay;
   OS_Init();           // initialize, disable interrupts
   NumCreated = 0 ;
   NumCreated += OS_AddThread(&Thread6,128,2); 
   NumCreated += OS_AddThread(&Thread7,128,1); 
-  OS_AddPeriodicThread(&TaskA,TIME_1MS,1);           // 1 ms, higher priority
-  OS_AddPeriodicThread(&TaskB,TIME_1MS/2,0);         // 2 ms, lower priority
+  OS_AddPeriodicThread(&TaskA,(TIME_1MS*111)/100,0);           // 1 ms, higher priority
+  OS_AddPeriodicThread(&TaskB,TIME_1MS,1);         // 2 ms, lower priority
   OS_Launch(TIMESLICE); // 2ms, doesn't return, interrupts enabled in here
   return 0;             // this never executes
 }

@@ -69,8 +69,9 @@ long MaxJitterA;             // largest time jitter between interrupts in usec
 long MinJitterA;             // smallest time jitter between interrupts in usec
 long MaxJitterB;             // largest time jitter between interrupts in usec
 long MinJitterB;             // smallest time jitter between interrupts in usec
-unsigned long PeriodTimerA;
-unsigned long PeriodTimerB;
+long PeriodTimerA;
+long PeriodTimerB;
+extern unsigned long NumSamples;
 
 //***********************************************************************
 // For Button Tasks
@@ -408,6 +409,12 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
   unsigned long timeIoff;
   OS_ENTERCRITICAL();
 
+  //Initialization for Jitter calculation:
+  MaxJitterA = 0;       // OS_Time in 20ns units
+  MinJitterA = 10000000;
+  MaxJitterB = 0;       // OS_Time in 20ns units
+  MinJitterB = 10000000;
+
   //Check for timer availiability
   OS_bWait(&PeriodicTimerMutex);
   if(TimerAFree){
@@ -422,7 +429,7 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
     // configuration is ignored by the hardware in 32-bit modes.
     HWREG(TIMER3_BASE + 0x00000004) = (TIMER_CFG_16_BIT_PAIR|TIMER_CFG_A_PERIODIC) & 255;
     TimerLoadSet(TIMER3_BASE, TIMER_A, period);
-	PeriodTimerA = period;
+	PeriodTimerA = (long)period;
     TimerIntEnable(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
     TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
     IntEnable(INT_TIMER3A);                                                                                
@@ -451,7 +458,7 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
     // configuration is ignored by the hardware in 32-bit modes.
     HWREG(TIMER3_BASE + 0x00000008) = ((TIMER_CFG_16_BIT_PAIR|TIMER_CFG_B_PERIODIC)>> 8) & 255;
     TimerLoadSet(TIMER3_BASE, TIMER_B, period);
-	PeriodTimerB = period;
+	PeriodTimerB = (long)period;
     TimerIntEnable(TIMER3_BASE, TIMER_TIMB_TIMEOUT);
     TimerIntClear(TIMER3_BASE, TIMER_TIMB_TIMEOUT);
     IntEnable(INT_TIMER3B);                                                                                
@@ -894,7 +901,7 @@ PerThreadSwitchInit(unsigned long period)
   SysTickPeriodSet(period);
 
   // Set Systick priority to high, PendSV priority to low
-  IntPrioritySet(FAULT_SYSTICK,(((unsigned char)1)<<5)&0xF0);
+  IntPrioritySet(FAULT_SYSTICK,(((unsigned char)0)<<5)&0xF0);
   IntPrioritySet(FAULT_PENDSV,(((unsigned char)7)<<5)&0xF0);
   
   // Enable the SysTick module  
@@ -912,27 +919,28 @@ long timeCheck;
 void
 Timer3AIntHandler(void)
 {
-  static unsigned long LastTime;  // time at previous interrupt  
-  static unsigned long thisTime;         // time at current interrupt
-  long jitter;                    // time between measured and expected
   int index;
+  static unsigned long LastTime;  // time at previous interrupt  
+  unsigned long thisTime;         // time at current interrupt
+  long jitter;                    // time between measured and expected
 
-  // Jitter calculation:
-  thisTime = OS_Time();       // current time, 20 ns
-  timeCheck = OS_TimeDifference(thisTime, LastTime);
-  jitter = ((OS_TimeDifference(thisTime, LastTime)-PeriodTimerA)*CLOCK_PERIOD)/1000;  // in usec
-  if(jitter > MaxJitterB){
-    MaxJitterB = jitter;
+  if(NumSamples < RUNLENGTH){
+    // Jitter calculation:
+    thisTime = OS_Time();       // current time, 20 ns
+    timeCheck = OS_TimeDifference(thisTime, LastTime);
+    jitter = ((OS_TimeDifference(thisTime, LastTime)-PeriodTimerA)*CLOCK_PERIOD)/1000;  // in usec
+	if(jitter > MaxJitterA){
+      MaxJitterA = jitter;
+    }
+    if(jitter < MinJitterA){
+      MinJitterA = jitter;
+    }        // jitter should be 0
+    index = jitter+JITTERSIZE/2;   // us units
+    if(index<0)index = 0;
+    if(index>=JitterSize)index = JITTERSIZE-1;
+    JitterHistogramA[index]++; 
+    LastTime = thisTime;
   }
-  if(jitter < MinJitterB){
-    MinJitterB = jitter;
-  }        // jitter should be 0
-  index = jitter+JITTERSIZE/2;   // us units
-  if(index<0)index = 0;
-  if(index>=JitterSize)index = JITTERSIZE-1;
-  JitterHistogramA[index]++; 
-  LastTime = thisTime;
-
   // Execute the periodic thread
   TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
   PeriodicTaskA();  
@@ -950,22 +958,24 @@ Timer3BIntHandler(void)
   unsigned long thisTime;         // time at current interrupt
   long jitter;                    // time between measured and expected
   int index;
-
-  // Jitter calculation:
-  thisTime = OS_Time();       // current time, 20 ns
-  jitter = ((OS_TimeDifference(thisTime,LastTime)-PeriodTimerB)*CLOCK_PERIOD)/1000;  // in usec
-  if(jitter > MaxJitterB){
-    MaxJitterB = jitter;
+ 
+  if(NumSamples < RUNLENGTH){
+    // Jitter calculation:
+    thisTime = OS_Time();       // current time, 20 ns
+    timeCheck = OS_TimeDifference(thisTime, LastTime);
+    jitter = ((OS_TimeDifference(thisTime, LastTime)-PeriodTimerB)*CLOCK_PERIOD)/1000;  // in usec
+	if(jitter > MaxJitterB){
+      MaxJitterA = jitter;
+    }
+    if(jitter < MinJitterB){
+      MinJitterA = jitter;
+    }        // jitter should be 0
+    index = jitter+JITTERSIZE/2;   // us units
+    if(index<0)index = 0;
+    if(index>=JitterSize)index = JITTERSIZE-1;
+    JitterHistogramB[index]++; 
+    LastTime = thisTime;
   }
-  if(jitter < MinJitterB){
-    MinJitterB = jitter;
-  }        // jitter should be 0
-  index = jitter+JITTERSIZE/2;   // us units
-  if(index<0)index = 0;
-  if(index>=JitterSize)index = JITTERSIZE-1;
-  JitterHistogramB[index]++; 
-  LastTime = thisTime;
-  
   // Execute Periodic task
   TimerIntClear(TIMER3_BASE, TIMER_TIMB_TIMEOUT);
   PeriodicTaskB();  
