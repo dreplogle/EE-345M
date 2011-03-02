@@ -32,12 +32,13 @@ unsigned long PIDWork;      // current number of PID calculations finished
 unsigned long FilterWork;   // number of digital filter calculations finished
 unsigned long NumSamples;   // incremented every sample
 unsigned long DataLost;     // data sent by Producer, but not received by Consumer
-extern long MaxJitter;    // largest time difference between interrupt trigger and running thread     //extern for the next 4
-extern long MinJitter;    // smallest time difference between interrupt trigger and running thread
-extern unsigned long const JitterSize;
-extern unsigned long JitterHistogram[];
+
 extern unsigned long JitterHistogramA[];
 extern unsigned long JitterHistogramB[];
+
+Sema4Type MailBoxFull;
+Sema4Type MailBoxEmpty;
+
 
 unsigned char Buffer[100];  // Buffer size for interpreter input
 unsigned int BufferPt = 0;	// Buffer pointer
@@ -77,6 +78,7 @@ unsigned short input;
     input = ADC_In(1);
     DASoutput = Filter(input);
     FilterWork++;        // calculation finished
+
   }
 }
 //--------------end of Task 1-----------------------------
@@ -97,7 +99,7 @@ unsigned long myId = OS_Id();
   }
   oLED_Message(1,1,"PIDWork    =",PIDWork);
   oLED_Message(1,2,"DataLost   =",DataLost);
-  oLED_Message(1,3,"0.1u Jitter=",MaxJitter-MinJitter);
+//  oLED_Message(1,3,"0.1u Jitter=",MaxJitter-MinJitter);
   OS_Kill();  // done
 } 
 
@@ -166,7 +168,12 @@ unsigned long myId = OS_Id();
     }
     cr4_fft_64_stm32(y,x,64);  // complex FFT of last 64 ADC values
     DCcomponent = y[0]&0xFFFF; // Real part at frequency 0, imaginary part should be zero
-    OS_MailBox_Send(DCcomponent);
+    
+	OS_Wait(&MailBoxEmpty);
+	OS_MailBox_Send(DCcomponent);
+	OS_Signal(&MailBoxFull);
+	
+	OS_Sleep(15);
   }
   OS_Kill();  // done
 }
@@ -180,8 +187,12 @@ unsigned long data,voltage;
   oLED_Message(0,0,"Run length is",(RUNLENGTH)/1000);   // top half used for Display
   while(NumSamples < RUNLENGTH) { 
     oLED_Message(0,1,"Time left is",(RUNLENGTH-NumSamples)/1000);   // top half used for Display
-    data = OS_MailBox_Recv();
-    voltage = 3000*data/1024;               // calibrate your device so voltage is in mV
+    
+	OS_Wait(&MailBoxFull);
+	data = OS_MailBox_Recv();
+	OS_Signal(&MailBoxEmpty);
+    
+	voltage = 3000*data/1024;               // calibrate your device so voltage is in mV
     oLED_Message(0,2,"v(mV) =",voltage);  
   } 
   OS_Kill();  // done
@@ -405,12 +416,12 @@ OS_Interpret(unsigned char nextChar)
 	   }
 
 	   // Displays delta jitter
-	   if(strcasecmp(token, "MaxJitter-MinJitter") == 0)
-	   {	 
-		 Int2Str(MaxJitter-MinJitter, string);
-		 OSuart_OutString(UART0_BASE, " =");
-		 OSuart_OutString(UART0_BASE, string);	
-	   }
+//	   if(strcasecmp(token, "MaxJitter-MinJitter") == 0)
+//	   {	 
+//		 Int2Str(MaxJitter-MinJitter, string);
+//		 OSuart_OutString(UART0_BASE, " =");
+//		 OSuart_OutString(UART0_BASE, string);	
+//	   }
 	   
 	   // Display the amount of data lost
 	   if(strcasecmp(token, "DataLost") == 0)
@@ -442,17 +453,20 @@ OS_Interpret(unsigned char nextChar)
     OSuart_OutString(UART0_BASE, "\r\n");
   }
 }  
-
+unsigned long Count1;   // number of times thread1 loops
 void Interpreter(void)
 {
   unsigned char trigger;
   short fifo_status = 0;
+  Count1 = 0;
   OSuart_Open();
   for(;;)
   {    
     fifo_status = UARTRxFifo_Get(&trigger);
     if(fifo_status == 1)
     OS_Interpret(trigger);
+	OS_Sleep(2);   //Give PID a chance to run
+	Count1++;
   }
 }      
 // 2) print debugging parameters 
@@ -462,15 +476,19 @@ void Interpreter(void)
 //--------------end of Task 5-----------------------------
 
 //*******************final user main DEMONTRATE THIS TO TA**********
+
 int main(void){        // lab 3 real main
   OS_Init();           // initialize, disable interrupts
+
+  OS_InitSemaphore(&MailBoxEmpty,1);
+  OS_InitSemaphore(&MailBoxFull,0);
 
   DataLost = 0;        // lost data between producer and consumer
   NumSamples = 0;
 
 //********initialize communication channels
   OS_MailBox_Init();
-  OS_Fifo_Init(32);    // ***note*** 4 is not big enough*****
+  OS_Fifo_Init(64);    // ***note*** 4 is not big enough*****
 
 //*******attach background tasks***********
   OS_AddButtonTask(&ButtonPush,2);
@@ -499,7 +517,7 @@ int main(void){        // lab 3 real main
 // no select interrupts
 // no ADC serial port or oLED output
 // no calls to semaphores
-unsigned long Count1;   // number of times thread1 loops
+
 unsigned long Count2;   // number of times thread2 loops
 unsigned long Count3;   // number of times thread3 loops
 unsigned long Count4;   // number of times thread4 loops
@@ -725,18 +743,24 @@ unsigned long Count1;   // number of times thread1 loops
 // simple time delay, simulates user program doing real work
 // Input: amount of work in 100ns units (free free to change units
 // Output: none
+long timeDif;
 void PseudoWork(unsigned short work){
-unsigned short startTime;
+unsigned long startTime;
   startTime = OS_Time();    // time in 100ns units
-  while(OS_TimeDifference(OS_Time(),startTime) <= work){} 
+  timeDif = OS_TimeDifference(OS_Time(),startTime); 
+  while(timeDif <= (long)work)
+  {
+    timeDif = OS_TimeDifference(OS_Time(),startTime);
+  } 
 }
 void Thread6(void){  // foreground thread
   Count1 = 0;          
   for(;;){
     Count1++; 
-    GPIO_PB0 ^= 0x01;        // debugging toggle bit 0  
+    GPIO_PB0 ^= 0x01;        // debugging toggle bit 0  CREATES A LOT OF JITTER!
   }
 }
+
 void Jitter(void)   // prints jitter information (write this)
 {
   char string[7], printInd[7];
@@ -772,21 +796,21 @@ void Jitter(void)   // prints jitter information (write this)
 }
 
 void Thread7(void){  // foreground thread
-//  OSuart_OutString(UART0_BASE,"\n\rEE345M/EE380L, Lab 3 Preparation 2\n\r");
+  OSuart_OutString(UART0_BASE,"\n\rEE345M/EE380L, Lab 3 Preparation 2\n\r");
   OS_Sleep(5000);   // 10 seconds        
   Jitter();         // print jitter information
   OSuart_OutString(UART0_BASE,"\n\r\n\r");
   OS_Kill();
 }
-#define workA 500       // {5,50,500 us} work in Task A
-#define counts1us 10    // number of OS_Time counts per 1us
+#define workA 200       // {5,50,500 us} work in Task A
+#define counts1us 50    // number of OS_Time counts per 1us
 void TaskA(void){       // called every {1000, 2990us} in background
   GPIO_PB1 = 0x02;      // debugging profile  
   CountA++;
   PseudoWork(workA*counts1us); //  do work (100ns time resolution)
   GPIO_PB1 = 0x00;      // debugging profile  
 }
-#define workB 250       // 250 us work in Task B
+#define workB 125       // 250 us work in Task B
 void TaskB(void){       // called every pB in background
   GPIO_PB2 = 0x04;      // debugging profile  
   CountB++;
@@ -796,17 +820,12 @@ void TaskB(void){       // called every pB in background
 
 int testmain5(void){       // Testmain5
   volatile unsigned long delay;
-//  SYSCTL_RCGC2_R |= SYSCTL_RCGC2_GPIOB; // activate port B
-//  delay = SYSCTL_RCGC2_R;     // allow time to finish activating
-//  GPIO_PORTB_DIR_R |= 0x07;   // make PB2, PB1, PB0 out
-//  GPIO_PORTB_DEN_R |= 0x07;   // enable digital I/O on PB2, PB1, PB0
   OS_Init();           // initialize, disable interrupts
   NumCreated = 0 ;
   NumCreated += OS_AddThread(&Thread6,128,2); 
   NumCreated += OS_AddThread(&Thread7,128,1); 
-  OS_AddPeriodicThread(&TaskA,TIME_1MS,0);           // 1 ms, higher priority
-  OS_AddPeriodicThread(&TaskB,TIME_1MS/2,1);         // 2 ms, lower priority
-  IntMasterEnable();
+  OS_AddPeriodicThread(&TaskA,(TIME_1MS*111)/100,0);           // 1 ms, higher priority
+  OS_AddPeriodicThread(&TaskB,TIME_1MS,1);         // 2 ms, lower priority
   OS_Launch(TIMESLICE); // 2ms, doesn't return, interrupts enabled in here
   return 0;             // this never executes
 }
@@ -830,13 +849,19 @@ unsigned long WaitCount2;     // number of times s is successfully waited on
 unsigned long WaitCount3;     // number of times s is successfully waited on
 #define MAXCOUNT 20000
 void OutputThread(void){  // foreground thread
-  printf("\n\rEE345M/EE380L, Lab 3 Preparation 4\n\r");
+  char sigStr[7], waitStr[7];
+  OSuart_OutString(UART0_BASE,"\n\rEE345M/EE380L, Lab 3 Preparation 4\n\r");
   while(SignalCount1+SignalCount2+SignalCount3<100*MAXCOUNT){
     OS_Sleep(1000);   // 1 second
-    printf(".");
+    OSuart_OutString(UART0_BASE,".");
   }       
-  printf(" done\n\r");
-  printf("Signalled=%u, Waited=%u\n\r",SignalCount1+SignalCount2+SignalCount3,WaitCount1+WaitCount2+WaitCount3);
+  OSuart_OutString(UART0_BASE," done\n\r");
+  Int2Str(SignalCount1+SignalCount2+SignalCount3, sigStr);
+  Int2Str(WaitCount1+WaitCount2+WaitCount3, waitStr);
+  OSuart_OutString(UART0_BASE,"Signalled = ");
+  OSuart_OutString(UART0_BASE,sigStr);
+  OSuart_OutString(UART0_BASE,"Waited = ");
+  OSuart_OutString(UART0_BASE,waitStr);
 
   OS_Kill();
 }
@@ -893,10 +918,7 @@ int testmain6(void){      // Testmain6
   volatile unsigned long delay;
   OS_Init();           // initialize, disable interrupts
   delay = add(3,4);
-  SYSCTL_RCGC2_R |= SYSCTL_RCGC2_GPIOB; // activate port B
-  delay = SYSCTL_RCGC2_R;     // allow time to finish activating
-  GPIO_PORTB_DIR_R |= 0x07;   // make PB2, PB1, PB0 out
-  GPIO_PORTB_DEN_R |= 0x07;   // enable digital I/O on PB2, PB1, PB0
+
   SignalCount1 = 0;   // number of times s is signaled
   SignalCount2 = 0;   // number of times s is signaled
   SignalCount3 = 0;   // number of times s is signaled
@@ -914,7 +936,7 @@ int testmain6(void){      // Testmain6
   NumCreated += OS_AddThread(&Wait2,128,2); 	// waiting thread
   NumCreated += OS_AddThread(&Wait3,128,2); 	// waiting thread
  
-  OS_Launch(TIME_1MS);  // 1ms, doesn't return, interrupts enabled in here
+  OS_Launch(TIMESLICE);  // 1ms, doesn't return, interrupts enabled in here
   return 0;             // this never executes
 }
 
@@ -932,10 +954,10 @@ int testmain6(void){      // Testmain6
 int testmain7(void){   // testmain7
   volatile unsigned long delay;
   OS_Init();           // initialize, disable interrupts
-  SYSCTL_RCGC2_R |= SYSCTL_RCGC2_GPIOB; // activate port B
-  delay = SYSCTL_RCGC2_R;     // allow time to finish activating
-  GPIO_PORTB_DIR_R |= 0x07;   // make PB2, PB1, PB0 out
-  GPIO_PORTB_DEN_R |= 0x07;   // enable digital I/O on PB2, PB1, PB0
+//  SYSCTL_RCGC2_R |= SYSCTL_RCGC2_GPIOB; // activate port B
+//  delay = SYSCTL_RCGC2_R;     // allow time to finish activating
+//  GPIO_PORTB_DIR_R |= 0x07;   // make PB2, PB1, PB0 out
+//  GPIO_PORTB_DEN_R |= 0x07;   // enable digital I/O on PB2, PB1, PB0
   NumCreated = 0 ;
   NumCreated += OS_AddThread(&Thread6,128,1); // look at Port B0 on scope 
   OS_Launch(TIME_1MS/10);  // 0.1ms, doesn't return, interrupts enabled in here

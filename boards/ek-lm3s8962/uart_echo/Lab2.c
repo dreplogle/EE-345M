@@ -29,7 +29,8 @@ volatile unsigned long NumSamples;   // incremented every sample
 unsigned long DataLost;     // data sent by Producer, but not received by Consumer
 long MaxJitter;             // largest time jitter between interrupts in usec
 long MinJitter;             // smallest time jitter between interrupts in usec
-unsigned long JitterHistogram[JITTERSIZE]={0,};
+unsigned long JitterHistogram[JITTERSIZE];
+extern unsigned long const JitterSize;
 unsigned char Buffer[100];  // Buffer size for interpreter input
 unsigned int BufferPt = 0;	// Buffer pointer
 unsigned short FirstSpace = 1; // Boolean to determine if first space has occured
@@ -74,8 +75,8 @@ void DAS(void)
   unsigned long thisTime;         // time at current ADC sample
   long jitter;                    // time between measured and expected
     if(NumSamples < RUNLENGTH){   // finite time run
-	/*
-	GPIO_B0 ^= 0x01;
+	
+//	GPIO_B0 ^= 0x01;
       input = ADC_In(1);    
 	  thisTime = OS_Time();       // current time, 20 ns
       DASoutput = Filter(input);
@@ -94,7 +95,7 @@ void DAS(void)
         JitterHistogram[index]++; 
       }
       LastTime = thisTime; 
-	  */
+	  
     }
 }
 //--------------end of Task 1-----------------------------
@@ -148,7 +149,7 @@ void ButtonPush(void){
 // inputs:  none
 // outputs: none
 void Producer(unsigned short data){
-  GPIO_B1 ^= 0x02;
+//  GPIO_B1 ^= 0x02;
   if(NumSamples < RUNLENGTH){   // finite time run
     NumSamples++;               // number of samples
     if(OS_Fifo_Put(data) == 0){ // send to consumer
@@ -177,7 +178,7 @@ unsigned long myId = OS_Id();
     cr4_fft_64_stm32(y,x,64);  // complex FFT of last 64 ADC values
     DCcomponent = y[0]&0xFFFF; // Real part at frequency 0, imaginary part should be zero
     OS_MailBox_Send(DCcomponent);
-	GPIO_B2 ^= 0x04; 
+//	GPIO_B2 ^= 0x04; 
   }
   OS_Kill();  // done
 }
@@ -223,7 +224,7 @@ unsigned long myId = OS_Id();
   Coeff[1] = 128;   // 0.5 = 128/256 integral coefficient
   Coeff[2] = 64;    // 0.25 = 64/256 derivative coefficient*
   while(NumSamples < RUNLENGTH) {
-    GPIO_B3 ^= 0x08; 
+//    GPIO_B3 ^= 0x08; 
     for(err = -1000; err <= 1000; err++){    // made-up data
       Actuator = PID_stm32(err,Coeff)/256;
     }
@@ -482,7 +483,7 @@ void Thread1b(void){
 }
 
 //*******************final user main DEMONTRATE THIS TO TA**********
-int Mainmain(void){ 
+int main(void){ 
 
   // Set the clocking to run from PLL at 50 MHz 
   SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_8MHZ);
@@ -509,7 +510,6 @@ int Mainmain(void){
   NumCreated += OS_AddThread(&Consumer,128,1); 
   NumCreated += OS_AddThread(&PID,128,3);
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
-  while(1);
   return 0;             // this never executes
 }
 
@@ -593,7 +593,7 @@ void Dummy1(void){
 void Dummy2(void){
   Count5++;
 }
-int main(void){  // testmain2
+int testmain2(void){  // testmain2
   OS_Init();           // initialize, disable interrupts
   NumCreated = 0 ;
   NumCreated += OS_AddThread(&Thread1b,128,1); 

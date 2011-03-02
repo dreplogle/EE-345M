@@ -120,7 +120,7 @@ StackInit
 ; Returns: none.
 ;******************************************************************************
 LaunchInternal
-  CPSID I
+  ;CPSID I
   MOV 	R13, R0						; Load thread SP
   POP	{LR}
   POP	{R4,R5,R6,R7,R8,R9,R10,R11}	; Pop registers for new thread

@@ -69,13 +69,9 @@ long MaxJitterA;             // largest time jitter between interrupts in usec
 long MinJitterA;             // smallest time jitter between interrupts in usec
 long MaxJitterB;             // largest time jitter between interrupts in usec
 long MinJitterB;             // smallest time jitter between interrupts in usec
-unsigned long PeriodTimerA;
-unsigned long PeriodTimerB;
-
-// For Lab3.c
-long MaxJitter;    // largest time difference between interrupt trigger and running thread
-long MinJitter;    // smallest time difference between interrupt trigger and running thread
-unsigned long JitterHistogram[];
+long PeriodTimerA;
+long PeriodTimerB;
+extern unsigned long NumSamples;
 
 // Following code copied from game logic 
 //*****************************************************************************
@@ -130,6 +126,7 @@ unsigned char ThreadStacks[MAX_NUM_OS_THREADS][STACK_SIZE];
 //***********************************************************************
 unsigned long MailBox1;
 unsigned long TimeIbitDisabled;
+Sema4Type fifoDataReady;
 
 //***********************************************************************
 // OS_Fifo variables, this code segment copied from Valvano, lecture1
@@ -152,6 +149,7 @@ void LaunchInternal(unsigned char * firstStackPtr);
 void TriggerPendSV(void);
 long SRSave (void);
 void SRRestore(long sr);
+extern void OSuart_Open(void);
 
 //***********************************************************************
 //
@@ -177,12 +175,10 @@ OS_Init(void)
 
   // Configure Timer1 as a 32-bit periodic timer.
   TimerConfigure(TIMER1_BASE, TIMER_CFG_32_BIT_PER);
-
-  // Set the Timer1 load value to generate the period specified by the user.
   TimerLoadSet(TIMER1_BASE, TIMER_A, MAX_TCNT);
 
   // Start Timer1.
-  TimerEnable(TIMER1_BASE, TIMER_BOTH);
+  TimerEnable(TIMER1_BASE, TIMER_A);
 
   // For profiling the time interrupts are disabled.
   TimeIbitDisabled = 0;
@@ -229,8 +225,6 @@ OS_AddThread(void(*task)(void), unsigned long stackSize, unsigned long priority)
   int addNum = 0;
   TCB * searchPtr;
   int addSuccess = FAIL;
-
-  //OS_CPU_SR  cpu_sr = 0;
 
   //Enter critical
   long sr = 0;
@@ -448,6 +442,12 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
   unsigned long timeIoff;
   OS_ENTERCRITICAL();
 
+  //Initialization for Jitter calculation:
+  MaxJitterA = 0;       // OS_Time in 20ns units
+  MinJitterA = 10000000;
+  MaxJitterB = 0;       // OS_Time in 20ns units
+  MinJitterB = 10000000;
+
   //Check for timer availiability
   OS_bWait(&PeriodicTimerMutex);
   if(TimerAFree){
@@ -462,7 +462,7 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
     // configuration is ignored by the hardware in 32-bit modes.
     HWREG(TIMER3_BASE + 0x00000004) = (TIMER_CFG_16_BIT_PAIR|TIMER_CFG_A_PERIODIC) & 255;
     TimerLoadSet(TIMER3_BASE, TIMER_A, period);
-	PeriodTimerA = period;
+	PeriodTimerA = (long)period;
     TimerIntEnable(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
     TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
     IntEnable(INT_TIMER3A);                                                                                
@@ -470,12 +470,14 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
       IntPrioritySet(INT_TIMER3A,(((unsigned char)priority)<<5)&0xF0);
     }
     else{
-       IntMasterEnable();
+//      IntMasterEnable();
+	   OS_EXITCRITICAL();
 	   return FAIL; 
     }
     TimerEnable(TIMER3_BASE, TIMER_A);
 	//Exit critical 
-    IntMasterEnable();
+//    IntMasterEnable();
+    OS_EXITCRITICAL();
 	return SUCCESS;
   }
   else if(TimerBFree){
@@ -489,7 +491,7 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
     // configuration is ignored by the hardware in 32-bit modes.
     HWREG(TIMER3_BASE + 0x00000008) = ((TIMER_CFG_16_BIT_PAIR|TIMER_CFG_B_PERIODIC)>> 8) & 255;
     TimerLoadSet(TIMER3_BASE, TIMER_B, period);
-	PeriodTimerB = period;
+	PeriodTimerB = (long)period;
     TimerIntEnable(TIMER3_BASE, TIMER_TIMB_TIMEOUT);
     TimerIntClear(TIMER3_BASE, TIMER_TIMB_TIMEOUT);
     IntEnable(INT_TIMER3B);                                                                                
@@ -497,12 +499,14 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
       IntPrioritySet(INT_TIMER3B,(((unsigned char)priority)<<5)&0xF0);
     }
     else{
-       IntMasterEnable();
-	   return FAIL; 
+//       IntMasterEnable();
+      OS_EXITCRITICAL();
+	  return FAIL; 
     }
     TimerEnable(TIMER3_BASE, TIMER_B);
 	//Exit critical 
-    IntMasterEnable();
+//    IntMasterEnable();
+    OS_EXITCRITICAL();
 	return SUCCESS;
   }
   
@@ -626,6 +630,8 @@ OS_Fifo_Init(unsigned int size)
 
   PutPt = GetPt = &Fifo[0];
   FifoSize = size;
+  OS_InitSemaphore(&fifoDataReady,0);
+  
 
   OS_EXITCRITICAL();  
 }
@@ -642,6 +648,7 @@ OS_Fifo_Get(unsigned long * dataPtr)
     return FAIL;// Empty if PutPt=GetPt
   }
   else{
+  OS_Wait(&fifoDataReady);
   *dataPtr = *(GetPt++);
     if(GetPt==&Fifo[FifoSize]){
       GetPt = &Fifo[0]; // wrap
@@ -669,6 +676,7 @@ OS_Fifo_Put(unsigned long data)
   else{
     *(PutPt) = data; // Put
     PutPt = nextPutPt; // Success, update
+	OS_Signal(&fifoDataReady);
     return SUCCESS;
   }
 }
@@ -729,6 +737,7 @@ unsigned long OS_Time(void)
 //
 //***********************************************************************
 long OS_TimeDifference(unsigned long time1, unsigned long time2)
+//                                   thisTime          	  LastTime
 {
   if(time2 >= time1)
   {
@@ -824,7 +833,7 @@ void
 OS_Signal(Sema4Type *semaPt)
 {
   TCB * temp = ThreadList;  // pointer to all threads in the threadlist
-  TCB * toUnblock;          // pointer to thread to unblock
+  TCB * toUnblock = NULL;          // pointer to thread to unblock
   unsigned long highest_priority = 100; 
   long sr = 0;
   unsigned long timeIoff;
@@ -843,7 +852,7 @@ OS_Signal(Sema4Type *semaPt)
        temp = temp->next;
      }
      while(temp != ThreadList);
-     if(toUnblock->BlockPt != NULL)
+     if(toUnblock->BlockPt != NULL && toUnblock != NULL)
      {
        toUnblock->BlockPt = NULL;
      }
@@ -860,14 +869,16 @@ OS_Signal(Sema4Type *semaPt)
 void 
 OS_Wait(Sema4Type *semaPt)
 {
-  IntMasterDisable();
+  long sr;
+  unsigned long timeIoff;
+  OS_ENTERCRITICAL();
   (semaPt->value)--;
   if((semaPt->value) < 0)
   {
      CurrentThread->BlockPt = semaPt;
      OS_Suspend();
   }
-  IntMasterEnable();
+  OS_EXITCRITICAL();
 }
 
 //***********************************************************************
@@ -879,9 +890,7 @@ OS_Wait(Sema4Type *semaPt)
 void 
 OS_bSignal(Sema4Type *semaPt)
 {
-//  IntMasterDisable();
   (semaPt->value) = 1;
-//  IntMasterEnable();
 }
 
 //***********************************************************************
@@ -939,29 +948,32 @@ PerThreadSwitchInit(unsigned long period)
 // Timer 3A Interrupt handler, executes the user defined period task.
 //
 //***********************************************************************
+long timeCheck;
 void
 Timer3AIntHandler(void)
 {
-  static unsigned long LastTime;  // time at previous ADC sample  
-  unsigned long thisTime;         // time at current ADC sample
-  long jitter;                    // time between measured and expected
   int index;
+  static unsigned long LastTime;  // time at previous interrupt  
+  unsigned long thisTime;         // time at current interrupt
+  long jitter;                    // time between measured and expected
 
-  // Jitter calculation:
-  thisTime = OS_Time();       // current time, 20 ns
-  jitter = ((OS_TimeDifference(thisTime,LastTime)-PeriodTimerA)*CLOCK_PERIOD)/1000;  // in usec
-  if(jitter > MaxJitterA){
-    MaxJitterA = jitter;
+  if(NumSamples < RUNLENGTH){
+    // Jitter calculation:
+    thisTime = OS_Time();       // current time, 20 ns
+    timeCheck = OS_TimeDifference(thisTime, LastTime);
+    jitter = ((OS_TimeDifference(thisTime, LastTime)-PeriodTimerA)*CLOCK_PERIOD)/1000;  // in usec
+	if(jitter > MaxJitterA){
+      MaxJitterA = jitter;
+    }
+    if(jitter < MinJitterA){
+      MinJitterA = jitter;
+    }        // jitter should be 0
+    index = jitter+JITTERSIZE/2;   // us units
+    if(index<0)index = 0;
+    if(index>=JitterSize)index = JITTERSIZE-1;
+    JitterHistogramA[index]++; 
+    LastTime = thisTime;
   }
-  if(jitter < MinJitterA){
-    MinJitterA = jitter;
-  }        // jitter should be 0
-  index = jitter+JITTERSIZE/2;   // us units
-  if(index<0)index = 0;
-  if(index>=JitterSize)index = JITTERSIZE-1;
-  JitterHistogramA[index]++; 
-  LastTime = thisTime; 
-
   // Execute the periodic thread
   TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
   PeriodicTaskA();  
@@ -975,26 +987,28 @@ Timer3AIntHandler(void)
 void
 Timer3BIntHandler(void)
 {
-  static unsigned long LastTime;  // time at previous ADC sample  
-  unsigned long thisTime;         // time at current ADC sample
+  static unsigned long LastTime;  // time at previous interrupt  
+  unsigned long thisTime;         // time at current interrupt
   long jitter;                    // time between measured and expected
   int index;
-
-  // Jitter calculation:
-  thisTime = OS_Time();       // current time, 20 ns
-  jitter = ((OS_TimeDifference(thisTime,LastTime)-PeriodTimerB)*CLOCK_PERIOD)/1000;  // in usec
-  if(jitter > MaxJitterB){
-    MaxJitterB = jitter;
+ 
+  if(NumSamples < RUNLENGTH){
+    // Jitter calculation:
+    thisTime = OS_Time();       // current time, 20 ns
+    timeCheck = OS_TimeDifference(thisTime, LastTime);
+    jitter = ((OS_TimeDifference(thisTime, LastTime)-PeriodTimerB)*CLOCK_PERIOD)/1000;  // in usec
+	if(jitter > MaxJitterB){
+      MaxJitterA = jitter;
+    }
+    if(jitter < MinJitterB){
+      MinJitterA = jitter;
+    }        // jitter should be 0
+    index = jitter+JITTERSIZE/2;   // us units
+    if(index<0)index = 0;
+    if(index>=JitterSize)index = JITTERSIZE-1;
+    JitterHistogramB[index]++; 
+    LastTime = thisTime;
   }
-  if(jitter < MinJitterB){
-    MinJitterB = jitter;
-  }        // jitter should be 0
-  index = jitter+JITTERSIZE/2;   // us units
-  if(index<0)index = 0;
-  if(index>=JitterSize)index = JITTERSIZE-1;
-  JitterHistogramB[index]++; 
-  LastTime = thisTime;
-
   // Execute Periodic task
   TimerIntClear(TIMER3_BASE, TIMER_TIMB_TIMEOUT);
   PeriodicTaskB();  
@@ -1008,87 +1022,7 @@ Timer3BIntHandler(void)
 void
 Timer2IntHandler(void)
 {
-  unsigned long ulData, ulDelta; 
-  IntMasterDisable();
 
-    //
-    // Read the state of the push buttons.
-    //
-    ulData = (GPIOPinRead(GPIO_PORTE_BASE, (GPIO_PIN_0 | GPIO_PIN_1 |
-                                            GPIO_PIN_2 | GPIO_PIN_3)) |
-              (GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1) << 3));
-
-    //
-    // Determine the switches that are at a different state than the debounced
-    // state.
-    //
-    ulDelta = ulData ^ g_ucSwitches;
-
-    //
-    // Increment the clocks by one.
-    //
-    g_ucSwitchClockA ^= g_ucSwitchClockB;
-    g_ucSwitchClockB = ~g_ucSwitchClockB;
-
-    //
-    // Reset the clocks corresponding to switches that have not changed state.
-    //
-    g_ucSwitchClockA &= ulDelta;
-    g_ucSwitchClockB &= ulDelta;
-
-    //
-    // Get the new debounced switch state.
-    //
-    g_ucSwitches &= g_ucSwitchClockA | g_ucSwitchClockB;
-    g_ucSwitches |= (~(g_ucSwitchClockA | g_ucSwitchClockB)) & ulData;
-
-    //
-    // Determine the switches that just changed debounced state.
-    //
-    ulDelta ^= (g_ucSwitchClockA | g_ucSwitchClockB);
-  
-  //If the button is still pressed, execute the user task.
-  if((ulDelta & 0x10) && !(g_ucSwitches & 0x10))
-  {
-    ButtonTask();
-  }
-  if((ulDelta & 0x08) && !(g_ucSwitches & 0x08))
-  {
-    RightTask();
-  }
-  if((ulDelta & 0x04) && !(g_ucSwitches & 0x04))
-  {
-    LeftTask();
-  }
-  if((ulDelta & 0x02) && !(g_ucSwitches & 0x02))
-  {
-    DownTask();
-  }
-  if((ulDelta & 0x01) && !(g_ucSwitches & 0x01))
-  {
-    UpTask();
-  }
-  //Wait for the user to release the button
-  //while(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1));
-  
-  //Debounce for 10ms
-  //SysCtlDelay((SysCtlClockGet()/1000)*10);
-
-  //Re-read switch to make sure it is unpressed.
-  //while(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1));
-
-  //Clear the interrupt
-  /*GPIOPinIntClear(GPIO_PORTF_BASE, GPIO_PIN_1);
-  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
-  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
-  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
-  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);*/
-
-
-  TimerIntClear(TIMER2_BASE, TIMER_TIMA_TIMEOUT);
-  //GPIOPinIntEnable(GPIO_PORTF_BASE, GPIO_PIN_1);
-
-  IntMasterEnable();  
 }
 
 //***********************************************************************
@@ -1195,7 +1129,10 @@ PendSVHandler(void)
 {
   TCB * TempPt;
   static unsigned long RunPriorityLevel;
-
+  long sr;
+  unsigned long timeIoff;
+  OS_ENTERCRITICAL();
+  
   //Determine the priority level to run	and update sleeping threads
   RunPriorityLevel = 100;     //Initialize to rediculously low priority
   TempPt = ThreadList;
@@ -1203,15 +1140,15 @@ PendSVHandler(void)
   {
     // Find lowest active priority level
     if((TempPt->BlockPt == NULL)&&(TempPt->priority < RunPriorityLevel)&&(TempPt->sleepCount == 0))
-	  {
+	{
         RunPriorityLevel = TempPt->priority;
-	  }
+	}
 	  // Decrement sleep counter on sleeping threads
     if(TempPt->sleepCount > 0)
-	  {
+	{
       (TempPt->sleepCount)--;
-	  }
-	  TempPt = TempPt->next;
+	}
+	TempPt = TempPt->next;
   }while(TempPt != ThreadList);
 
 
@@ -1224,8 +1161,11 @@ PendSVHandler(void)
   {
     NextThread = NextThread->next;
   }
-  SwitchThreads();
+  
   HWREG(NVIC_ST_CURRENT) = 0;
+  OS_EXITCRITICAL();
+ 
+  SwitchThreads();  
 }
 
 //***********************************************************************
