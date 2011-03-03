@@ -42,9 +42,7 @@ Sema4Type MailBoxFull;
 Sema4Type MailBoxEmpty;
 
 
-unsigned char Buffer[100];  // Buffer size for interpreter input
-unsigned int BufferPt = 0;	// Buffer pointer
-unsigned short FirstSpace = 1; // Boolean to determine if first space has occured
+
 
 // 10-sec finite time experiment duration 
 #define RUNLENGTH 10000   // display results and quit when NumSamples==RUNLENGTH
@@ -253,234 +251,6 @@ extern void Interpreter(void);    // just a prototype, link to your interpreter
 // 1) print performance measures 
 //    time-jitter, number of data points lost, number of calculations performed
 //    i.e., NumSamples, NumCreated, MaxJitter-MinJitter, DataLost, FilterWork, PIDwork
-//*****************************************************************************
-//
-// Interpret input from the terminal. Supported functions include
-// addition, subtraction, division, and multiplication in the post-fix format.
-//
-// \param nextChar specifies the next character to be put in the global buffer
-//
-// \return none.
-//
-//*****************************************************************************
-void
-OS_Interpret(unsigned char nextChar)
-{
-  char operator = Buffer[BufferPt - 2];
-  char * token;
-  char * last;
-  char string[10];
-  int a;
-  long total = 0;
-  short first = 1;
-  short command, equation = 0; 
-  switch(nextChar)
-  {
-    case '\b':
-     if(BufferPt != 0)
-	 {
-	   BufferPt--;
-	   Buffer[BufferPt] = '\0';
-	 }
-     break;
-    case '=':
-     FirstSpace = 1;
-     Buffer[BufferPt] = '=';
-     equation = 1;
-     break;
-    case '\r':
-     command = 1;
-	 //Buffer[BufferPt] = ' ';
-     break;
-    default:
-     Buffer[BufferPt] = nextChar;
-     BufferPt++;
-     break;
-  }
-
-  if(equation == 1)
-  {  
-    switch(operator)
-    {
-      case '+':
-        for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
-        {
-          total = total + atoi(token);
-        }
-        Int2Str(total, string);
-        OSuart_OutString(UART0_BASE, string);
-        OSuart_OutString(UART0_BASE, "\r\n");
-        break;  
-          
-        case '-':
-        for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
-        {
-          if(first)
-          {
-            total = atoi(token);
-            first = 0;
-          }
-          else
-          {
-            total = total - atoi(token);
-          }
-        }
-        Int2Str(total, string);
-		OSuart_OutString(UART0_BASE, string);
-        OSuart_OutString(UART0_BASE, "\r\n");
-        break;
-      
-      case '*':
-        for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
-        {
-          if(first)
-          {
-            total = atoi(token);
-            first = 0;
-          }
-          else
-          {
-            if(atoi(token) != 0)
-            {
-              total = total * atoi(token);
-            }
-          }
-        }
-        Int2Str(total, string);
-		OSuart_OutString(UART0_BASE, string);
-        OSuart_OutString(UART0_BASE, "\r\n");
-        break;
-      
-      case '/':
-        for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
-        {
-          if(first)
-          {
-            total = atoi(token);
-            first = 0;
-          }
-          else
-          {
-            if(atoi(token) != 0)
-            {
-              total = total / atoi(token);
-            }
-          }
-        }
-        Int2Str(total, string);
-        OSuart_OutString(UART0_BASE, string);
-        OSuart_OutString(UART0_BASE, "\r\n");
-        break;
-      
-      case 't':
-        Int2Str(OS_Time(), string);
-        OSuart_OutString(UART0_BASE, string);
-        OSuart_OutString(UART0_BASE, "\r\n");
-        break;
-
-      case 'j':
-	    break;
-	      
-      
-      default:
-        break;
-        
-    }
-	equation = 0;
-    BufferPt = 0;
-	memset(Buffer,'\0',100);
-  }
-  if(command == 1)
-  {
-    // Interpret all of the commands in the line
-	//    time-jitter, number of data points lost, number of calculations performed
-    //    i.e., NumSamples, NumCreated, MaxJitter-MinJitter, DataLost, FilterWork, PIDwork
-    for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
-    {
-	   //strcat(token, "\");
-	   //string = "PIDWork";
-	   // Display the number of samples
-	   /*a = strcasecmp(token, "PIDWork");
-	   Int2Str(a, string);
-	   OSuart_OutString(UART0_BASE, string);*/
-	   if(strcasecmp(token, "NumSamples") == 0)
-	   {	 
-		 Int2Str(NumSamples, string);
-		 OSuart_OutString(UART0_BASE, " ="); 
-		 OSuart_OutString(UART0_BASE, string);	
-	   }
-
-	   // Display number of samples created
-	   if(strcasecmp(token, "NumCreated") == 0)
-	   {	 
-		 Int2Str(NumCreated, string); 
-		 OSuart_OutString(UART0_BASE, " =");
-		 OSuart_OutString(UART0_BASE, string);	
-	   }
-
-	   // Displays delta jitter
-//	   if(strcasecmp(token, "MaxJitter-MinJitter") == 0)
-//	   {	 
-//		 Int2Str(MaxJitter-MinJitter, string);
-//		 OSuart_OutString(UART0_BASE, " =");
-//		 OSuart_OutString(UART0_BASE, string);	
-//	   }
-	   
-	   // Display the amount of data lost
-	   if(strcasecmp(token, "DataLost") == 0)
-	   {	 
-		 Int2Str(DataLost, string);
-		 OSuart_OutString(UART0_BASE, " =");
-		 OSuart_OutString(UART0_BASE, string);	
-	   }
-
-	   // Display the variable FilterWork
-	   if(strcasecmp(token, "FilterWork") == 0)
-	   {	 
-		 Int2Str(FilterWork, string);
-		 OSuart_OutString(UART0_BASE, " =");
-		 OSuart_OutString(UART0_BASE, string);	
-	   }
-
-	   // Display the variable PIDWork
-	   if(strcasecmp(token, "PIDWork") == 0)
-	   {	 
-		 Int2Str(PIDWork, string);
-		 OSuart_OutString(UART0_BASE, " =");
-		 OSuart_OutString(UART0_BASE, string);	
-	   } 
-    }
-	  command = 0; 
-  	BufferPt = 0;
-	  memset(Buffer,'\0',100);
-    OSuart_OutString(UART0_BASE, "\r\n");
-  }
-}  
-unsigned long Count1;   // number of times thread1 loops
-void Interpreter(void)
-{
-  unsigned char trigger;
-  short fifo_status = 0;
-  Count1 = 0;
-  OSuart_Open();
-  while(NumSamples<RUNLENGTH)
-  {    
-    fifo_status = UARTRxFifo_Get(&trigger);
-    if(fifo_status == 1)
-    OS_Interpret(trigger);
-	OS_Sleep(3);   //Give PID a chance to run
-	Count1++;
-  }
-  for(;;)
-  {
-    fifo_status = UARTRxFifo_Get(&trigger);
-    if(fifo_status == 1)
-    OS_Interpret(trigger);
-	Count1++;
-  }
-}      
-// 2) print debugging parameters 
-//    i.e., x[], y[] 
 
 
 //--------------end of Task 5-----------------------------
@@ -527,7 +297,7 @@ int main(void){        // lab 3 real main
 // no select interrupts
 // no ADC serial port or oLED output
 // no calls to semaphores
-
+unsigned long Count1;   // number of times thread1 loops
 unsigned long Count2;   // number of times thread2 loops
 unsigned long Count3;   // number of times thread3 loops
 unsigned long Count4;   // number of times thread4 loops
@@ -670,7 +440,7 @@ int testmain3(void){   // Testmain3
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;  // this never executes
 }
-
+unsigned long Count1;   // number of times thread1 loops
 //*******************Fourth TEST**********
 // Once the third test runs, run this example
 // Count1 should exactly equal Count2

@@ -5,6 +5,9 @@
 //
 //*****************************************************************************
 
+
 void OSuart_Send(const unsigned char *pucBuffer, unsigned long ulCount);
 void OSuart_OutString(unsigned long ulBase, char *string);
 void OSuart_Open(void);
+void OSuart_Interpret(unsigned char nextChar);
+void Interpreter(void);
