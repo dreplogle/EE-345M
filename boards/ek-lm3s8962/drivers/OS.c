@@ -381,17 +381,17 @@ OS_AddDownTask(void(*task)(void), unsigned long priority)
   //GPIOPinIntEnable(GPIO_PORTE_BASE, GPIO_PIN_1);
   
   // Set priority for the button interrupt.
-  if(priority < 8)
-  {
-  	IntPrioritySet(INT_TIMER2A,(unsigned char)priority);
-  }
-  else
-  {
-	  return FAIL; 
-  }
+  //if(priority < 8)
+  //{
+  //	IntPrioritySet(INT_TIMER2A,(unsigned char)priority);
+  //}
+  //else
+  //{
+  //	  return FAIL; 
+  //}
   //GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
   //IntEnable(INT_GPIOE); 
-  IntEnable(INT_TIMER2A);
+  //IntEnable(INT_TIMER2A);
 
   return SUCCESS;
 }
@@ -420,7 +420,7 @@ OS_RemoveButtonTask(void(*task)(void))
   GPIOPinIntDisable(GPIO_PORTE_BASE, GPIO_PIN_1);
   
   GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
-  IntDisable(INT_GPIOE); 
+  //IntDisable(INT_GPIOE); 
   
   return SUCCESS;
 
@@ -548,10 +548,15 @@ OS_Launch(unsigned long period)
 void
 OS_Sleep(unsigned long sleepCount)
 {
+  long sr = 0;
+  unsigned long timeIoff;
+  OS_ENTERCRITICAL();
   // Put the thread to sleep by loading a value into the sleep counter
   CurrentThread->sleepCount = sleepCount;
 
   // Pass control to the next thread
+  OS_EXITCRITICAL();
+
   TriggerPendSV();  
 }
 
@@ -584,8 +589,12 @@ OS_Suspend(void)
 void 
 OS_Kill(void)
 {
-  // Start the search pointer at the beginning of the list
+  long sr = 0;
+  unsigned long timeIoff;
   TCB * searchPtr = ThreadList;
+  OS_ENTERCRITICAL();
+  // Start the search pointer at the beginning of the list
+
 
   // Search the list and find the thread that points to the
   // one to be removed.
@@ -594,13 +603,24 @@ OS_Kill(void)
     searchPtr = searchPtr->next;
   }
 
-  // Remove the current thread from the linked list by assigning
-  // the pointer of the previous thread to the thread ahead of the
-  // element to be removed. 
-  searchPtr->next = CurrentThread->next;
+  // Do not kill the thread if it is the last element in the list
+  if(CurrentThread->next != CurrentThread)
+  {
+    // Remove the current thread from the linked list by assigning
+    // the pointer of the previous thread to the thread ahead of the
+    // element to be removed. 
+    searchPtr->next = CurrentThread->next;
 
-  // Indicate to AddThread that this spot is open
-  CurrentThread->id = DEAD;
+    // Reassign the beginning of the list if removing first element 
+    if(ThreadList = CurrentThread)
+    {
+      ThreadList = CurrentThread->next;
+    }
+	// Indicate to AddThread that this spot is open
+    CurrentThread->id = DEAD;
+  }
+
+  OS_EXITCRITICAL();
 
   // Move on to the next thread
   TriggerPendSV();
@@ -1172,7 +1192,7 @@ PendSVHandler(void)
   do
   {
     NextThread = NextThread->next;
-  }while(((NextThread->sleepCount != 0)||(NextThread->BlockPt != NULL)||(NextThread->priority > RunPriorityLevel))NextThread!=CurrentThread);
+  }while(((NextThread->sleepCount != 0)||(NextThread->BlockPt != NULL)||(NextThread->priority > RunPriorityLevel))&&(NextThread!=CurrentThread));
   
   HWREG(NVIC_ST_CURRENT) = 0;
   OS_EXITCRITICAL();
@@ -1188,37 +1208,7 @@ PendSVHandler(void)
 void
 SwitchIntHandler(void)
 {
-  //
-  // Enable Timer2 module
-  //
-  SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER2);
 
-  //
-  // Configure Timer2 as a 32-bit one-shot timer.
-  //
-  TimerConfigure(TIMER2_BASE, TIMER_CFG_32_BIT_OS);
-
-  //
-  // Set the Timer2 load value to generate the period specified by the user.
-  //
-  // 1000 at 50Mhz = 20us
-  TimerLoadSet(TIMER2_BASE, TIMER_BOTH, 100000);
-
-  //
-  // Enable the Timer2 interrupt.
-  //
-  TimerIntEnable(TIMER2_BASE, TIMER_TIMA_TIMEOUT);
-  TimerIntClear(TIMER2_BASE, TIMER_TIMA_TIMEOUT);
-  IntEnable(INT_TIMER2A);                                                                                
-  //
-  // Start Timer2.
-  //
-  TimerEnable(TIMER2_BASE, TIMER_BOTH);
-  /*GPIOPinIntDisable(GPIO_PORTF_BASE, GPIO_PIN_1);
-  GPIOPinIntDisable(GPIO_PORTE_BASE, GPIO_PIN_0);
-  GPIOPinIntDisable(GPIO_PORTE_BASE, GPIO_PIN_1);
-  GPIOPinIntDisable(GPIO_PORTE_BASE, GPIO_PIN_2);
-  GPIOPinIntDisable(GPIO_PORTE_BASE, GPIO_PIN_3);*/
 }
  
 //******************************EOF**************************************

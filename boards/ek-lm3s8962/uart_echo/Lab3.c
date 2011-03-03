@@ -110,7 +110,7 @@ unsigned long myId = OS_Id();
 // Adds another foreground task
 // background threads execute once and return
 void ButtonPush(void){
-  if(OS_AddThread(&ButtonWork,100,4)){
+  if(OS_AddThread(&ButtonWork,100,1)){
     NumCreated++; 
   }
 }
@@ -119,7 +119,7 @@ void ButtonPush(void){
 // Adds another foreground task
 // background threads execute once and return
 void DownPush(void){
-  if(OS_AddThread(&ButtonWork,100,4)){
+  if(OS_AddThread(&ButtonWork,100,1)){
     NumCreated++; 
   }
 }
@@ -231,8 +231,7 @@ unsigned long myId = OS_Id();
     PIDWork++;        // calculation finished
 	OS_Sleep(2);
   }
-  for(;;){ 
-  }          // done
+  OS_Kill();          // done
 }
 //--------------end of Task 4-----------------------------
 
@@ -464,12 +463,19 @@ void Interpreter(void)
   short fifo_status = 0;
   Count1 = 0;
   OSuart_Open();
-  for(;;)
+  while(NumSamples<RUNLENGTH)
   {    
     fifo_status = UARTRxFifo_Get(&trigger);
     if(fifo_status == 1)
     OS_Interpret(trigger);
 	OS_Sleep(3);   //Give PID a chance to run
+	Count1++;
+  }
+  for(;;)
+  {
+    fifo_status = UARTRxFifo_Get(&trigger);
+    if(fifo_status == 1)
+    OS_Interpret(trigger);
 	Count1++;
   }
 }      
