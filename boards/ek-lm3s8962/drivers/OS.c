@@ -80,6 +80,10 @@ extern unsigned long NumSamples;
 //***********************************************************************
 unsigned long CumulativeRunTime;
 unsigned long TimeIbitDisabled;
+unsigned long RunTimeProfile[NUM_EVENTS][2]; //Collect data for 100 events
+int EventIndex;
+
+
 
 
 // Following code copied from game logic 
@@ -216,6 +220,7 @@ OS_Init(void)
 
   //For profiling
   TimeIbitDisabled = 0;
+  EventIndex = 0;
 } 
 
 
@@ -990,6 +995,13 @@ Timer3AIntHandler(void)
   unsigned long thisTime;         // time at current interrupt
   long jitter;                    // time between measured and expected
 
+  if(EventIndex < NUM_EVENTS)
+  {
+    RunTimeProfile[EventIndex][0] = CumulativeRunTime;
+    RunTimeProfile[EventIndex][1] = PER_THREAD_START;
+	EventIndex++;
+  }
+
   if(NumSamples < RUNLENGTH){
     // Jitter calculation:
     thisTime = OS_Time();       // current time, 20 ns
@@ -1012,7 +1024,14 @@ Timer3AIntHandler(void)
   }
   // Execute the periodic thread
   TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
-  PeriodicTaskA();  
+  PeriodicTaskA();
+  
+  if(EventIndex < NUM_EVENTS)
+  {
+    RunTimeProfile[EventIndex][0] = CumulativeRunTime;
+    RunTimeProfile[EventIndex][1] = PER_THREAD_END;
+	EventIndex++;
+  }  
 }
 
 //***********************************************************************
@@ -1028,6 +1047,13 @@ Timer3BIntHandler(void)
   long jitter;                    // time between measured and expected
   int index;
  
+  if(EventIndex < NUM_EVENTS)
+  {
+    RunTimeProfile[EventIndex][0] = CumulativeRunTime;
+    RunTimeProfile[EventIndex][1] = PER_THREAD_START;
+	EventIndex++;
+  }
+
   if(NumSamples < RUNLENGTH){
     // Jitter calculation:
     thisTime = OS_Time();       // current time, 20 ns
@@ -1050,7 +1076,14 @@ Timer3BIntHandler(void)
   }
   // Execute Periodic task
   TimerIntClear(TIMER3_BASE, TIMER_TIMB_TIMEOUT);
-  PeriodicTaskB();  
+  PeriodicTaskB();
+  
+  if(EventIndex < NUM_EVENTS)
+  {
+    RunTimeProfile[EventIndex][0] = CumulativeRunTime;
+    RunTimeProfile[EventIndex][1] = PER_THREAD_END;
+    EventIndex++;
+  }  
 }
 
 //***********************************************************************
@@ -1210,6 +1243,12 @@ PendSVHandler(void)
   }while(((NextThread->sleepCount != 0)||(NextThread->BlockPt != NULL)||(NextThread->priority > RunPriorityLevel))&&(NextThread!=CurrentThread));
   
   HWREG(NVIC_ST_CURRENT) = 0;
+  if(EventIndex < NUM_EVENTS)
+  {
+    RunTimeProfile[EventIndex][0] = CumulativeRunTime;
+    RunTimeProfile[EventIndex][1] = FOREGROUND_THREAD_START;
+	EventIndex++;
+  }
   OS_EXITCRITICAL();
  
   SwitchThreads();  

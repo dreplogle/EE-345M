@@ -17,6 +17,10 @@
 #define CLOCK_PERIOD 20  			// clock period in ns
 #define MAX_TCNT 0x0EE6B280			// @50Mhz, this is 5 seconds
 #define JITTERSIZE 64
+#define NUM_EVENTS 100
+#define PER_THREAD_START 0x04
+#define PER_THREAD_END   0x08
+#define FOREGROUND_THREAD_START 0x03
 
 #define TIME_1MS 50000		  		// #clock cycles per ms in 50MHz mode
 #define TIMESLICE TIME_1MS*2  		//Thread switching period in ms
