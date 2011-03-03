@@ -40,13 +40,13 @@
 
 //***********************************************************************
 //
-// For setting interrupts
+// MACROS
 //
 //***********************************************************************
 #define NVIC_PRI11_REG (*((volatile unsigned long *)(0xE000E42C)))	//#46 GPIOF	  Reg:(44-47)
 #define NVIC_PRI12_REG (*((volatile unsigned long *)(0xE000E430)))  //#51 Timer3A Reg:(48-51)
 #define OS_ENTERCRITICAL(){sr = SRSave(); timeIoff = OS_Time();}
-#define OS_EXITCRITICAL(){TimeIbitDisabled += OS_TimeDifference(OS_Time(),timeIoff); SRRestore(sr);}
+#define OS_EXITCRITICAL(){TimeIbitDisabled += (OS_TimeDifference(OS_Time(),timeIoff)*CLOCK_PERIOD)/1000000; SRRestore(sr);}
 //***********************************************************************
 // 
 // Global Variables
@@ -74,6 +74,13 @@ long PeriodTimerB;
 unsigned char firstJitterA;
 unsigned char firstJitterB;
 extern unsigned long NumSamples;
+
+//***********************************************************************
+// For Time Profiling
+//***********************************************************************
+unsigned long CumulativeRunTime;
+unsigned long TimeIbitDisabled;
+
 
 // Following code copied from game logic 
 //*****************************************************************************
@@ -127,7 +134,6 @@ unsigned char ThreadStacks[MAX_NUM_OS_THREADS][STACK_SIZE];
 // Miscellaneous
 //***********************************************************************
 unsigned long MailBox1;
-unsigned long TimeIbitDisabled;
 Sema4Type fifoDataReady;
 
 //***********************************************************************
@@ -207,6 +213,9 @@ OS_Init(void)
   TimerBFree = 1;
   firstJitterA = 1;
   firstJitterB = 1;
+
+  //For profiling
+  TimeIbitDisabled = 0;
 } 
 
 
@@ -612,7 +621,7 @@ OS_Kill(void)
     searchPtr->next = CurrentThread->next;
 
     // Reassign the beginning of the list if removing first element 
-    if(ThreadList = CurrentThread)
+    if(ThreadList == CurrentThread)
     {
       ThreadList = CurrentThread->next;
     }
@@ -1067,7 +1076,13 @@ SysTickThSwIntHandler(void)
   unsigned long ulData, ulDelta; 
   long sr = 0;
   unsigned long timeIoff;
+  unsigned long thisTime;
+  static unsigned long LastTime;
   OS_ENTERCRITICAL();
+
+  thisTime = OS_Time();
+  CumulativeRunTime += (OS_TimeDifference(thisTime, LastTime)*CLOCK_PERIOD)/1000000;	//in ms
+  LastTime = thisTime;
 
     //
     // Read the state of the push buttons.

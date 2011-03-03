@@ -227,7 +227,6 @@ unsigned long myId = OS_Id();
       Actuator = PID_stm32(err,Coeff)/256;
     }
     PIDWork++;        // calculation finished
-	OS_Sleep(2);
   }
   OS_Kill();          // done
 }
