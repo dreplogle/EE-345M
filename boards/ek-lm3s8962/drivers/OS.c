@@ -475,17 +475,17 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
   OS_bWait(&PeriodicTimerMutex);
   if(TimerAFree){
     TimerAFree = 0;  //False
-	OS_bSignal(&PeriodicTimerMutex);
-	PeriodicTaskA = task;
+  	OS_bSignal(&PeriodicTimerMutex);
+  	PeriodicTaskA = task;
     SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER3);
-	TimerDisable(TIMER3_BASE, TIMER_A);
+	  TimerDisable(TIMER3_BASE, TIMER_A);
     // Set the global timer configuration.
     HWREG(TIMER3_BASE + 0x00000000) = (TIMER_CFG_16_BIT_PAIR|TIMER_CFG_A_PERIODIC) >> 24;
     // Set the configuration of the A and B timers.  Note that the B timer
     // configuration is ignored by the hardware in 32-bit modes.
     HWREG(TIMER3_BASE + 0x00000004) = (TIMER_CFG_16_BIT_PAIR|TIMER_CFG_A_PERIODIC) & 255;
     TimerLoadSet(TIMER3_BASE, TIMER_A, period);
-	PeriodTimerA = (long)period;
+	  PeriodTimerA = (long)period;
     TimerIntEnable(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
     TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
     IntEnable(INT_TIMER3A);                                                                                

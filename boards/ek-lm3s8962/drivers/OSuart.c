@@ -61,6 +61,8 @@ extern unsigned long DataLost;     // data sent by Producer, but not received by
 extern unsigned long CumulativeRunTime;
 extern unsigned long TimeIbitDisabled;
 extern unsigned long RunTimeProfile[NUM_EVENTS][2];
+extern int EventIndex;
+extern unsigned long CumLastTime;  // time at previous interrupt 
 //*****************************************************************************
 //
 //! \addtogroup example_list
@@ -370,13 +372,15 @@ OSuart_Interpret(unsigned char nextChar)
 	   {	 
       OSuart_printTime(); 
      }
-     if(strcasecmp(token, "dumpclear") == 0)
+     if(strcasecmp(token, "cleardump") == 0)
      {
        for(event = 0; event < NUM_EVENTS; event++)
        {
          RunTimeProfile[event][0] = 0;
          RunTimeProfile[event][1] = 0;
-
+         CumulativeRunTime = 0;
+         EventIndex = 0;
+         CumLastTime = 0;
        }
      } 
      
