@@ -1034,6 +1034,17 @@ Timer3AIntHandler(void)
   // Execute the periodic thread
   TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
   PeriodicTaskA();
+    
+  thisTime = OS_Time();
+  CumulativeRunTime += ((OS_TimeDifference(thisTime, CumLastTime)*CLOCK_PERIOD)/1000);	//in ms
+  CumLastTime = thisTime;
+  
+  if(EventIndex < NUM_EVENTS)
+  {
+    RunTimeProfile[EventIndex][0] = CumulativeRunTime;
+    RunTimeProfile[EventIndex][1] = PER_THREAD_END;
+	EventIndex++;
+  } 
 
 }
 
@@ -1084,7 +1095,17 @@ Timer3BIntHandler(void)
   // Execute Periodic task
   TimerIntClear(TIMER3_BASE, TIMER_TIMB_TIMEOUT);
   PeriodicTaskB();
-    
+
+  thisTime = OS_Time();
+  CumulativeRunTime += ((OS_TimeDifference(thisTime, CumLastTime)*CLOCK_PERIOD)/1000);	//in ms
+  CumLastTime = thisTime;
+  
+  if(EventIndex < NUM_EVENTS)
+  {
+    RunTimeProfile[EventIndex][0] = CumulativeRunTime;
+    RunTimeProfile[EventIndex][1] = PER_THREAD_END;
+	EventIndex++;
+  }   
 }
 
 //***********************************************************************
