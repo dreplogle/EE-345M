@@ -117,13 +117,13 @@ UARTIntHandler(void)
       //
       uartData =  (char)UARTCharGetNonBlocking(UART0_BASE);
       if(uartData != '\r')
-	  {
-	  	UARTCharPutNonBlocking(UART0_BASE,uartData); //echo data
-	  }
+	    {
+	  	  UARTCharPutNonBlocking(UART0_BASE,uartData); //echo data
+	    }
 
       if(!UARTRxFifo_Put(uartData))
       {
-		//error 
+		    //error 
       }
     }
   }
@@ -161,8 +161,7 @@ UARTSend(const unsigned char *pucBuffer, unsigned long ulCount)
         UARTCharPutNonBlocking(UART0_BASE, *pucBuffer++);
     }
 }
-  unsigned long a;
-  unsigned long b;
+
 //*****************************************************************************
 //
 // Interpret input from the terminal. Supported functions include
@@ -264,7 +263,7 @@ OSuart_Interpret(unsigned char nextChar)
           }
         }
         Int2Str(total, string);
-		OSuart_OutString(UART0_BASE, string);
+	    	OSuart_OutString(UART0_BASE, string);
         OSuart_OutString(UART0_BASE, "\r\n");
         break;
       
@@ -304,7 +303,7 @@ OSuart_Interpret(unsigned char nextChar)
         
     }
 	equation = 0;
-    BufferPt = 0;
+  BufferPt = 0;
 	memset(Buffer,'\0',100);
   }
   if(command == 1)
@@ -312,7 +311,8 @@ OSuart_Interpret(unsigned char nextChar)
     // Interpret all of the commands in the line
 	  //    time-jitter, number of data points lost, number of calculations performed
     //    i.e., NumSamples, NumCreated, MaxJitter-MinJitter, DataLost, FilterWork, PIDwork
-    for ( token = strtok_r(Buffer, " ", &last); token; token = strtok_r(NULL , " ", &last) )
+    token = strtok_r(Buffer, " ", &last);
+    do
     {
 	   //strcat(token, "\");
 	   //string = "PIDWork";
@@ -368,14 +368,40 @@ OSuart_Interpret(unsigned char nextChar)
 	   }
      if(strcasecmp(token, "timedump") == 0)
 	   {	 
-      for(event = 0; event < NUM_EVENTS; event++) 
-      {
-        sprintf(string, "\r\n%i. ", event);
-		    OSuart_OutString(UART0_BASE, string);
-        if(RunTimeProfile[event][1] == PER_THREAD_START)
-        {
-           sprintf(string,"Periodic Thread Started at ");
-        }
+      OSuart_printTime(); 
+     }
+     if(strcasecmp(token, "dumpclear") == 0)
+     {
+       for(event = 0; event < NUM_EVENTS; event++)
+       {
+         RunTimeProfile[event][0] = 0;
+         RunTimeProfile[event][1] = 0;
+
+       }
+     } 
+     
+     token = strtok_r(NULL , " ", &last);  	
+     } 
+     while(token);
+     command = 0; 
+  	 BufferPt = 0;
+	   memset(Buffer,'\0',100);
+     OSuart_OutString(UART0_BASE, "\r\n"); 
+   }
+  }  
+
+OSuart_printTime(void)
+{
+  char string[50];
+  short event;
+  for(event = 0; event < NUM_EVENTS; event++) 
+  {
+     sprintf(string, "\r\n%i. ", event);
+	   OSuart_OutString(UART0_BASE, string);
+     if(RunTimeProfile[event][1] == PER_THREAD_START)
+     {
+       sprintf(string,"Periodic Thread Started at ");
+     }
         if(RunTimeProfile[event][1] == PER_THREAD_END)
         {
            sprintf(string,"Periodic Thread Ended at ");
@@ -387,23 +413,11 @@ OSuart_Interpret(unsigned char nextChar)
         OSuart_OutString(UART0_BASE, string);
         sprintf(string, "%i.", RunTimeProfile[event][0]);
 		    OSuart_OutString(UART0_BASE, string);
-        if(event == 50)
-        {
-          Pseudowork(10);
-        }
+        SysCtlDelay(SysCtlClockGet()/500);
 
+   }
+}
 
-        }	
-	   }
-       
-    }
-	  command = 0; 
-  	BufferPt = 0;
-	  memset(Buffer,'\0',100);
-    OSuart_OutString(UART0_BASE, "\r\n");
-  }
-}  
-extern void Pseudowork(unsigned short work);
 void Interpreter(void)
 {
   unsigned char trigger;
