@@ -42,6 +42,11 @@
   AddFifo(UARTRx, 256, unsigned char, 1, 0);   // UARTRx Buffer
   AddFifo(UARTTx, 256, unsigned char, 1, 0);   // UARTTx Buffer
 
+#define NUM_EVENTS 100
+#define PER_THREAD_START 0x04
+#define PER_THREAD_END   0x08
+#define FOREGROUND_THREAD_START 0x03
+
 // Private Functions
 void UARTSend(const unsigned char *pucBuffer, unsigned long ulCount);
 unsigned char Buffer[100];  // Buffer size for interpreter input
@@ -53,6 +58,9 @@ extern unsigned long NumSamples;   // incremented every sample
 extern unsigned long PIDWork;      // current number of PID calculations finished
 extern unsigned long FilterWork;   // number of digital filter calculations finished
 extern unsigned long DataLost;     // data sent by Producer, but not received by Consumer
+extern unsigned long CumulativeRunTime;
+extern unsigned long TimeIbitDisabled;
+extern unsigned long RunTimeProfile[NUM_EVENTS][2];
 //*****************************************************************************
 //
 //! \addtogroup example_list
@@ -153,7 +161,8 @@ UARTSend(const unsigned char *pucBuffer, unsigned long ulCount)
         UARTCharPutNonBlocking(UART0_BASE, *pucBuffer++);
     }
 }
-
+  unsigned long a;
+  unsigned long b;
 //*****************************************************************************
 //
 // Interpret input from the terminal. Supported functions include
@@ -171,10 +180,10 @@ OSuart_Interpret(unsigned char nextChar)
   char * token;
   char * last;
   char string[10];
-  int a;
   long total = 0;
   short first = 1;
   short command, equation = 0; 
+  int event = 0;
   switch(nextChar)
   {
     case '\x7F':
@@ -343,7 +352,50 @@ OSuart_Interpret(unsigned char nextChar)
 		 Int2Str(PIDWork, string);
 		 OSuart_OutString(UART0_BASE, " =");
 		 OSuart_OutString(UART0_BASE, string);	
-	   } 
+	   }
+     if(strcasecmp(token, "Ibit") == 0)
+	   {	 
+      sprintf(string, "%u", (100*TimeIbitDisabled)/CumulativeRunTime);
+		  OSuart_OutString(UART0_BASE, "\r\nPercentage of time I bit is disabled = ");
+		  OSuart_OutString(UART0_BASE, string);	
+	   }
+     if(strcasecmp(token, "cleartime") == 0)
+	   {	 
+      TimeIbitDisabled = 0;
+      sprintf(string, "%u", TimeIbitDisabled);
+		  OSuart_OutString(UART0_BASE, "\r\nTimeIbitDisabled = ");
+		  OSuart_OutString(UART0_BASE, string);	
+	   }
+     if(strcasecmp(token, "timedump") == 0)
+	   {	 
+      for(event = 0; event < NUM_EVENTS; event++) 
+      {
+        sprintf(string, "\r\n%i. ", event);
+		    OSuart_OutString(UART0_BASE, string);
+        if(RunTimeProfile[event][1] == PER_THREAD_START)
+        {
+           sprintf(string,"Periodic Thread Started at ");
+        }
+        if(RunTimeProfile[event][1] == PER_THREAD_END)
+        {
+           sprintf(string,"Periodic Thread Ended at ");
+        }        
+        if(RunTimeProfile[event][1] == FOREGROUND_THREAD_START)
+        {
+           sprintf(string,"Foreground Thread Started at ");
+        }
+        OSuart_OutString(UART0_BASE, string);
+        sprintf(string, "%i.", RunTimeProfile[event][0]);
+		    OSuart_OutString(UART0_BASE, string);
+        if(event == 50)
+        {
+          Pseudowork(10);
+        }
+
+
+        }	
+	   }
+       
     }
 	  command = 0; 
   	BufferPt = 0;
@@ -351,7 +403,7 @@ OSuart_Interpret(unsigned char nextChar)
     OSuart_OutString(UART0_BASE, "\r\n");
   }
 }  
-
+extern void Pseudowork(unsigned short work);
 void Interpreter(void)
 {
   unsigned char trigger;

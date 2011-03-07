@@ -80,7 +80,7 @@ extern unsigned long NumSamples;
 //***********************************************************************
 unsigned long CumulativeRunTime;
 unsigned long TimeIbitDisabled;
-unsigned long RunTimeProfile[NUM_EVENTS][2]; //Collect data for 100 events
+unsigned long RunTimeProfile[NUM_EVENTS][2]; //Collect data for 100 events   RunTimeProfile[Time(ms)][0x04] -> Periodic Thread Start (based on OS.h)
 int EventIndex;
 
 
@@ -1247,7 +1247,7 @@ PendSVHandler(void)
   {
     RunTimeProfile[EventIndex][0] = CumulativeRunTime;
     RunTimeProfile[EventIndex][1] = FOREGROUND_THREAD_START;
-	EventIndex++;
+	  EventIndex++;
   }
   OS_EXITCRITICAL();
  

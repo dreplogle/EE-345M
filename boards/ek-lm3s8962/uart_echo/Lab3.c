@@ -43,7 +43,6 @@ Sema4Type MailBoxEmpty;
 
 
 
-
 // 10-sec finite time experiment duration 
 #define RUNLENGTH 10000   // display results and quit when NumSamples==RUNLENGTH
 long x[64],y[64];         // input and output arrays for FFT
