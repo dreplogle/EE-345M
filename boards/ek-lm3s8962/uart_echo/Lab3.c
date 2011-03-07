@@ -41,7 +41,10 @@ extern long MinJitterA;
 Sema4Type MailBoxFull;
 Sema4Type MailBoxEmpty;
 
-
+#define GPIO_B0 (*((volatile unsigned long *)(0x40005004)))
+#define GPIO_B1 (*((volatile unsigned long *)(0x40005008)))
+#define GPIO_B2 (*((volatile unsigned long *)(0x40005010)))
+#define GPIO_B3 (*((volatile unsigned long *)(0x40005020)))
 
 // 10-sec finite time experiment duration 
 #define RUNLENGTH 10000   // display results and quit when NumSamples==RUNLENGTH
@@ -139,7 +142,8 @@ void DownPush(void){
 // sends data to the consumer, runs periodically at 1 kHz
 // inputs:  none
 // outputs: none
-void Producer(unsigned short data){  
+void Producer(unsigned short data){
+  GPIO_B0 ^= 0x01;  
   if(NumSamples < RUNLENGTH){   // finite time run
     NumSamples++;               // number of samples
     if(OS_Fifo_Put(data) == 0){ // send to consumer
@@ -170,6 +174,7 @@ unsigned long myId = OS_Id();
     
 	OS_Wait(&MailBoxEmpty);
 	OS_MailBox_Send(DCcomponent);
+	GPIO_B1 ^= 0x02;
 	OS_Signal(&MailBoxFull);
 	
 	OS_Sleep(15);
@@ -225,6 +230,7 @@ unsigned long myId = OS_Id();
     for(err = -1000; err <= 1000; err++){    // made-up data
       Actuator = PID_stm32(err,Coeff)/256;
     }
+	GPIO_B2 ^= 0x04; 
     PIDWork++;        // calculation finished
   }
   OS_Kill();          // done

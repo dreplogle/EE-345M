@@ -46,6 +46,7 @@
 #define PER_THREAD_START 0x04
 #define PER_THREAD_END   0x08
 #define FOREGROUND_THREAD_START 0x03
+#define GPIO_B3 (*((volatile unsigned long *)(0x40005020)))
 
 // Private Functions
 void UARTSend(const unsigned char *pucBuffer, unsigned long ulCount);
@@ -428,7 +429,8 @@ void Interpreter(void)
   short fifo_status = 0;
   OSuart_Open();
   while(NumSamples<RUNLENGTH)
-  {    
+  {  
+    GPIO_B3 ^= 0x08;  
     fifo_status = UARTRxFifo_Get(&trigger);
     if(fifo_status == 1)
     OSuart_Interpret(trigger);
