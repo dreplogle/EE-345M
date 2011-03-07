@@ -82,6 +82,7 @@ unsigned long CumulativeRunTime;
 unsigned long TimeIbitDisabled;
 unsigned long RunTimeProfile[NUM_EVENTS][2]; //Collect data for 100 events   RunTimeProfile[Time(ms)][0x04] -> Periodic Thread Start (based on OS.h)
 int EventIndex;
+unsigned long CumLastTime;  // time at previous interrupt 
 
 
 
@@ -221,6 +222,10 @@ OS_Init(void)
   //For profiling
   TimeIbitDisabled = 0;
   EventIndex = 0;
+  CumulativeRunTime = 0;
+  EventIndex = 0;
+  CumLastTime = 0;
+
 } 
 
 
@@ -992,8 +997,12 @@ Timer3AIntHandler(void)
 {
   int index;
   static unsigned long LastTime;  // time at previous interrupt  
-  unsigned long thisTime;         // time at current interrupt
+  static unsigned long thisTime;         // time at current interrupt
   long jitter;                    // time between measured and expected
+
+  thisTime = OS_Time();
+  CumulativeRunTime += (OS_TimeDifference(thisTime, CumLastTime)*CLOCK_PERIOD)/1000;	//in ms
+  CumLastTime = thisTime;
 
   if(EventIndex < NUM_EVENTS)
   {
@@ -1025,13 +1034,7 @@ Timer3AIntHandler(void)
   // Execute the periodic thread
   TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
   PeriodicTaskA();
-  
-  if(EventIndex < NUM_EVENTS)
-  {
-    RunTimeProfile[EventIndex][0] = CumulativeRunTime;
-    RunTimeProfile[EventIndex][1] = PER_THREAD_END;
-	EventIndex++;
-  }  
+
 }
 
 //***********************************************************************
@@ -1043,10 +1046,14 @@ void
 Timer3BIntHandler(void)
 {
   static unsigned long LastTime;  // time at previous interrupt  
-  unsigned long thisTime;         // time at current interrupt
+  static unsigned long thisTime;         // time at current interrupt 
   long jitter;                    // time between measured and expected
   int index;
  
+  thisTime = OS_Time();
+  CumulativeRunTime += ((OS_TimeDifference(thisTime, CumLastTime)*CLOCK_PERIOD)/1000);	//in ms
+  CumLastTime = thisTime;
+  
   if(EventIndex < NUM_EVENTS)
   {
     RunTimeProfile[EventIndex][0] = CumulativeRunTime;
@@ -1077,13 +1084,7 @@ Timer3BIntHandler(void)
   // Execute Periodic task
   TimerIntClear(TIMER3_BASE, TIMER_TIMB_TIMEOUT);
   PeriodicTaskB();
-  
-  if(EventIndex < NUM_EVENTS)
-  {
-    RunTimeProfile[EventIndex][0] = CumulativeRunTime;
-    RunTimeProfile[EventIndex][1] = PER_THREAD_END;
-    EventIndex++;
-  }  
+    
 }
 
 //***********************************************************************
@@ -1109,13 +1110,7 @@ SysTickThSwIntHandler(void)
   unsigned long ulData, ulDelta; 
   long sr = 0;
   unsigned long timeIoff;
-  unsigned long thisTime;
-  static unsigned long LastTime;
   OS_ENTERCRITICAL();
-
-  thisTime = OS_Time();
-  CumulativeRunTime += (OS_TimeDifference(thisTime, LastTime)*CLOCK_PERIOD)/1000000;	//in ms
-  LastTime = thisTime;
 
     //
     // Read the state of the push buttons.
@@ -1211,6 +1206,7 @@ PendSVHandler(void)
   static unsigned long RunPriorityLevel;
   long sr;
   unsigned long timeIoff;
+  static unsigned long thisTime;
   OS_ENTERCRITICAL();
   
   //Determine the priority level to run	and update sleeping threads
@@ -1243,6 +1239,11 @@ PendSVHandler(void)
   }while(((NextThread->sleepCount != 0)||(NextThread->BlockPt != NULL)||(NextThread->priority > RunPriorityLevel))&&(NextThread!=CurrentThread));
   
   HWREG(NVIC_ST_CURRENT) = 0;
+
+  thisTime = OS_Time();
+  CumulativeRunTime += ((OS_TimeDifference(thisTime, CumLastTime)*CLOCK_PERIOD)/1000);	//in ms
+  CumLastTime = thisTime;
+
   if(EventIndex < NUM_EVENTS)
   {
     RunTimeProfile[EventIndex][0] = CumulativeRunTime;
@@ -1266,7 +1267,6 @@ SwitchIntHandler(void)
 }
  
 //******************************EOF**************************************
-
 
 
 
