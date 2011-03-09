@@ -164,7 +164,7 @@ UARTSend(const unsigned char *pucBuffer, unsigned long ulCount)
         UARTCharPutNonBlocking(UART0_BASE, *pucBuffer++);
     }
 }
-
+extern void Jitter(void);
 //*****************************************************************************
 //
 // Interpret input from the terminal. Supported functions include
@@ -379,10 +379,10 @@ OSuart_Interpret(unsigned char nextChar)
        {
          RunTimeProfile[event][0] = 0;
          RunTimeProfile[event][1] = 0;
-         CumulativeRunTime = 0;
-         EventIndex = 0;
-         CumLastTime = 0;
        }
+       CumulativeRunTime = 0;
+       EventIndex = 0;
+       CumLastTime = 0;
      }
      if(strcasecmp(token, "clearfilter") == 0)
      {
@@ -393,6 +393,11 @@ OSuart_Interpret(unsigned char nextChar)
      {
 
      }
+      
+     if(strcasecmp(token, "jitter") == 0)
+     {
+       Jitter();
+     }     
      token = strtok_r(NULL , " ", &last);  	
      } 
      while(token);

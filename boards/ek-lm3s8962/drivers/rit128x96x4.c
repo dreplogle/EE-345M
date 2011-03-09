@@ -503,6 +503,7 @@ Sema4Type oLEDFree;
 //*****************************************************************************
 void oLED_Message(int device, int line, char *string, long value){
   OS_bWait(&oLEDFree);
+
   if(!device){        // top display
   	if(line < 5){    // check bounds for vertical space
   	  RIT128x96x4StringDraw(string, 0, (line*8), 11);
@@ -529,7 +530,9 @@ void oLED_Message(int device, int line, char *string, long value){
   	  RIT128x96x4StringDraw("Line selection error", 2, 0, 11);
   	}
   }  
+
   OS_bSignal(&oLEDFree);
+
 }
 
 //*****************************************************************************

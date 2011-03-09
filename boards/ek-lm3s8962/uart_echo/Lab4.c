@@ -38,12 +38,23 @@ extern unsigned long JitterHistogramB[];
 extern long MaxJitterA;
 extern long MinJitterA;
 
+unsigned short SoundVFreq = 1;
+unsigned short SoundVTime = 0;
+
 Sema4Type MailBoxFull;
 Sema4Type MailBoxEmpty;
+Sema4Type SoundReady;
+Sema4Type SoundRead;
+
+#define GPIO_B0 (*((volatile unsigned long *)(0x40005004)))
+#define GPIO_B1 (*((volatile unsigned long *)(0x40005008)))
+#define GPIO_B2 (*((volatile unsigned long *)(0x40005010)))
+#define GPIO_B3 (*((volatile unsigned long *)(0x40005020)))
 
 // 10-sec finite time experiment duration 
 #define RUNLENGTH 10000   // display results and quit when NumSamples==RUNLENGTH
 long x[64],y[64];         // input and output arrays for FFT
+long xtoPlot[64];
 void cr4_fft_64_stm32(void *pssOUT, void *pssIN, unsigned short Nbin);
 
 
@@ -62,8 +73,7 @@ static unsigned int n=3;   // 3, 4, or 5
   y[n] = (256*(x[n]+x[n-2])-503*x[1]+498*y[1]-251*y[n-2]+128)/256;
   y[n-3] = y[n];         // two copies of filter outputs too
   return y[n];
-} 
-
+}
 
 //-----------Audio Bandpass FIR Filter-------------------
 short Filter51(short data){
@@ -99,7 +109,6 @@ unsigned int n, xn;
 return y;
 }
 
-
 //******** DAS *************** 
 // background thread, calculates 60Hz notch filter
 // runs 2000 times/sec
@@ -128,14 +137,8 @@ unsigned short input;
 // foreground treads run for 2 sec and die
 // ***********ButtonWork*************
 void ButtonWork(void){
-unsigned long i;
 unsigned long myId = OS_Id(); 
   oLED_Message(1,0,"NumCreated =",NumCreated); 
-//  if(NumSamples < RUNLENGTH){   // finite time run
-//    for(i=0;i<20;i++){  // runs for 2 seconds
-//      OS_Sleep(50);     // set this to sleep for 0.1 sec
-//    }
-// }
   oLED_Message(1,1,"PIDWork    =",PIDWork);
   oLED_Message(1,2,"DataLost   =",DataLost);
   oLED_Message(1,3,"0.1u Jitter=",MaxJitterA-MinJitterA);
@@ -179,9 +182,10 @@ void DownPush(void){
 // sends data to the consumer, runs periodically at 1 kHz
 // inputs:  none
 // outputs: none
-void Producer(unsigned short data){  
+void Producer(unsigned short data){
+  GPIO_B0 ^= 0x01;  
   if(NumSamples < RUNLENGTH){   // finite time run
-    NumSamples++;               // number of samples
+//    NumSamples++;               // number of samples
     if(OS_Fifo_Put(data) == 0){ // send to consumer
       DataLost++;
     } 
@@ -199,20 +203,23 @@ unsigned long data,DCcomponent; // 10-bit raw ADC sample, 0 to 1023
 unsigned long t;  // time in ms
 unsigned long myId = OS_Id(); 
   ADC_Collect(0, 1000, &Producer); // start ADC sampling, channel 0, 1000 Hz
-  NumCreated += OS_AddThread(&Display,128,0); 
-  while(NumSamples < RUNLENGTH) { 
+//  NumCreated += OS_AddThread(&Display,128,0); 
+  while(NumSamples < RUNLENGTH) {
+    OS_Wait(&SoundRead); 
     for(t = 0; t < 64; t++){   // collect 64 ADC samples
-      OS_Fifo_Get(&data);    // get from producer
-      x[t] = data;             // real part is 0 to 1023, imaginary part is 0
+      while(!OS_Fifo_Get(&data));   // get from producer    
+      x[t] = data;           // real part is 0 to 1023, imaginary part is 0
     }
+	OS_Signal(&SoundReady);
     cr4_fft_64_stm32(y,x,64);  // complex FFT of last 64 ADC values
     DCcomponent = y[0]&0xFFFF; // Real part at frequency 0, imaginary part should be zero
     
-	OS_Wait(&MailBoxEmpty);
+//	OS_Wait(&MailBoxEmpty);
 	OS_MailBox_Send(DCcomponent);
-	OS_Signal(&MailBoxFull);
+	GPIO_B1 ^= 0x02;
+//	OS_Signal(&MailBoxFull);
 	
-	OS_Sleep(15);
+//	OS_Sleep(15);
   }
   OS_Kill();  // done
 }
@@ -265,12 +272,112 @@ unsigned long myId = OS_Id();
     for(err = -1000; err <= 1000; err++){    // made-up data
       Actuator = PID_stm32(err,Coeff)/256;
     }
+	GPIO_B2 ^= 0x04; 
     PIDWork++;        // calculation finished
   }
   OS_Kill();          // done
 }
 //--------------end of Task 4-----------------------------
 
+//------------------Task 5--------------------------------
+// UART background ISR performs serial input/output
+// two fifos are used to pass I/O data to foreground
+// Lab 1 interpreter runs as a foreground thread
+// the UART driver should call OS_Wait(&RxDataAvailable) when foreground tries to receive
+// the UART ISR should call OS_Signal(&RxDataAvailable) when it receives data from Rx
+// similarly, the transmit channel waits on a semaphore in the foreground
+// and the UART ISR signals this semaphore (TxRoomLeft) when getting data from fifo
+// it executes a digital controller 
+// your intepreter from Lab 1, with additional commands to help debug 
+// foreground thread, accepts input from serial port, outputs to serial port
+// inputs:  none
+// outputs: none
+extern void Interpreter(void);    // just a prototype, link to your interpreter
+// add the following commands, leave other commands, if they make sense
+// 1) print performance measures 
+//    time-jitter, number of data points lost, number of calculations performed
+//    i.e., NumSamples, NumCreated, MaxJitter-MinJitter, DataLost, FilterWork, PIDwork
+
+
+//--------------end of Task 5-----------------------------
+
+void Jitter(void)   // prints jitter information (write this)
+{
+  char string[7], printInd[7];
+  int i;
+  OSuart_OutString(UART0_BASE,"Jitter Information:\n\r\n\r");
+  OSuart_OutString(UART0_BASE,"Jitter for Periodic Task 1:\n\r");
+  for(i = 0; i<JITTERSIZE; i++)
+  {
+    if(JitterHistogramA[i] != 0)
+	{
+	  Int2Str((i-32), printInd);
+	  Int2Str(JitterHistogramA[i], string);
+	  OSuart_OutString(UART0_BASE,printInd);
+	  OSuart_OutString(UART0_BASE,": ");
+      OSuart_OutString(UART0_BASE,string);
+	  OSuart_OutString(UART0_BASE,"\n\r"); 
+	}
+  }
+  OSuart_OutString(UART0_BASE,"Jitter for Periodic Task 2:\n\r");
+  for(i = 0; i<JITTERSIZE; i++)
+  {
+    if(JitterHistogramB[i] != 0)
+  	{
+  	  Int2Str((i-32), printInd);
+  	  Int2Str(JitterHistogramB[i], string);
+  	  OSuart_OutString(UART0_BASE,printInd);
+  	  OSuart_OutString(UART0_BASE,": ");
+      OSuart_OutString(UART0_BASE,string);
+  	  OSuart_OutString(UART0_BASE,"\n\r"); 
+  	}
+  }
+    
+}
+
+//**************oLED Graphing Voltage vs. Freq/Time*****************
+void SoundDisplay(void)
+{
+  static int index;
+  static short data[64];
+  for(;;){
+    if(SoundVFreq)
+    {
+	  OS_Wait(&SoundReady);
+	  RIT128x96x4PlotClear(0,1023); 
+      for(index = 0; index < 32; index++)
+   	  {
+	    data[index] = (short)y[index];
+		if(data[index] < 0)
+		{
+		  data[index] = 0;
+		}
+		data[index] = data[index]&0x03FF;
+        RIT128x96x4PlotdBfs((long)data[index]);
+	    RIT128x96x4PlotNext();
+	    RIT128x96x4PlotNext();
+	    RIT128x96x4PlotNext();
+	    RIT128x96x4PlotNext();
+	  }
+	  RIT128x96x4ShowPlot();
+      OS_Signal(&SoundRead);
+    }
+    else if(SoundVTime)
+    {
+	  OS_Wait(&SoundReady);
+	  RIT128x96x4PlotClear(0,1023); 
+      for(index = 0; index < 64; index++) 
+      {
+        RIT128x96x4PlotPoint(x[index]);
+	    RIT128x96x4PlotNext();
+		RIT128x96x4PlotPoint(x[index]);
+	    RIT128x96x4PlotNext();
+      }
+	  RIT128x96x4ShowPlot();
+	  OS_Signal(&SoundRead);
+    }
+  }
+}
 
 //*******************final user main DEMONTRATE THIS TO TA**********
 
@@ -279,6 +386,8 @@ int main(void){        // lab 3 real main
 
   OS_InitSemaphore(&MailBoxEmpty,1);
   OS_InitSemaphore(&MailBoxFull,0);
+  OS_InitSemaphore(&SoundReady,0);
+  OS_InitSemaphore(&SoundRead,1);
 
   DataLost = 0;        // lost data between producer and consumer
   NumSamples = 0;
@@ -294,17 +403,10 @@ int main(void){        // lab 3 real main
 
   NumCreated = 0 ;
 // create initial foreground threads
-//  NumCreated += OS_AddThread(&Interpreter,128,2); 
+  NumCreated += OS_AddThread(&Interpreter,128,1); 
   NumCreated += OS_AddThread(&Consumer,128,1); 
-  NumCreated += OS_AddThread(&PID,128,3);
-  RIT128x96x4PlotClear(0,1023); 
+  NumCreated += OS_AddThread(&SoundDisplay,128,1); 
  
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes
 }
-
-
-
-
-
-
