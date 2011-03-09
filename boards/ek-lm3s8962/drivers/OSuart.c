@@ -65,7 +65,9 @@ extern unsigned long RunTimeProfile[NUM_EVENTS][2];
 extern int EventIndex;
 extern unsigned long CumLastTime;  // time at previous interrupt
 extern unsigned short FilterOn;
-extern short data[64];  
+extern short data[64];
+extern unsigned short SoundVFreq;
+extern unsigned short SoundVTime;  
 //*****************************************************************************
 //
 //! \addtogroup example_list
@@ -187,13 +189,15 @@ OSuart_Interpret(unsigned char nextChar)
   short first = 1;
   short command, equation, cmdptr = 0; 
   short event = 0;
-  const short numcommands = 12;
+  const short numcommands = 13;
   char * commands[numcommands] = {"NumSamples", "NumCreated", "DataLost", "FilterWork", "PIDWork", "Ibit", 
-                                  "cleartime", "timedump", "cleardump", "togglefilter", "fftdump", "jitter"};
+                                  "cleartime", "timedump", "cleardump", "togglefilter", "fftdump", "jitter",
+                                  "togglegraph"};
   char * descriptions[numcommands] = {" - Display NumSamples\r\n", " - Display NumCreated\r\n", " - Display DataLost\r\n",
                                       " - Display FilterWork\r\n", " - Display PIDWork\r\n", " - Display % time i bit disabled\r\n",
                                       " - clear the thread timestamps\r\n", " - dump timestamps\r\n", " - clear thread dumps\r\n", 
-                                      " - Toggles FIR filter on and off\r\n", " - dump fft results\r\n", " - output Jitter command\r\n"};
+                                      " - Toggles FIR filter on and off\r\n", " - dump fft results\r\n", " - output Jitter command\r\n",
+                                      " - Toggles graph between V vs. T and V vs. Freq\r\n"};
   switch(nextChar)
   {
     case '\x7F':
@@ -428,7 +432,15 @@ OSuart_Interpret(unsigned char nextChar)
      if(strcasecmp(token, commands[cmdptr]) == 0)        //Jitter
      {
        Jitter();
-     }     
+     }
+     cmdptr++;
+     if(strcasecmp(token, commands[cmdptr]) == 0)        //togglegraph
+     {
+       SoundVFreq ^= 0x1;
+       SoundVTime ^= 0x1;
+     } 
+     
+          
      token = strtok_r(NULL , " ", &last);  	
      } 
      while(token);
