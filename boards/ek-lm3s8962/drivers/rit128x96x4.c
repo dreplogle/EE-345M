@@ -502,7 +502,7 @@ RIT128x96x4Clear(void)
 //  Written by: Katy Loeffler 1/22/2011
 //*****************************************************************************
 void oLED_Message(int device, int line, char *string, long value){
-  OS_Wait(&mutex);
+  OS_bWait(&mutex);
   if(!device){        // top display
   	if(line < 5){    // check bounds for vertical space
   	  RIT128x96x4StringDraw(string, 0, (line*8), 11);
@@ -529,7 +529,7 @@ void oLED_Message(int device, int line, char *string, long value){
   	  RIT128x96x4StringDraw("Line selection error", 2, 0, 11);
   	}
   }  
-  OS_Signal(&mutex);
+  OS_bSignal(&mutex);
 }
 
 //*****************************************************************************
@@ -1682,7 +1682,9 @@ void RIT128x96x4PlotNext(void){
 // Inputs: none
 // Outputs: none
 void RIT128x96x4ShowPlot(void){
+   OS_bWait(&mutex);
    RIT128x96x4ImageDraw(PlotImage, 0, 10, 128, 80);
+   OS_bSignal(&mutex);
 }
 
 

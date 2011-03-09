@@ -1636,7 +1636,7 @@ ADC_Collect(unsigned int channelNum, unsigned int fs, void (*task)(unsigned shor
   TimerConfigure(TIMER0_BASE, TIMER_CFG_32_BIT_PER);
 
   // Set the Timer0 load value.
-  if(fs < 10000 && fs > 0)
+  if(fs < 100000 && fs > 0)
   {
       TimerLoadSet(TIMER0_BASE, TIMER_BOTH, SysCtlClockGet()/fs);
   }
