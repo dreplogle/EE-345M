@@ -41,11 +41,6 @@ extern long MinJitterA;
 Sema4Type MailBoxFull;
 Sema4Type MailBoxEmpty;
 
-
-unsigned char Buffer[100];  // Buffer size for interpreter input
-unsigned int BufferPt = 0;	// Buffer pointer
-unsigned short FirstSpace = 1; // Boolean to determine if first space has occured
-
 // 10-sec finite time experiment duration 
 #define RUNLENGTH 10000   // display results and quit when NumSamples==RUNLENGTH
 long x[64],y[64];         // input and output arrays for FFT
@@ -74,7 +69,12 @@ static unsigned int n=3;   // 3, 4, or 5
 short Filter51(short data){
 static short x[51];
 static unsigned int newest = 0;
-static short h[51] = {};    //Filter coefficients
+static short h[51]={-7,0,-10,-7,-1,-20,-3,-13,-25,0,-36,
+     -16,-15,-52,1,-53,-37,-4,-93,15,-66,-80,74,-244,214,
+     954,214,-244,74,-80,-66,15,-93,-4,-37,-53,1,-52,-15,
+     -16,-36,0,-25,-13,-3,-20,-1,-7,-10,0,-7};
+
+
 short y = 0;   				//result
 
 unsigned int n, xn;
@@ -89,8 +89,8 @@ unsigned int n, xn;
   for(n = 0; n < 51; n++)
   {
     y = y + h[n]*x[xn];
-	n++
-	xn++
+	n++;
+	xn++;
 	if(xn == 51)
 	{
 	  xn = 0;
@@ -115,6 +115,11 @@ unsigned short input;
 
   }
 }
+
+
+//  RIT128x96x4PlotPoint(long y); voltage vs. time points
+//  RIT128x96x4PlotBar(long y);  voltage vs. time bars
+//  void RIT128x96x4PlotdBfs(long y) voltage vs. frequency
 //--------------end of Task 1-----------------------------
 
 //------------------Task 2--------------------------------
@@ -291,7 +296,8 @@ int main(void){        // lab 3 real main
 // create initial foreground threads
 //  NumCreated += OS_AddThread(&Interpreter,128,2); 
   NumCreated += OS_AddThread(&Consumer,128,1); 
-  NumCreated += OS_AddThread(&PID,128,3); 
+  NumCreated += OS_AddThread(&PID,128,3);
+  RIT128x96x4PlotClear(0,1023); 
  
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes

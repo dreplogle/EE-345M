@@ -383,8 +383,16 @@ OSuart_Interpret(unsigned char nextChar)
          EventIndex = 0;
          CumLastTime = 0;
        }
-     } 
-     
+     }
+     if(strcasecmp(token, "clearfilter") == 0)
+     {
+      
+     }
+
+     if(strcasecmp(token, "fftdump") == 0)
+     {
+
+     }
      token = strtok_r(NULL , " ", &last);  	
      } 
      while(token);

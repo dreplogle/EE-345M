@@ -554,14 +554,14 @@ void Jitter(void)   // prints jitter information (write this)
   for(i = 0; i<JITTERSIZE; i++)
   {
     if(JitterHistogramA[i] != 0)
-	{
-	  Int2Str((i-32), printInd);
-	  Int2Str(JitterHistogramA[i], string);
-	  OSuart_OutString(UART0_BASE,printInd);
-	  OSuart_OutString(UART0_BASE,": ");
-      OSuart_OutString(UART0_BASE,string);
-	  OSuart_OutString(UART0_BASE,"\n\r"); 
-	}
+	  {
+  	  Int2Str((i-32), printInd);
+  	  Int2Str(JitterHistogramA[i], string);
+  	  OSuart_OutString(UART0_BASE,printInd);
+  	  OSuart_OutString(UART0_BASE,": ");
+        OSuart_OutString(UART0_BASE,string);
+  	  OSuart_OutString(UART0_BASE,"\n\r"); 
+  	}
   }
   OSuart_OutString(UART0_BASE,"Jitter for Periodic Task 2:\n\r");
   for(i = 0; i<JITTERSIZE; i++)
@@ -571,9 +571,9 @@ void Jitter(void)   // prints jitter information (write this)
   	  Int2Str((i-32), printInd);
   	  Int2Str(JitterHistogramB[i], string);
   	  OSuart_OutString(UART0_BASE,printInd);
-  	  OSuart_OutString(UART0_BASE,": ");
+   	  OSuart_OutString(UART0_BASE,": ");
       OSuart_OutString(UART0_BASE,string);
-  	  OSuart_OutString(UART0_BASE,"\n\r"); 
+   	  OSuart_OutString(UART0_BASE,"\n\r"); 
   	}
   }
     
