@@ -40,6 +40,7 @@ extern long MinJitterA;
 
 unsigned short SoundVFreq = 1;
 unsigned short SoundVTime = 0;
+unsigned short FilterOn = 1;
 
 Sema4Type MailBoxFull;
 Sema4Type MailBoxEmpty;
@@ -55,6 +56,7 @@ Sema4Type SoundRead;
 #define RUNLENGTH 10000   // display results and quit when NumSamples==RUNLENGTH
 long x[64],y[64];         // input and output arrays for FFT
 long xtoPlot[64];
+short data[64];
 void cr4_fft_64_stm32(void *pssOUT, void *pssIN, unsigned short Nbin);
 
 
@@ -79,10 +81,11 @@ static unsigned int n=3;   // 3, 4, or 5
 short Filter51(short data){
 static short x[51];
 static unsigned int newest = 0;
-static short h[51]={-7,0,-10,-7,-1,-20,-3,-13,-25,0,-36,
-     -16,-15,-52,1,-53,-37,-4,-93,15,-66,-80,74,-244,214,
-     954,214,-244,74,-80,-66,15,-93,-4,-37,-53,1,-52,-15,
-     -16,-36,0,-25,-13,-3,-20,-1,-7,-10,0,-7};
+static short h[51]={-2,0,-3,-2,0,-5,-1,-3,-6,0,-9,
+     -4,-4,-13,0,-13,-9,-1,-23,4,-16,-20,19,-61,53,
+     238,53,-61,19,-20,-16,4,-23,-1,-9,-13,0,-13,-4,
+     -4,-9,0,-6,-3,-1,-5,0,-2,-3,0,-2};
+
 
 
 short y = 0;   				//result
@@ -159,9 +162,7 @@ void ButtonPush(void){
 // Adds another foreground task
 // background threads execute once and return
 void DownPush(void){
-  if(OS_AddThread(&ButtonWork,100,1)){
-    NumCreated++; 
-  }
+  RIT128x96x4ShowPlot();
 }
 //--------------end of Task 2-----------------------------
 
@@ -339,12 +340,11 @@ void Jitter(void)   // prints jitter information (write this)
 void SoundDisplay(void)
 {
   static int index;
-  static short data[64];
   for(;;){
     if(SoundVFreq)
     {
-	  OS_Wait(&SoundReady);
-	  RIT128x96x4PlotClear(0,1023); 
+	    OS_Wait(&SoundReady);
+	    RIT128x96x4PlotClear(0,1023); 
       for(index = 0; index < 32; index++)
    	  {
 	    data[index] = (short)y[index];

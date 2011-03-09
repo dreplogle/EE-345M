@@ -63,7 +63,9 @@ extern unsigned long CumulativeRunTime;
 extern unsigned long TimeIbitDisabled;
 extern unsigned long RunTimeProfile[NUM_EVENTS][2];
 extern int EventIndex;
-extern unsigned long CumLastTime;  // time at previous interrupt 
+extern unsigned long CumLastTime;  // time at previous interrupt
+extern unsigned short FilterOn;
+extern short data[64];  
 //*****************************************************************************
 //
 //! \addtogroup example_list
@@ -179,13 +181,19 @@ void
 OSuart_Interpret(unsigned char nextChar)
 {
   char operator = Buffer[BufferPt - 2];
-  char * token;
-  char * last;
+  char * token, * last;
   char string[10];
   long total = 0;
   short first = 1;
-  short command, equation = 0; 
-  int event = 0;
+  short command, equation, cmdptr = 0; 
+  short event = 0;
+  const short numcommands = 12;
+  char * commands[numcommands] = {"NumSamples", "NumCreated", "DataLost", "FilterWork", "PIDWork", "Ibit", 
+                                  "cleartime", "timedump", "cleardump", "togglefilter", "fftdump", "jitter"};
+  char * descriptions[numcommands] = {" - Display NumSamples\r\n", " - Display NumCreated\r\n", " - Display DataLost\r\n",
+                                      " - Display FilterWork\r\n", " - Display PIDWork\r\n", " - Display % time i bit disabled\r\n",
+                                      " - clear the thread timestamps\r\n", " - dump timestamps\r\n", " - clear thread dumps\r\n", 
+                                      " - Toggles FIR filter on and off\r\n", " - dump fft results\r\n", " - output Jitter command\r\n"};
   switch(nextChar)
   {
     case '\x7F':
@@ -317,63 +325,77 @@ OSuart_Interpret(unsigned char nextChar)
     token = strtok_r(Buffer, " ", &last);
     do
     {
-	   //strcat(token, "\");
-	   //string = "PIDWork";
-	   // Display the number of samples
-	   if(strcasecmp(token, "NumSamples") == 0)
+	   if(strcasecmp(token, "list") == 0)
+	   {	 
+		  OSuart_OutString(UART0_BASE, "\r\n");
+      for(event = 0; event < numcommands; event++)
+      {
+        
+        OSuart_OutString(UART0_BASE, commands[event]);
+        OSuart_OutString(UART0_BASE, descriptions[event]);
+      }
+	   }
+     // Display the number of samples
+	   if(strcasecmp(token, commands[cmdptr]) == 0)         //numsamples
 	   {	 
 		  Int2Str(NumSamples, string);
 		  OSuart_OutString(UART0_BASE, " ="); 
 		  OSuart_OutString(UART0_BASE, string);	
 	   }
-
+     cmdptr++;
 	   // Display number of samples created
-	   if(strcasecmp(token, "NumCreated") == 0)
+	   if(strcasecmp(token, commands[cmdptr]) == 0)        //numcreated
 	   {	 
 		 Int2Str(NumCreated, string); 
 		 OSuart_OutString(UART0_BASE, " =");
 		 OSuart_OutString(UART0_BASE, string);	
 	   }
-	   if(strcasecmp(token, "DataLost") == 0)
+     cmdptr++;                                                //datalost
+	   if(strcasecmp(token, commands[cmdptr]) == 0)
 	   {	 
 		  Int2Str(DataLost, string);
 		  OSuart_OutString(UART0_BASE, " =");
 		  OSuart_OutString(UART0_BASE, string);	
 	   }
-
+     cmdptr++;
 	   // Display the variable FilterWork
-	   if(strcasecmp(token, "FilterWork") == 0)
+	   if(strcasecmp(token, commands[cmdptr]) == 0)         //filterwork
 	   {	 
 		  Int2Str(FilterWork, string);
 		  OSuart_OutString(UART0_BASE, " =");
 		  OSuart_OutString(UART0_BASE, string);	
 	   }
+     cmdptr++;
 
 	   // Display the variable PIDWork
-	   if(strcasecmp(token, "PIDWork") == 0)
+	   if(strcasecmp(token, commands[cmdptr]) == 0)            //pidwork
 	   {	 
-		 Int2Str(PIDWork, string);
-		 OSuart_OutString(UART0_BASE, " =");
-		 OSuart_OutString(UART0_BASE, string);	
+  		 Int2Str(PIDWork, string);
+  		 OSuart_OutString(UART0_BASE, " =");
+  		 OSuart_OutString(UART0_BASE, string);	
 	   }
-     if(strcasecmp(token, "Ibit") == 0)
+     cmdptr++;
+     if(strcasecmp(token, commands[cmdptr]) == 0)                //ibit
 	   {	 
       sprintf(string, "%u", (100*TimeIbitDisabled)/CumulativeRunTime);
 		  OSuart_OutString(UART0_BASE, "\r\nPercentage of time I bit is disabled = ");
 		  OSuart_OutString(UART0_BASE, string);	
 	   }
-     if(strcasecmp(token, "cleartime") == 0)
+     cmdptr++;                                                  
+     if(strcasecmp(token, commands[cmdptr]) == 0)           //cleartime
 	   {	 
       TimeIbitDisabled = 0;
       sprintf(string, "%u", TimeIbitDisabled);
 		  OSuart_OutString(UART0_BASE, "\r\nTimeIbitDisabled = ");
 		  OSuart_OutString(UART0_BASE, string);	
 	   }
-     if(strcasecmp(token, "timedump") == 0)
+     cmdptr++;
+     if(strcasecmp(token, commands[cmdptr]) == 0)             //timedump
 	   {	 
       OSuart_printTime(); 
      }
-     if(strcasecmp(token, "cleardump") == 0)
+     cmdptr++;
+     if(strcasecmp(token, commands[cmdptr]) == 0)            //cleardump
      {
        for(event = 0; event < NUM_EVENTS; event++)
        {
@@ -384,23 +406,33 @@ OSuart_Interpret(unsigned char nextChar)
        EventIndex = 0;
        CumLastTime = 0;
      }
-     if(strcasecmp(token, "clearfilter") == 0)
+     cmdptr++;
+     if(strcasecmp(token, commands[cmdptr]) == 0)        //togglefilter
      {
-      
-     }
-
-     if(strcasecmp(token, "fftdump") == 0)
-     {
+        FilterOn ^= 0x1;
 
      }
-      
-     if(strcasecmp(token, "jitter") == 0)
+     cmdptr++;
+     if(strcasecmp(token, commands[cmdptr]) == 0)        //fftdump
+     {
+       OSuart_OutString(UART0_BASE, commands[cmdptr]);
+       for(event = 0; event < 64; event++)
+       {
+          sprintf(string, "\r\n%i. ", event);
+          OSuart_OutString(UART0_BASE, string);
+          sprintf(string, "%hi", data[event]);
+          OSuart_OutString(UART0_BASE, string);
+       }
+     }
+     cmdptr++; 
+     if(strcasecmp(token, commands[cmdptr]) == 0)        //Jitter
      {
        Jitter();
      }     
      token = strtok_r(NULL , " ", &last);  	
      } 
      while(token);
+     cmdptr = 0;
      command = 0; 
   	 BufferPt = 0;
 	   memset(Buffer,'\0',100);
