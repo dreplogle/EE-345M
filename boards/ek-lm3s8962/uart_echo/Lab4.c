@@ -201,9 +201,15 @@ void Display(void);
 // outputs: none
 void Consumer(void){ 
 unsigned long data,DCcomponent; // 10-bit raw ADC sample, 0 to 1023
+unsigned int i;
 unsigned long t;  // time in ms
 unsigned long myId = OS_Id(); 
-  ADC_Collect(0, 1000, &Producer); // start ADC sampling, channel 0, 1000 Hz
+long hanning[64] = {0,3,10,23,40,62,89,120,155,193,234,278,325,373,423,
+					474,525,576,626,675,723,768,811,851,887,920,949,973,
+					993,1008,1018,1023,1023,1018,1008,993,973,949,920,887,
+					851,811,768,723,675,626,576,525,474,423,373,325,278,
+					234,193,155,120,89,62,40,23,10,3,0};
+  ADC_Collect(0, 10000, &Producer); // start ADC sampling, channel 0, 1000 Hz
 //  NumCreated += OS_AddThread(&Display,128,0); 
   while(NumSamples < RUNLENGTH) {
     OS_Wait(&SoundRead); 
@@ -211,8 +217,12 @@ unsigned long myId = OS_Id();
       while(!OS_Fifo_Get(&data));   // get from producer    
       x[t] = data;           // real part is 0 to 1023, imaginary part is 0
     }
-	OS_Signal(&SoundReady);
+	for(i = 0; i < 64; i++)
+	{
+      x[i] = (x[i]*hanning[i])/1024;
+	}
     cr4_fft_64_stm32(y,x,64);  // complex FFT of last 64 ADC values
+	OS_Signal(&SoundReady);
     DCcomponent = y[0]&0xFFFF; // Real part at frequency 0, imaginary part should be zero
     
 //	OS_Wait(&MailBoxEmpty);
@@ -355,7 +365,9 @@ void SoundDisplay(void)
 		data[index] = data[index]&0x03FF;
         RIT128x96x4PlotdBfs((long)data[index]);
 	    RIT128x96x4PlotNext();
+		RIT128x96x4PlotdBfs((long)data[index]);
 	    RIT128x96x4PlotNext();
+		RIT128x96x4PlotdBfs((long)data[index]);
 	    RIT128x96x4PlotNext();
 	    RIT128x96x4PlotNext();
 	  }
