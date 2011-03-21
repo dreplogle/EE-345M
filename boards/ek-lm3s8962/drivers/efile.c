@@ -12,12 +12,12 @@
 #include <string.h>
 #include "efile.h"            /* FatFs declarations */
 #include "edisk.h"        /* Include file for user provided disk functions */
-#include "third_party/fatfs/src/tff.h"
+#include "drivers/tff.h"
 
 
 int eFile_Init(void) // initialize file system
 {
-
+  
 }
 //---------- eFile_Format-----------------
 // Erase all files, create blank directory, initialize free space manager
