@@ -98,14 +98,14 @@ static unsigned int n=3;   // 3, 4, or 5
 short Filter51(short data){
 static short x[51];
 static unsigned int newest = 0;
-static short h[51]={-2,0,-3,-2,0,-5,-1,-3,-6,0,-9,
-     -4,-4,-13,0,-13,-9,-1,-23,4,-16,-20,19,-61,53,
-     238,53,-61,19,-20,-16,4,-23,-1,-9,-13,0,-13,-4,
-     -4,-9,0,-6,-3,-1,-5,0,-2,-3,0,-2};
+static short h[51]={-7,0,-10,-7,-1,-20,-3,-13,-25,0,-36,
+    -16,-15,-52,1,-53,-37,-4,-93,15,-66,-80,74,-244,214,
+    954,214,-244,74,-80,-66,15,-93,-4,-37,-53,1,-52,-15,
+    -16,-36,0,-25,-13,-3,-20,-1,-7,-10,0,-7};
 
 
 
-short y = 0;   				//result
+long y = 0;   				//result
 
 unsigned int n, xn;
 
@@ -118,7 +118,7 @@ unsigned int n, xn;
   }
   for(n = 0; n < 51; n++)
   {
-    y = y + h[n]*x[xn];
+    y = y + ((long)h[n]*(long)x[xn])/256;
 	n++;
 	xn++;
 	if(xn == 51)
@@ -126,7 +126,7 @@ unsigned int n, xn;
 	  xn = 0;
     }
   }
-return y;
+return (short)y;
 }
 
 //******** DAS *************** 
@@ -229,10 +229,18 @@ unsigned long myId = OS_Id();
     for(t = 0; t < 256; t++){   // collect 64 ADC samples
       while(!OS_Fifo_Get(&data));   // get from producer    
       x[t] = data;           // real part is 0 to 1023, imaginary part is 0
+	  if(FilterOn)
+	  {
+        xFilt[t] = (long)Filter51((short)x[t]);
+	  }
+	  else
+	  {
+	    xFilt[t] = (long)x[t];
+	  }
     }
 	for(i = 0; i < 256; i++)
 	{
-      xFilt[i] = ((x[i]-423)*hanning[i])/1024;	// 423 is DC correction for 1.24 V out of 3 V.
+      xFilt[i] = ((xFilt[i]-423)*hanning[i])/1024;	// 423 is DC correction for 1.24 V out of 3 V.
 	}
 
     cr4_fft_256_stm32(y,xFilt,256);  // complex FFT of last 64 ADC values

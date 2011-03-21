@@ -439,7 +439,7 @@ OSuart_Interpret(unsigned char nextChar)
        SoundVFreq ^= 0x1;
        SoundVTime ^= 0x1;
      } 
-     
+
           
      token = strtok_r(NULL , " ", &last);  	
      } 
