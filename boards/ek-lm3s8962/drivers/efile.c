@@ -17,6 +17,34 @@
 
 int eFile_Init(void) // initialize file system
 {
+  FATFS *fs;
+
+  // Initilize values in fs
+	fs->id = 1;				/* File system mount ID */
+	fs->n_rootdir = 0;		/* Number of root directory entries */
+	fs->winsect = 0;		/* Current sector appearing in the win[] */
+	fs->fatbase = 0;		/* FAT start sector */
+	fs->dirbase = 0;		/* Root directory start sector */
+	fs->database = 10;		/* Data start sector */
+	fs->sects_fat = 1000;		/* Sectors per fat */
+//	fs->max_clust;		/* Maximum cluster# + 1 */
+//#if !_FS_READONLY
+//	CLUST	last_clust;		/* Last allocated cluster */
+//	CLUST	free_clust;		/* Number of free clusters */
+//#if _USE_FSINFO
+//	DWORD	fsi_sector;		/* fsinfo sector */
+//	BYTE	fsi_flag;		/* fsinfo dirty flag (1:must be written back) */
+//	BYTE	pad1;
+//#endif
+//#endif
+//	BYTE	fs_type;		/* FAT sub type */
+//	BYTE	sects_clust;	/* Sectors per cluster */
+//	BYTE	n_fats;			/* Number of FAT copies */
+//	BYTE	winflag;		/* win[] dirty flag (1:must be written back) */
+//	BYTE	win[512];		/* Disk access window for Directory/FAT/File */
+  
+    f_mount (0, fs)   // assign initialized FS object to FS pointer on drive 0 
+
   
 }
 //---------- eFile_Format-----------------
@@ -33,7 +61,13 @@ int eFile_Format(void) // erase disk, add format
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int eFile_Create( char name[])  // create new file, make it empty 
 {
-
+  FIL* newFile; 
+	
+  if(f_open(newFile, name, FA_CREATE_NEW))    //params: empty FP, path ptr, mode
+  {
+    return 1;
+  }
+  return 0;
 }
 
 //---------- eFile_WOpen-----------------
