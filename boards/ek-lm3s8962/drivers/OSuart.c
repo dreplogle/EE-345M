@@ -56,18 +56,10 @@ unsigned short FirstSpace = 1; // Boolean to determine if first space has occure
 
 extern unsigned long NumCreated;   // number of foreground threads created
 extern unsigned long NumSamples;   // incremented every sample
-extern unsigned long PIDWork;      // current number of PID calculations finished
-extern unsigned long FilterWork;   // number of digital filter calculations finished
 extern unsigned long DataLost;     // data sent by Producer, but not received by Consumer
-extern unsigned long CumulativeRunTime;
-extern unsigned long TimeIbitDisabled;
 extern unsigned long RunTimeProfile[NUM_EVENTS][2];
 extern int EventIndex;
-extern unsigned long CumLastTime;  // time at previous interrupt
-extern unsigned short FilterOn;
-extern short data[64];
-extern unsigned short SoundVFreq;
-extern unsigned short SoundVTime;  
+
 //*****************************************************************************
 //
 //! \addtogroup example_list
@@ -189,15 +181,9 @@ OSuart_Interpret(unsigned char nextChar)
   short first = 1;
   short command, equation, cmdptr = 0; 
   short event = 0;
-  const short numcommands = 13;
-  char * commands[numcommands] = {"NumSamples", "NumCreated", "DataLost", "FilterWork", "PIDWork", "Ibit", 
-                                  "cleartime", "timedump", "cleardump", "togglefilter", "fftdump", "jitter",
-                                  "togglegraph"};
-  char * descriptions[numcommands] = {" - Display NumSamples\r\n", " - Display NumCreated\r\n", " - Display DataLost\r\n",
-                                      " - Display FilterWork\r\n", " - Display PIDWork\r\n", " - Display % time i bit disabled\r\n",
-                                      " - clear the thread timestamps\r\n", " - dump timestamps\r\n", " - clear thread dumps\r\n", 
-                                      " - Toggles FIR filter on and off\r\n", " - dump fft results\r\n", " - output Jitter command\r\n",
-                                      " - Toggles graph between V vs. T and V vs. Freq\r\n"};
+  const short numcommands = 3;
+  char * commands[numcommands] = {"NumSamples", "NumCreated", "DataLost"};
+  char * descriptions[numcommands] = {" - Display NumSamples\r\n", " - Display NumCreated\r\n", " - Display DataLost\r\n"};
   switch(nextChar)
   {
     case '\x7F':
@@ -361,86 +347,9 @@ OSuart_Interpret(unsigned char nextChar)
 		  OSuart_OutString(UART0_BASE, " =");
 		  OSuart_OutString(UART0_BASE, string);	
 	   }
-     cmdptr++;
-	   // Display the variable FilterWork
-	   if(strcasecmp(token, commands[cmdptr]) == 0)         //filterwork
-	   {	 
-		  Int2Str(FilterWork, string);
-		  OSuart_OutString(UART0_BASE, " =");
-		  OSuart_OutString(UART0_BASE, string);	
-	   }
-     cmdptr++;
 
-	   // Display the variable PIDWork
-	   if(strcasecmp(token, commands[cmdptr]) == 0)            //pidwork
-	   {	 
-  		 Int2Str(PIDWork, string);
-  		 OSuart_OutString(UART0_BASE, " =");
-  		 OSuart_OutString(UART0_BASE, string);	
-	   }
-     cmdptr++;
-     if(strcasecmp(token, commands[cmdptr]) == 0)                //ibit
-	   {	 
-      sprintf(string, "%u", (100*TimeIbitDisabled)/CumulativeRunTime);
-		  OSuart_OutString(UART0_BASE, "\r\nPercentage of time I bit is disabled = ");
-		  OSuart_OutString(UART0_BASE, string);	
-	   }
-     cmdptr++;                                                  
-     if(strcasecmp(token, commands[cmdptr]) == 0)           //cleartime
-	   {	 
-      TimeIbitDisabled = 0;
-      sprintf(string, "%u", TimeIbitDisabled);
-		  OSuart_OutString(UART0_BASE, "\r\nTimeIbitDisabled = ");
-		  OSuart_OutString(UART0_BASE, string);	
-	   }
-     cmdptr++;
-     if(strcasecmp(token, commands[cmdptr]) == 0)             //timedump
-	   {	 
-      OSuart_printTime(); 
-     }
-     cmdptr++;
-     if(strcasecmp(token, commands[cmdptr]) == 0)            //cleardump
-     {
-       for(event = 0; event < NUM_EVENTS; event++)
-       {
-         RunTimeProfile[event][0] = 0;
-         RunTimeProfile[event][1] = 0;
-       }
-       CumulativeRunTime = 0;
-       EventIndex = 0;
-       CumLastTime = 0;
-     }
-     cmdptr++;
-     if(strcasecmp(token, commands[cmdptr]) == 0)        //togglefilter
-     {
-        FilterOn ^= 0x1;
 
-     }
-     cmdptr++;
-     if(strcasecmp(token, commands[cmdptr]) == 0)        //fftdump
-     {
-       OSuart_OutString(UART0_BASE, commands[cmdptr]);
-       for(event = 0; event < 64; event++)
-       {
-          sprintf(string, "\r\n%i. ", event);
-          OSuart_OutString(UART0_BASE, string);
-          sprintf(string, "%hi", data[event]);
-          OSuart_OutString(UART0_BASE, string);
-       }
-     }
-     cmdptr++; 
-     if(strcasecmp(token, commands[cmdptr]) == 0)        //Jitter
-     {
-       Jitter();
-     }
-     cmdptr++;
-     if(strcasecmp(token, commands[cmdptr]) == 0)        //togglegraph
-     {
-       SoundVFreq ^= 0x1;
-       SoundVTime ^= 0x1;
-     } 
-
-          
+      
      token = strtok_r(NULL , " ", &last);  	
      } 
      while(token);
@@ -500,8 +409,6 @@ void Interpreter(void)
     OSuart_Interpret(trigger);
   }
 }      
-// 2) print debugging parameters 
-//    i.e., x[], y[] 
 
 
 //*****************************************************************************
@@ -555,7 +462,54 @@ OSuart_OutString(unsigned long ulBase, char *string)
   UARTIntEnable(ulBase, UART_INT_TX);
 }
 
+//*****************************************************************************
+//
+// Load a string into the UART SW transmit FIFO for output to the console, then
+// write the beginning of the string to the HW FIFO and enable TX interrupts.
+// This functions outputs a string to the console through interrupts.
+//
+// \param ulBase specifies the UART port being used
+// \param string is a pointer to a string to be output to the console
+//
+// \return none.
+//
+//*****************************************************************************
+void 
+OSuart_OutChar(unsigned long ulBase, char string)
+{  
+  int i = 0;
+  unsigned char uartData;
+  //
+    // Check the arguments.
+    //
+  ASSERT(UARTBaseValid(ulBase));
+  if(!UARTTxFifo_Put(string))
+  {
+    oLED_Message(0, 0, "UART TX", 0);
+    oLED_Message(0, 1, "FIFO FULL", 0);
+  }
 
+  
+  
+  //
+  // Disable the TX interrupt while loading the HW TX FIFO.
+  //
+  UARTIntDisable(ulBase, UART_INT_TX);
+
+  //
+  //  Load the initial segment of the string into the HW FIFO
+  //
+  while(UARTSpaceAvail(ulBase) && UARTTxFifo_Get(&uartData)) 
+  {
+    UARTCharPut(ulBase,uartData);
+  }
+     
+  //
+  //  Enable TX interrupts so that an interrupt will occur when
+  //  the TX FIFO is nearly empty (interrupt level set in main program).
+  //
+  UARTIntEnable(ulBase, UART_INT_TX);
+}
 
 
 //*****************************************************************************
