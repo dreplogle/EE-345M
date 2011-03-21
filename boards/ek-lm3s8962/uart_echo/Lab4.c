@@ -54,10 +54,27 @@ Sema4Type SoundRead;
 
 // 10-sec finite time experiment duration 
 #define RUNLENGTH 10000   // display results and quit when NumSamples==RUNLENGTH
-long x[64],y[64];         // input and output arrays for FFT
-long xtoPlot[64];
-short data[64];
-void cr4_fft_64_stm32(void *pssOUT, void *pssIN, unsigned short Nbin);
+long x[256],y[256];         // input and output arrays for FFT
+long xFilt[256];
+short data[256];
+void cr4_fft_256_stm32(void *pssOUT, void *pssIN, unsigned short Nbin);
+long hanning[256] = {0,0,1,1,2,4,6,8,10,12,15,19,22,26,30,35,39,44,50,55,
+                    61,67,73,80,87,94,101,109,117,125,134,142,151,160,169,
+                    179,189,198,208,219,229,240,251,262,273,284,295,307,318,
+                    330,342,354,366,378,390,402,415,427,440,452,465,477,490,
+                    503,515,528,540,553,566,578,591,603,615,628,640,652,664,
+                    676,688,700,712,723,735,746,757,768,779,790,800,810,821,
+					831,840,850,859,868,877,886,895,903,911,919,926,933,941,
+					947,954,960,966,972,977,982,987,992,996,1000,1004,1007,1010,
+					1013,1015,1017,1019,1021,1022,1023,1024,1024,1024,1024,1023,
+					1022,1021,1019,1017,1015,1013,1010,1007,1004,1000,996,992,
+					987,982,977,972,966,960,954,947,941,933,926,919,911,903,895,
+					886,877,868,859,850,840,831,821,810,800,790,779,768,757,746,
+					735,723,712,700,688,676,664,652,640,628,615,603,591,578,566,
+					553,540,528,515,503,490,477,465,452,440,427,415,402,390,378,
+					366,354,342,330,318,307,295,284,273,262,251,240,229,219,208,
+					198,189,179,169,160,151,142,134,125,117,109,101,94,87,80,73,
+					67,61,55,50,44,39,35,30,26,22,19,15,12,10,8,6,4,2,1,1,0,0};
 
 
 //------------------Task 1--------------------------------
@@ -204,24 +221,21 @@ unsigned long data,DCcomponent; // 10-bit raw ADC sample, 0 to 1023
 unsigned int i;
 unsigned long t;  // time in ms
 unsigned long myId = OS_Id(); 
-long hanning[64] = {0,3,10,23,40,62,89,120,155,193,234,278,325,373,423,
-					474,525,576,626,675,723,768,811,851,887,920,949,973,
-					993,1008,1018,1023,1023,1018,1008,993,973,949,920,887,
-					851,811,768,723,675,626,576,525,474,423,373,325,278,
-					234,193,155,120,89,62,40,23,10,3,0};
+
   ADC_Collect(0, 10000, &Producer); // start ADC sampling, channel 0, 1000 Hz
 //  NumCreated += OS_AddThread(&Display,128,0); 
   while(NumSamples < RUNLENGTH) {
     OS_Wait(&SoundRead); 
-    for(t = 0; t < 64; t++){   // collect 64 ADC samples
+    for(t = 0; t < 256; t++){   // collect 64 ADC samples
       while(!OS_Fifo_Get(&data));   // get from producer    
       x[t] = data;           // real part is 0 to 1023, imaginary part is 0
     }
-	for(i = 0; i < 64; i++)
+	for(i = 0; i < 256; i++)
 	{
-      x[i] = (x[i]*hanning[i])/1024;
+      xFilt[i] = ((x[i]-423)*hanning[i])/1024;	// 423 is DC correction for 1.24 V out of 3 V.
 	}
-    cr4_fft_64_stm32(y,x,64);  // complex FFT of last 64 ADC values
+
+    cr4_fft_256_stm32(y,xFilt,256);  // complex FFT of last 64 ADC values
 	OS_Signal(&SoundReady);
     DCcomponent = y[0]&0xFFFF; // Real part at frequency 0, imaginary part should be zero
     
@@ -355,7 +369,7 @@ void SoundDisplay(void)
     {
 	    OS_Wait(&SoundReady);
 	    RIT128x96x4PlotClear(0,1023); 
-      for(index = 0; index < 32; index++)
+      for(index = 0; index < 128; index++)
    	  {
 	    data[index] = (short)y[index];
 		if(data[index] < 0)
@@ -365,11 +379,6 @@ void SoundDisplay(void)
 		data[index] = data[index]&0x03FF;
         RIT128x96x4PlotdBfs((long)data[index]);
 	    RIT128x96x4PlotNext();
-		RIT128x96x4PlotdBfs((long)data[index]);
-	    RIT128x96x4PlotNext();
-		RIT128x96x4PlotdBfs((long)data[index]);
-	    RIT128x96x4PlotNext();
-	    RIT128x96x4PlotNext();
 	  }
 	  RIT128x96x4ShowPlot();
       OS_Signal(&SoundRead);
@@ -378,12 +387,10 @@ void SoundDisplay(void)
     {
 	  OS_Wait(&SoundReady);
 	  RIT128x96x4PlotClear(0,1023); 
-      for(index = 0; index < 64; index++) 
+      for(index = 0; index < 128; index++) 
       {
         RIT128x96x4PlotPoint(x[index]);
-	    RIT128x96x4PlotNext();
-		RIT128x96x4PlotPoint(x[index]);
-	    RIT128x96x4PlotNext();
+		RIT128x96x4PlotNext();
       }
 	  RIT128x96x4ShowPlot();
 	  OS_Signal(&SoundRead);
