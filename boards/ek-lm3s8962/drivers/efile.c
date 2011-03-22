@@ -13,12 +13,13 @@
 #include "efile.h"            /* FatFs declarations */
 #include "edisk.h"        /* Include file for user provided disk functions */
 #include "drivers/tff.h"
-
+#define MAX_NUM_FILES 10
+FIL * files[MAX_NUM_FILES];
+FIL *fp;
 
 int eFile_Init(void) // initialize file system
 {
   FATFS *fs;
-
   // Initilize values in fs
 	fs->id = 1;				/* File system mount ID */
 	fs->n_rootdir = 0;		/* Number of root directory entries */
@@ -43,8 +44,7 @@ int eFile_Init(void) // initialize file system
 //	BYTE	winflag;		/* win[] dirty flag (1:must be written back) */
 //	BYTE	win[512];		/* Disk access window for Directory/FAT/File */
   
-    f_mount (0, fs)   // assign initialized FS object to FS pointer on drive 0 
-
+    f_mount(0, fs);   // assign initialized FS object to FS pointer on drive 0 
   
 }
 //---------- eFile_Format-----------------
@@ -53,7 +53,7 @@ int eFile_Init(void) // initialize file system
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int eFile_Format(void) // erase disk, add format
 {
-
+  
 }
 //---------- eFile_Create-----------------
 // Create a new, empty file with one allocated block
@@ -92,7 +92,7 @@ int eFile_Write( char data)
 // Output: 0 if successful and 1 on failure (not currently open)
 int eFile_Close(void) 
 {
-
+ 							
 }
 
 //---------- eFile_WClose-----------------
@@ -101,7 +101,12 @@ int eFile_Close(void)
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int eFile_WClose(void) // close the file for writing
 {
-
+  FRESULT res = fclose(fp);			/* Open or create a file */
+  if(res)
+  {
+    return 1; 
+  }
+  return 0; 
 }
 //---------- eFile_ROpen-----------------
 // Open the file, read first block into RAM 
@@ -118,7 +123,14 @@ int eFile_ROpen( char name[])      // open a file for reading
 //         0 if successful and 1 on failure (e.g., end of file)
 int eFile_ReadNext( char *pt)       // get next byte 
 {
-
+   WORD * numBytesRead;
+   WORD numBytesToRead = 1;
+   f_read(fp, pt, numBytesToRead, numBytesRead);			/* Read data from a file */
+   if(numBytesRead == &numBytesToRead)
+   {
+      return 0;
+   }
+   return 1;
 }                              
 //---------- eFile_RClose-----------------
 // close the reading file
@@ -126,7 +138,12 @@ int eFile_ReadNext( char *pt)       // get next byte
 // Output: 0 if successful and 1 on failure (e.g., wasn't open)
 int eFile_RClose(void) // close the file for writing
 {
-
+  FRESULT res = fclose(fp);			/* Open or create a file */
+  if(res)
+  {
+    return 1; 
+  }
+  return 0; 
 }
 //---------- eFile_Directory-----------------
 // Display the directory with filenames and sizes
@@ -143,7 +160,12 @@ int eFile_Directory(void(*fp)(unsigned char))
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int eFile_Delete( char name[])  // remove this file 
 {
-
+  FRESULT res = f_unlink(name);   /* Delete an existing file or directory */
+  if(res)
+  {
+    return 1; 
+  }
+  return 0;  						
 }
 //---------- eFile_RedirectToFile-----------------
 // open a file for writing 
@@ -152,7 +174,13 @@ int eFile_Delete( char name[])  // remove this file
 // Output: 0 if successful and 1 on failure (e.g., trouble read/write to flash)
 int eFile_RedirectToFile(char *name)
 {
-
+  FRESULT res = f_open(fp, name, FA_WRITE);			/* Open or create a file */
+  if(res)
+  {
+    return 1; 
+  }
+  return 0; 
+  
 }
 //---------- eFile_EndRedirectToFile-----------------
 // close the previously open file
@@ -160,5 +188,10 @@ int eFile_RedirectToFile(char *name)
 // Output: 0 if successful and 1 on failure (e.g., wasn't open)
 int eFile_EndRedirectToFile(void)
 {
-
+  FRESULT res = fclose(fp);			/* Open or create a file */
+  if(res)
+  {
+    return 1; 
+  }
+  return 0; 
 }
