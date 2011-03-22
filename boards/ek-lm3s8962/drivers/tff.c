@@ -782,7 +782,7 @@ FRESULT f_mount (
 	if (drv) return FR_INVALID_DRIVE;
 	fsobj = FatFs;
 	FatFs = fs;
-	if (fsobj) memset(fsobj, 0, sizeof(FATFS));
+	if (fsobj) return FR_EXIST;        //memset(fsobj, 0, sizeof(FATFS));
 	if (fs) memset(fs, 0, sizeof(FATFS));
 
 	return FR_OK;
