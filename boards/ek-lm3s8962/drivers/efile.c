@@ -2,6 +2,7 @@
 // Middle-level routines to implement a solid-state disk 
 // Dustin Replogle and Katy Loeffler  3/21/2011
 
+
 //---------- eFile_Init-----------------
 // Activate the file system, without formating
 // Input: none
@@ -50,7 +51,11 @@ int eFile_Init(void) // initialize file system
   if(res == FR_EXIST)
   {
   return 1;				  // filesystem already exists on the disk
-  }  
+  }
+  
+  res = f_mkdir ("Root");
+  if(res) return 1;
+    
   return 0; 
 }
 //---------- eFile_Format-----------------
@@ -149,11 +154,13 @@ int eFile_RClose(void) // close the file for writing
 // Input: pointer to a function that outputs ASCII characters to display
 // Output: characters returned by reference
 //         0 if successful and 1 on failure (e.g., trouble reading from flash)
-int eFile_Directory(void(*fp)(unsigned char))   
+int eFile_Directory(void(*fp)(unsigned char*))   
 {
 	BYTE *dir, c;
 	FRESULT res;
 	FATFS *fs;
+	FILINFO *finfo;
+	DIR *dirobj;
 	dirobj = Directory;
 	fs = dirobj->fs;
 	
@@ -165,9 +172,9 @@ int eFile_Directory(void(*fp)(unsigned char))
 		if (c == 0) break;								/* Has it reached to end of dir? */
 		if (c != 0xE5 && !(dir[DIR_Attr] & AM_VOL))		/* Is it a valid entry? */
 			get_fileinfo(finfo, dir);
+			fp(finfo->fname);							//Output filename
 		if (!next_dir_entry(dirobj)) dirobj->sect = 0;	/* Next entry */
 	}
-
 	return FR_OK;  
 }
 //---------- eFile_Delete-----------------
