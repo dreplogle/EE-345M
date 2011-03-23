@@ -181,9 +181,11 @@ OSuart_Interpret(unsigned char nextChar)
   short first = 1;
   short command, equation, cmdptr = 0; 
   short event = 0;
-  const short numcommands = 3;
-  char * commands[numcommands] = {"NumSamples", "NumCreated", "DataLost"};
-  char * descriptions[numcommands] = {" - Display NumSamples\r\n", " - Display NumCreated\r\n", " - Display DataLost\r\n"};
+  const short numcommands = 7;
+  char * commands[numcommands] = {"NumSamples", "NumCreated", "DataLost", "format", "dir", "printfile", "deletefile"};
+  char * descriptions[numcommands] = {" - Display NumSamples\r\n", " - Display NumCreated\r\n", " - Display DataLost\r\n", 
+                                      " - Format entire disk", " - Print contents of directory", " - Print contents of file",
+                                      " - Delete file"};
   switch(nextChar)
   {
     case '\x7F':
@@ -345,9 +347,32 @@ OSuart_Interpret(unsigned char nextChar)
 	   {	 
 		  Int2Str(DataLost, string);
 		  OSuart_OutString(UART0_BASE, " =");
-		  OSuart_OutString(UART0_BASE, string);	
+		  OSuart_OutString(UART0_BASE, string);	      //"format", "dir", "printfile", "deletefile"
 	   }
-
+	   if(strcasecmp(token, commands[cmdptr]) == 0)        //format
+	   {	 
+       eFile_Format();	
+	   }
+     cmdptr++;
+	   if(strcasecmp(token, commands[cmdptr]) == 0)        //dir
+	   {	 
+       eFile_Directory(&OSuart_OutString);	
+	   }
+     cmdptr++;
+	   if(strcasecmp(token, commands[cmdptr]) == 0)        //printfile
+	   {	 
+       token = strtok_r(NULL , " ", &last);
+       eFile_ROpen(token);
+       eFile_ReadNext(token);
+       eFile_RClose(token);	
+	   }
+     cmdptr++;
+	   if(strcasecmp(token, commands[cmdptr]) == 0)        //deletefile
+	   {	 
+       token = strtok_r(NULL , " ", &last);
+       eFile_Delete(token);	       	
+	   }
+     cmdptr++;
 
       
      token = strtok_r(NULL , " ", &last);  	

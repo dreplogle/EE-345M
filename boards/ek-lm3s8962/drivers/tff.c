@@ -40,10 +40,8 @@
 #include "edisk.h"
 
 
-static
-FATFS *FatFs;			/* Pointer to the file system objects (logical drive) */
-static
-WORD fsid;				/* File system mount ID */
+static FATFS *FatFs;			/* Pointer to the file system objects (logical drive) */
+static WORD fsid;				/* File system mount ID */
 
 
 /*-------------------------------------------------------------------------
@@ -373,8 +371,8 @@ BOOL next_dir_entry (	/* TRUE: successful, FALSE: could not move next */
 /*-----------------------------------------------------------------------*/
 
 #if _FS_MINIMIZE <= 1
-static
-void get_fileinfo (		/* No return code */
+
+static void get_fileinfo (		/* No return code */
 	FILINFO *finfo, 	/* Ptr to store the File Information */
 	const BYTE *dir		/* Ptr to the directory entry */
 )
@@ -1573,6 +1571,29 @@ FRESULT f_rename (
 	return sync();
 }
 
+int print_dir(void(*Fp)(unsigned char*), DIR* Directory)
+{
+	BYTE *dir, c;
+	FRESULT res;
+	FATFS *fs;
+	FILINFO *finfo;
+	DIR *dirobj;
+	dirobj = Directory;
+	fs = dirobj->fs;
+	
+	while (dirobj->sect) {
+		if (!move_window(dirobj->sect))
+			return 1;  // error FR_RW_ERROR;
+		dir = &fs->win[(dirobj->index & 15) * 32];		/* pointer to the directory entry */
+		c = dir[DIR_Name];
+		if (c == 0) break;								/* Has it reached to end of dir? */
+		if (c != 0xE5 && !(dir[DIR_Attr] & AM_VOL))		/* Is it a valid entry? */
+			get_fileinfo(finfo, dir);
+			Fp(finfo->fname);							//Output filename
+		if (!next_dir_entry(dirobj)) dirobj->sect = 0;	/* Next entry */
+	}
+	return FR_OK;  
+}
 #endif /* !_FS_READONLY */
 #endif /* _FS_MINIMIZE == 0 */
 #endif /* _FS_MINIMIZE <= 1 */
