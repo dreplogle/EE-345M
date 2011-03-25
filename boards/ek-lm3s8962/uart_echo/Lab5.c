@@ -65,21 +65,23 @@ unsigned long data;      // ADC sample, 0 to 1023
 unsigned long voltage;   // in mV,      0 to 3000
 unsigned long time;      // in 10msec,  0 to 1000 
 unsigned long t=0;
-  //OS_ClearMsTime();    
+  //OS_ClearMsTime();
+  char string[100];    
   DataLost = 0;          // new run with no lost data 
-  printf("Robot running...");
+  OSuart_OutString(UART0_BASE, "Robot running...");
   eFile_RedirectToFile("Robot");
-  printf("time(sec)\tdata(volts)\n\r");
+  OSuart_OutString(UART0_BASE, "time(sec)\tdata(volts)\n\r");
   do{
     t++;
     time=OS_Time();            // 10ms resolution in this OS
     OS_Fifo_Get(&data);        // 1000 Hz sampling get from producer
     voltage = (300*data)/1024;   // in mV
-    printf("%0u.%02u\t%0u.%03u\n\r",time/100,time%100,voltage/1000,voltage%1000);
+    sprintf(string, "%0u.%02u\t%0u.%03u\n\r",time/100,time%100,voltage/1000,voltage%1000);
+    OSuart_OutString(UART0_BASE, string);
   }
   while(time < 1000);       // change this to mean 10 seconds
   eFile_EndRedirectToFile();
-  printf("done.\n\r");
+  OSuart_OutString(UART0_BASE, "done.\n\r");
   Running = 0;                // robot no longer running
   OS_Kill();
 }
@@ -177,16 +179,19 @@ int realmain(void){        // lab 5 real main
 unsigned char buffer[512];
 #define MAXBLOCKS 100
 void diskError(char* errtype, unsigned long n){
-  printf(errtype);
-  printf(" disk error %u",n);
+  char string[100];
+  OSuart_OutString(UART0_BASE, errtype);
+  sprintf(string," disk error %u",n);
+  OSuart_OutString(UART0_BASE, string);
   OS_Kill();
 }
 void TestDisk(void){  DSTATUS result;  unsigned short block;  int i; unsigned long n;
   // simple test of eDisk
-  printf("\n\rEE345M/EE380L, Lab 5 eDisk test\n\r");
+  char string[100];
+  OSuart_OutString(UART0_BASE, "\n\rEE345M/EE380L, Lab 5 eDisk test\n\r");
   result = eDisk_Init(0);  // initialize disk
   if(result) diskError("eDisk_Init",result);
-  printf("Writing blocks\n\r");
+  OSuart_OutString(UART0_BASE, "Writing blocks\n\r");
   n = 1;    // seed
   for(block = 0; block < MAXBLOCKS; block++){
     for(i=0;i<512;i++){
@@ -197,7 +202,7 @@ void TestDisk(void){  DSTATUS result;  unsigned short block;  int i; unsigned lo
     if(eDisk_WriteBlock(buffer,block))diskError("eDisk_WriteBlock",block); // save to disk
     GPIO_PF3 = 0x00;     
   }  
-  printf("Reading blocks\n\r");
+  OSuart_OutString(UART0_BASE, "Reading blocks\n\r");
   n = 1;  // reseed, start over to get the same sequence
   for(block = 0; block < MAXBLOCKS; block++){
     GPIO_PF2 = 0x04;     // PF2 high for one block read
@@ -206,12 +211,14 @@ void TestDisk(void){  DSTATUS result;  unsigned short block;  int i; unsigned lo
     for(i=0;i<512;i++){
       n = (16807*n)%2147483647; // pseudo random sequence
       if(buffer[i] != (0xFF&n)){
-        printf("Read data not correct, block=%u, i=%u, expected %u, read %u\n\r",block,i,(0xFF&n),buffer[i]);
+        sprintf(string, "Read data not correct, block=%u, i=%u, expected %u, read %u\n\r",block,i,(0xFF&n),buffer[i]);
+        OSuart_OutString(UART0_BASE, string);
         OS_Kill();
       }      
     }
-  }  
-  printf("Successful test of %u blocks\n\r",MAXBLOCKS);
+  }
+  sprintf(string,  "Successful test of %i blocks\n\r",MAXBLOCKS);
+  OSuart_OutString(UART0_BASE, string);
   OS_Kill();
 }
 void RunTest(void){
@@ -222,7 +229,6 @@ void RunTest(void){
 // Timer interrupts, period established by first call to OS_AddPeriodicThread
 int main(void){   // testmain1
   OS_Init();           // initialize, disable interrupts
-
 //*******attach background tasks***********
   OS_AddPeriodicThread(&disk_timerproc,10*TIME_1MS,0);   // time out routines for disk
   OS_AddButtonTask(&RunTest,2);
@@ -237,7 +243,7 @@ int main(void){   // testmain1
 }
 
 void TestFile(void){   int i; char data; 
-  printf("\n\rEE345M/EE380L, Lab 5 eFile test\n\r");
+  OSuart_OutString(UART0_BASE, "\n\rEE345M/EE380L, Lab 5 eFile test\n\r");
   // simple test of eFile
   if(eFile_Init())              diskError("eFile_Init",0); 
   if(eFile_Format())            diskError("eFile_Format",0); 
@@ -260,7 +266,7 @@ void TestFile(void){   int i; char data;
   }
   if(eFile_Delete("file1"))     diskError("eFile_Delete",0);
   eFile_Directory(&OSuart_OutString);
-  printf("Successful test of creating a file\n\r");
+  OSuart_OutString(UART0_BASE, "Successful test of creating a file\n\r");
   OS_Kill();
 }
 
