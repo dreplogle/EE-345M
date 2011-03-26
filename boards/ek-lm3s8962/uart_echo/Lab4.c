@@ -41,6 +41,9 @@ extern long MinJitterA;
 unsigned short SoundVFreq = 1;
 unsigned short SoundVTime = 0;
 unsigned short FilterOn = 1;
+long SoundDump[200];
+unsigned int SoundDumpInd;
+unsigned int Trigger = 0;
 
 Sema4Type MailBoxFull;
 Sema4Type MailBoxEmpty;
@@ -194,11 +197,11 @@ void DownPush(void){
 
 //******** Producer *************** 
 // The Producer in this lab will be called from your ADC ISR
-// A timer runs at 1 kHz, started by your ADC_Collect
-// The timer triggers the ADC, creating the 1 kHz sampling
+// A timer runs at 10000 kHz, started by your ADC_Collect
+// The timer triggers the ADC, creating the 10000 kHz sampling
 // Your ADC ISR runs when ADC data is ready
 // Your ADC ISR calls this function with a 10-bit sample 
-// sends data to the consumer, runs periodically at 1 kHz
+// sends data to the consumer, runs periodically at 10000 kHz
 // inputs:  none
 // outputs: none
 void Producer(unsigned short data){
@@ -214,7 +217,7 @@ void Display(void);
 
 //******** Consumer *************** 
 // foreground thread, accepts data from producer
-// calculates FFT, sends DC component to Display
+// calculates FFT, implements FIR filter
 // inputs:  none
 // outputs: none
 void Consumer(void){ 
@@ -227,7 +230,7 @@ unsigned long myId = OS_Id();
 //  NumCreated += OS_AddThread(&Display,128,0); 
   while(NumSamples < RUNLENGTH) {
     OS_Wait(&SoundRead); 
-    for(t = 0; t < 256; t++){   // collect 64 ADC samples
+    for(t = 0; t < 256; t++){   // collect 256 ADC samples
       while(!OS_Fifo_Get(&data));   // get from producer    
       x[t] = data;           // real part is 0 to 1023, imaginary part is 0
 	  if(FilterOn)
@@ -244,7 +247,7 @@ unsigned long myId = OS_Id();
       xFilt[i] = ((xFilt[i]-423)*hanning[i])/1024;	// 423 is DC correction for 1.24 V out of 3 V.
 	}
 
-    cr4_fft_256_stm32(y,xFilt,256);  // complex FFT of last 64 ADC values
+    cr4_fft_256_stm32(y,xFilt,256);  // complex FFT of last 256 ADC values
 	OS_Signal(&SoundReady);
     DCcomponent = y[0]&0xFFFF; // Real part at frequency 0, imaginary part should be zero
     
@@ -372,14 +375,21 @@ void Jitter(void)   // prints jitter information (write this)
 //**************oLED Graphing Voltage vs. Freq/Time*****************
 void SoundDisplay(void)
 {
+
   static int index;
+  char *string;
   for(;;){
     if(SoundVFreq)
     {
 	    OS_Wait(&SoundReady);
-	    RIT128x96x4PlotClear(0,1023); 
+	  RIT128x96x4PlotClear(0,1023);
+		 
       for(index = 0; index < 128; index++)
    	  {
+	    if(x[index] > 1000)
+		{
+		  Trigger = 1;
+		}
 	    data[index] = (short)y[index];
 		if(data[index] < 0)
 		{
@@ -388,23 +398,48 @@ void SoundDisplay(void)
 		data[index] = data[index]&0x03FF;
         RIT128x96x4PlotdBfs((long)data[index]);
 	    RIT128x96x4PlotNext();
+
 	  }
+	    if(Trigger){
+		  for(index = 0; index < 64; index++){
+		  if(SoundDumpInd < 200)
+		  {
+		    SoundDump[SoundDumpInd] = data[index];
+		    SoundDumpInd++;
+		  }
+		}
+		}
+		
 	  RIT128x96x4ShowPlot();
+	  
       OS_Signal(&SoundRead);
     }
     else if(SoundVTime)
     {
 	  OS_Wait(&SoundReady);
-	  RIT128x96x4PlotClear(0,1023); 
-      for(index = 0; index < 128; index++) 
+	  RIT128x96x4PlotClear(0,1023);
+      for(index = 128; index < 256; index++) 
       {
+	    if(x[index] > 600)
+		{
+		  Trigger = 1;
+		}
         RIT128x96x4PlotPoint(x[index]);
 		RIT128x96x4PlotNext();
+
+		if(Trigger){
+		  if(SoundDumpInd < 200)
+		  {
+		    SoundDump[SoundDumpInd] = x[index];
+		    SoundDumpInd++;
+		  }
+		}
       }
 	  RIT128x96x4ShowPlot();
 	  OS_Signal(&SoundRead);
     }
   }
+  
 }
 
 //*******************final user main DEMONTRATE THIS TO TA**********
@@ -419,6 +454,7 @@ int main(void){        // lab 3 real main
 
   DataLost = 0;        // lost data between producer and consumer
   NumSamples = 0;
+  SoundDumpInd = 0;
 
 //********initialize communication channels
   OS_MailBox_Init();
