@@ -232,7 +232,7 @@ void TestFile(void){   int i; char data; DSTATUS result;
   if(result) diskError("eDisk_Init",result);
   if(eFile_Init())              diskError("eFile_Init",0); 
 //  if(eFile_Format())            diskError("eFile_Format",0); 
-//  eFile_Directory(&OSuart_OutString);
+  eFile_Directory();
   if(eFile_Create("file1"))     diskError("eFile_Create",0);
   if(eFile_WOpen("file1"))      diskError("eFile_WOpen",0);
   for(i=0;i<1000;i++){
@@ -243,14 +243,14 @@ void TestFile(void){   int i; char data; DSTATUS result;
     }
   }
   if(eFile_WClose())            diskError("eFile_Close",0);
-  eFile_Directory(&OSuart_OutString);
+  eFile_Directory();
   if(eFile_ROpen("file1"))      diskError("eFile_ROpen",0);
   for(i=0;i<1000;i++){
     if(eFile_ReadNext(&data))   diskError("eFile_ReadNext",i);
     OSuart_OutChar(UART0_BASE, data);
   }
   if(eFile_Delete("file1"))     diskError("eFile_Delete",0);
-  eFile_Directory(&OSuart_OutString);
+  eFile_Directory();
   OSuart_OutString(UART0_BASE, "Successful test of creating a file\n\r");
   OS_Kill();
 }

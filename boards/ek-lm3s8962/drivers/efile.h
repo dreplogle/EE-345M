@@ -72,7 +72,7 @@ int eFile_RClose(void); // close the file for writing
 // Input: pointer to a function that outputs ASCII characters to display
 // Output: characters returned by reference
 //         0 if successful and 1 on failure (e.g., trouble reading from flash)
-int eFile_Directory(void(*fp)(unsigned char*));   
+int eFile_Directory(void);   
 
 //---------- eFile_Delete-----------------
 // delete this file

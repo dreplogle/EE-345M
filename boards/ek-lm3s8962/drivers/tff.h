@@ -169,7 +169,7 @@ FRESULT f_unlink (const char*);						/* Delete an existing file or directory */
 FRESULT	f_mkdir (const char*);						/* Create a new directory */
 FRESULT f_chmod (const char*, BYTE, BYTE);			/* Change file/dir attriburte */
 FRESULT f_rename (const char*, const char*);		/* Rename/Move a file or directory */
-int print_dir(void(*fp)(unsigned char*), DIR*);
+int print_dir(DIR*);
 
 /* User defined function to give a current time to fatfs module */
 

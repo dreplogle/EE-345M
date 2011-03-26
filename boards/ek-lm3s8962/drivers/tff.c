@@ -38,7 +38,8 @@
 #include <string.h>		
 #include "tff.h" /* Tiny-FatFs declarations */
 #include "edisk.h"
-
+#include "hw_memmap.h"
+#include "OSuart.h"
 
 static FATFS *FatFs;			/* Pointer to the file system objects (logical drive) */
 static WORD fsid;				/* File system mount ID */
@@ -774,12 +775,12 @@ FRESULT f_mount (
 	FATFS *fs		/* Pointer to new file system object (NULL for unmount)*/
 )
 {
-	FATFS *fsobj;
+//	FATFS *fsobj;
 
 	if (drv) return FR_INVALID_DRIVE;
-	fsobj = FatFs;
+//	fsobj = FatFs;
 	FatFs = fs;
-	if (fsobj) memset(fsobj, 0, sizeof(FATFS));
+//	if (fsobj) memset(fsobj, 0, sizeof(FATFS));
 	if (fs) memset(fs, 0, sizeof(FATFS));
 
 	return FR_OK;
@@ -1570,7 +1571,7 @@ FRESULT f_rename (
 	return sync();
 }
 
-int print_dir(void(*Fp)(unsigned char*), DIR* dirobj)
+int print_dir(DIR* dirobj)
 {
 	BYTE *dir, c;
 	FRESULT res;
@@ -1586,7 +1587,7 @@ int print_dir(void(*Fp)(unsigned char*), DIR* dirobj)
 		if (c == 0) break;								/* Has it reached to end of dir? */
 		if (c != 0xE5 && !(dir[DIR_Attr] & AM_VOL))		/* Is it a valid entry? */
 			get_fileinfo(finfo, dir);
-			Fp(finfo->fname);							//Output filename
+			OSuart_OutString(UART0_BASE,finfo->fname);							//Output filename
 		if (!next_dir_entry(dirobj)) dirobj->sect = 0;	/* Next entry */
 	}
 	return FR_OK;  

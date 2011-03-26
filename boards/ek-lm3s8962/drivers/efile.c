@@ -17,6 +17,7 @@
 #include "drivers/tff.h"
 
 //FIL * Files[10];
+FIL CurFile;
 FIL * Fp;	//Global file pointer, only one file can be open at a time
 DIR * Directory;  //Global directory pointer
 
@@ -74,6 +75,7 @@ int eFile_Format(void) // erase disk, add format
 int eFile_Create( char name[])  // create new file, make it empty 
 {
   FRESULT res;
+  Fp = &CurFile;
   res = f_open(Fp, name, FA_CREATE_NEW); 
   if(res) return 1;
   return 0;
@@ -86,6 +88,7 @@ int eFile_Create( char name[])  // create new file, make it empty
 int eFile_WOpen(char name[])      // open a file for writing 
 {
   FRESULT res;
+  Fp = &CurFile;
   res = f_open(Fp, name, FA_WRITE);     //params: empty Fp, path ptr, mode
   if(res) return 1;
   return 0;	
@@ -177,12 +180,13 @@ int eFile_RClose(void) // close the file for writing
 // Input: pointer to a function that outputs ASCII characters to display
 // Output: characters returned by reference
 //         0 if successful and 1 on failure (e.g., trouble reading from flash)
-int eFile_Directory(void(*Fp)(unsigned char*))   
+int eFile_Directory(void)   
 {
 	DIR foundDir;
 	DIR *directory = &foundDir;
 	f_opendir (directory, "Root");
-	return print_dir(Fp, directory);
+	print_dir(directory);
+	return 0;
 }
 
 //---------- eFile_Delete-----------------
