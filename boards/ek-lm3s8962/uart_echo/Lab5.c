@@ -227,7 +227,7 @@ void RunTest(void){
 //******************* test main1 **********
 // SYSTICK interrupts, period established by OS_Launch
 // Timer interrupts, period established by first call to OS_AddPeriodicThread
-int main(void){   // testmain1
+int testmain1(void){   // testmain1
   OS_Init();           // initialize, disable interrupts
 //*******attach background tasks***********
   OS_AddPeriodicThread(&disk_timerproc,10*TIME_1MS,0);   // time out routines for disk
@@ -273,7 +273,7 @@ void TestFile(void){   int i; char data;
 //******************* test main2 **********
 // SYSTICK interrupts, period established by OS_Launch
 // Timer interrupts, period established by first call to OS_AddPeriodicThread
-int testmain2(void){ 
+int main(void){ 
   OS_Init();           // initialize, disable interrupts
 
 //*******attach background tasks***********
