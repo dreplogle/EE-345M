@@ -390,8 +390,6 @@ DSTATUS eDisk_Init(
 {
     BYTE n, ty, ocr[4];
 
-
-    if (drv) return STA_NOINIT;            /* Supports only single drive */
     if (Stat & STA_NODISK) return Stat;    /* No card in the socket */
 
     power_on();                            /* Force socket power on */

@@ -45,8 +45,8 @@
 //***********************************************************************
 #define NVIC_PRI11_REG (*((volatile unsigned long *)(0xE000E42C)))	//#46 GPIOF	  Reg:(44-47)
 #define NVIC_PRI12_REG (*((volatile unsigned long *)(0xE000E430)))  //#51 Timer3A Reg:(48-51)
-#define OS_ENTERCRITICAL(){sr = SRSave(); timeIoff = OS_Time();}
-#define OS_EXITCRITICAL(){TimeIbitDisabled += (OS_TimeDifference(OS_Time(),timeIoff)*CLOCK_PERIOD)/1000000; SRRestore(sr);}
+#define OS_ENTERCRITICAL(){sr = SRSave();}
+#define OS_EXITCRITICAL(){SRRestore(sr);}
 //***********************************************************************
 // 
 // Global Variables
@@ -206,9 +206,9 @@ OS_Init(void)
 
   OS_DebugProfileInit();
   // Initialize oLED display
-  RIT128x96x4Init(1000000);
+  //RIT128x96x4Init(1000000);
   // Initialize ADC
-  ADC_Open();
+  //ADC_Open();
   // Initialize serial communication
   OSuart_Open();
 
@@ -1136,7 +1136,7 @@ SysTickThSwIntHandler(void)
     //
     // Read the state of the push buttons.
     //
-    ulData = (GPIOPinRead(GPIO_PORTE_BASE, (GPIO_PIN_0 | GPIO_PIN_1 |
+/*    ulData = (GPIOPinRead(GPIO_PORTE_BASE, (GPIO_PIN_0 | GPIO_PIN_1 |
                                             GPIO_PIN_2 | GPIO_PIN_3)) |
               (GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1) << 3));
 
@@ -1198,7 +1198,7 @@ SysTickThSwIntHandler(void)
 
   //Re-read switch to make sure it is unpressed.
   //while(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1));
-
+                                  */           
   //Clear the interrupt
   /*GPIOPinIntClear(GPIO_PORTF_BASE, GPIO_PIN_1);
   GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);

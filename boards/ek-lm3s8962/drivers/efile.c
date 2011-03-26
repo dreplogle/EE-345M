@@ -10,14 +10,15 @@
 // since this program initializes the disk, it must run with 
 //    the disk periodic task operating
 
+//#define MAX_NUM_FILES 10
 #include <string.h>
 #include "efile.h"            /* FatFs declarations */
 #include "edisk.h"        /* Include file for user provided disk functions */
 #include "drivers/tff.h"
-#define MAX_NUM_FILES 10
-FIL * files[MAX_NUM_FILES];
-FIL* fp;	//Global file pointer, only one file can be open at a time
-DIR* Directory;  //Global directory pointer
+
+//FIL * Files[10];
+FIL * Fp;	//Global file pointer, only one file can be open at a time
+DIR * Directory;  //Global directory pointer
 
 int eFile_Init(void) // initialize file system
 {
@@ -52,7 +53,7 @@ int eFile_Init(void) // initialize file system
   res = f_mount (0, fs);   // assign initialized FS object to FS pointer on drive 0
   if(res == FR_EXIST)
   {
-    return 1;				  // filesystem already exists on the disk
+    return 1;				  // Filesystem already exists on the disk
   }
   
   res = f_mkdir ("Root");
@@ -61,7 +62,7 @@ int eFile_Init(void) // initialize file system
   return 0; 
 }
 //---------- eFile_Format-----------------
-// Erase all files, create blank directory, initialize free space manager
+// Erase all Files, create blank directory, initialize free space manager
 // Input: none
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int eFile_Format(void) // erase disk, add format
@@ -75,7 +76,7 @@ int eFile_Format(void) // erase disk, add format
 int eFile_Create( char name[])  // create new file, make it empty 
 {
   FRESULT res;
-  res = f_open(fp, name, FA_CREATE_NEW); 
+  res = f_open(Fp, name, FA_CREATE_NEW); 
   if(res) return 1;
   return 0;
 }
@@ -87,7 +88,7 @@ int eFile_Create( char name[])  // create new file, make it empty
 int eFile_WOpen(char name[])      // open a file for writing 
 {
   FRESULT res;
-  res = f_open(fp, name, FA_WRITE);     //params: empty FP, path ptr, mode
+  res = f_open(Fp, name, FA_WRITE);     //params: empty Fp, path ptr, mode
   if(res) return 1;
   return 0;	
 }
@@ -101,7 +102,7 @@ int eFile_Write( char data)
   WORD * bytesWritten;
   FRESULT res;
 
-  res = f_write (fp, dat, 1, bytesWritten);
+  res = f_write (Fp, dat, 1, bytesWritten);
 
   if(res) return 1;
   return 0;
@@ -126,7 +127,7 @@ int eFile_Close(void)
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int eFile_WClose(void) // close the file for writing
 {
-  FRESULT res = fclose(fp);			/* Open or create a file */
+  FRESULT res = fclose(Fp);			/* Open or create a file */
   if(res)
   {
     return 1; 
@@ -140,7 +141,7 @@ int eFile_WClose(void) // close the file for writing
 int eFile_ROpen( char name[])      // open a file for reading 
 {
   FRESULT res;
-  res = f_open(fp, name, FA_READ);     //params: empty FP, path ptr, mode
+  res = f_open(Fp, name, FA_READ);     //params: empty Fp, path ptr, mode
   if(res) return 1;
   return 0;	
 }   
@@ -153,7 +154,7 @@ int eFile_ReadNext( char *pt)       // get next byte
 {
    WORD * numBytesRead;
    WORD numBytesToRead = 1;
-   f_read(fp, pt, numBytesToRead, numBytesRead);			/* Read data from a file */
+   f_read(Fp, pt, numBytesToRead, numBytesRead);			/* Read data from a file */
    if(numBytesRead == &numBytesToRead)
    {
       return 0;
@@ -166,7 +167,7 @@ int eFile_ReadNext( char *pt)       // get next byte
 // Output: 0 if successful and 1 on failure (e.g., wasn't open)
 int eFile_RClose(void) // close the file for writing
 {
-  FRESULT res = fclose(fp);			/* Open or create a file */
+  FRESULT res = fclose(Fp);			/* Open or create a file */
   if(res)
   {
     return 1; 
@@ -178,29 +179,11 @@ int eFile_RClose(void) // close the file for writing
 // Input: pointer to a function that outputs ASCII characters to display
 // Output: characters returned by reference
 //         0 if successful and 1 on failure (e.g., trouble reading from flash)
-int eFile_Directory(void(*fp)(unsigned char*))   
+int eFile_Directory(void(*Fp)(unsigned char*))   
 {
-	BYTE *dir, c;
-	FRESULT res;
-	FATFS *fs;
-	FILINFO *finfo;
-	DIR *dirobj;
-	dirobj = Directory;
-	fs = dirobj->fs;
-	
-	while (dirobj->sect) {
-		if (!move_window(dirobj->sect))
-			return 1;  // error FR_RW_ERROR;
-		dir = &fs->win[(dirobj->index & 15) * 32];		/* pointer to the directory entry */
-		c = dir[DIR_Name];
-		if (c == 0) break;								/* Has it reached to end of dir? */
-		if (c != 0xE5 && !(dir[DIR_Attr] & AM_VOL))		/* Is it a valid entry? */
-			get_fileinfo(finfo, dir);
-			fp(finfo->fname);							//Output filename
-		if (!next_dir_entry(dirobj)) dirobj->sect = 0;	/* Next entry */
-	}
-	return FR_OK;  
+	return print_dir(Fp, Directory);
 }
+
 //---------- eFile_Delete-----------------
 // delete this file
 // Input: file name is a single ASCII letter
@@ -221,7 +204,7 @@ int eFile_Delete( char name[])  // remove this file
 // Output: 0 if successful and 1 on failure (e.g., trouble read/write to flash)
 int eFile_RedirectToFile(char *name)
 {
-  FRESULT res = f_open(fp, name, FA_WRITE);			/* Open or create a file */
+  FRESULT res = f_open(Fp, name, FA_WRITE);			/* Open or create a file */
   if(res)
   {
     return 1; 
@@ -235,7 +218,7 @@ int eFile_RedirectToFile(char *name)
 // Output: 0 if successful and 1 on failure (e.g., wasn't open)
 int eFile_EndRedirectToFile(void)
 {
-  FRESULT res = fclose(fp);			/* Open or create a file */
+  FRESULT res = fclose(Fp);			/* Open or create a file */
   if(res)
   {
     return 1; 

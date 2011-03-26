@@ -52,6 +52,7 @@
 
 
 #include "integer.h"
+#include "edisk.h"
 
 
 /* Type definition for cluster number */
@@ -168,13 +169,12 @@ FRESULT f_unlink (const char*);						/* Delete an existing file or directory */
 FRESULT	f_mkdir (const char*);						/* Create a new directory */
 FRESULT f_chmod (const char*, BYTE, BYTE);			/* Change file/dir attriburte */
 FRESULT f_rename (const char*, const char*);		/* Rename/Move a file or directory */
-
+int print_dir(void(*fp)(unsigned char*), DIR*);
 
 /* User defined function to give a current time to fatfs module */
 
 DWORD get_fattime (void);	/* 31-25: Year(0-127 +1980), 24-21: Month(1-12), 20-16: Day(1-31) */
 							/* 15-11: Hour(0-23), 10-5: Minute(0-59), 4-0: Second(0-29 *2) */
-
 
 
 /* File access control and file status flags (FIL.flag) */
