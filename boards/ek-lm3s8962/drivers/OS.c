@@ -1131,6 +1131,7 @@ SysTickThSwIntHandler(void)
   unsigned long ulData, ulDelta; 
   long sr = 0;
   unsigned long timeIoff;
+  static char count;
   OS_ENTERCRITICAL();
 
     //
@@ -1211,8 +1212,13 @@ SysTickThSwIntHandler(void)
   //GPIOPinIntEnable(GPIO_PORTF_BASE, GPIO_PIN_1);
 
   OS_EXITCRITICAL();  
-  
-  TriggerPendSV();
+ 
+  if(!count)
+  {
+    TriggerPendSV();
+	count = 10;
+  }
+  count--;
 }
 
 //***********************************************************************

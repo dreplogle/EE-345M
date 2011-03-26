@@ -776,11 +776,10 @@ FRESULT f_mount (
 {
 	FATFS *fsobj;
 
-
 	if (drv) return FR_INVALID_DRIVE;
 	fsobj = FatFs;
 	FatFs = fs;
-	if (fsobj) return FR_EXIST;        //memset(fsobj, 0, sizeof(FATFS));
+	if (fsobj) memset(fsobj, 0, sizeof(FATFS));
 	if (fs) memset(fs, 0, sizeof(FATFS));
 
 	return FR_OK;
@@ -1571,14 +1570,12 @@ FRESULT f_rename (
 	return sync();
 }
 
-int print_dir(void(*Fp)(unsigned char*), DIR* Directory)
+int print_dir(void(*Fp)(unsigned char*), DIR* dirobj)
 {
 	BYTE *dir, c;
 	FRESULT res;
 	FATFS *fs;
 	FILINFO *finfo;
-	DIR *dirobj;
-	dirobj = Directory;
 	fs = dirobj->fs;
 	
 	while (dirobj->sect) {

@@ -691,12 +691,17 @@ void disk_timerproc (void)
 {
 //    BYTE n, s;
     BYTE n;
+	static BYTE count = 10;
 
-
-    n = Timer1;                        /* 100Hz decrement timer */
-    if (n) Timer1 = --n;
-    n = Timer2;
-    if (n) Timer2 = --n;
+	if(!count)
+	{
+      n = Timer1;                        /* 100Hz decrement timer */
+      if (n) Timer1 = --n;
+      n = Timer2;
+      if (n) Timer2 = --n;
+	  count = 10;
+	}
+	count--;
 
 }
 

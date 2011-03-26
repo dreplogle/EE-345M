@@ -20,45 +20,43 @@
 FIL * Fp;	//Global file pointer, only one file can be open at a time
 DIR * Directory;  //Global directory pointer
 
+
 int eFile_Init(void) // initialize file system
 {
-  FATFS *fs;
+
   FRESULT res;
+  FATFS newFileSystem;
+  FATFS *fs = &newFileSystem;
+  unsigned short i;
+  res = f_mount(0, fs);   // assign initialized FS object to FS pointer on drive 0
 
-  // Initilize values in fs
-  fs->id = 1;				/* File system mount ID */
-  fs->n_rootdir = 1;		/* Number of root directory entries */
-  fs->winsect = 0;		/* Current sector appearing in the win[] */
-  fs->fatbase = 0;		/* FAT start sector */
-  fs->dirbase = 0;		/* Root directory start sector */
-  fs->database = 10;		/* Data start sector */
-  fs->sects_fat = 1000;		/* Sectors per fat */
-  fs->max_clust;		/* Maximum cluster# + 1 */
+	fs->id = 1;				/* File system mount ID */
+	fs->n_rootdir = 0;		/* Number of root directory entries */
+	fs->winsect = 0;		/* Current sector appearing in the win[] */
+	fs->fatbase = 0;		/* FAT start sector */
+	fs->dirbase = 0;		/* Root directory start sector */
+	fs->database = 40;		/* Data start sector */
+	fs->sects_fat = 100000;		/* Sectors per fat */
+	fs->max_clust = 11;		/* Maximum cluster# + 1 */
 #if !_FS_READONLY
-  fs->last_clust;		/* Last allocated cluster */
-  fs->free_clust;		/* Number of free clusters */
+	fs->last_clust = 0;		/* Last allocated cluster */
+	fs->free_clust = 10000;		/* Number of free clusters */
 #if _USE_FSINFO
-  fs->fsi_sector;		/* fsinfo sector */
-  fs->fsi_flag;		/* fsinfo dirty flag (1:must be written back) */
-  fs->pad1;
+//	DWORD	fsi_sector;		/* fsinfo sector */
+//	BYTE	fsi_flag;		/* fsinfo dirty flag (1:must be written back) */
+//	BYTE	pad1;
 #endif
 #endif
-  fs->fs_type;		/* FAT sub type */
-  fs->sects_clust;	/* Sectors per cluster */
-  fs->n_fats;			/* Number of FAT copies */
-  fs->winflag;		/* win[] dirty flag (1:must be written back) */
-  fs->win[512];		/* Disk access window for Directory/FAT/File */
-
+	fs->fs_type = 1;		/* FAT sub type */
+	fs->sects_clust = 10;	/* Sectors per cluster */
+	fs->n_fats = 2;			/* Number of FAT copies */
+//	BYTE	winflag;		/* win[] dirty flag (1:must be written back) */
+	for(i=0; i < 512; i++){
+		fs->win[i] = 0;		/* Disk access window for Directory/FAT/File */
+	}
   
-  res = f_mount (0, fs);   // assign initialized FS object to FS pointer on drive 0
-  if(res == FR_EXIST)
-  {
-    return 1;				  // Filesystem already exists on the disk
-  }
-  
-  res = f_mkdir ("Root");
-  if(res) return 1;
-    
+  res = f_mkdir("Root");
+  if(res) return 1;  
   return 0; 
 }
 //---------- eFile_Format-----------------
@@ -66,8 +64,8 @@ int eFile_Init(void) // initialize file system
 // Input: none
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int eFile_Format(void) // erase disk, add format
-{
-  
+{   
+  return 1;   
 }
 //---------- eFile_Create-----------------
 // Create a new, empty file with one allocated block
@@ -181,7 +179,10 @@ int eFile_RClose(void) // close the file for writing
 //         0 if successful and 1 on failure (e.g., trouble reading from flash)
 int eFile_Directory(void(*Fp)(unsigned char*))   
 {
-	return print_dir(Fp, Directory);
+	DIR foundDir;
+	DIR *directory = &foundDir;
+	f_opendir (directory, "Root");
+	return print_dir(Fp, directory);
 }
 
 //---------- eFile_Delete-----------------
