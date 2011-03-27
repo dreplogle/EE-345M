@@ -1137,10 +1137,10 @@ SysTickThSwIntHandler(void)
     //
     // Read the state of the push buttons.
     //
-/*    ulData = (GPIOPinRead(GPIO_PORTE_BASE, (GPIO_PIN_0 | GPIO_PIN_1 |
+    /*ulData = (GPIOPinRead(GPIO_PORTE_BASE, (GPIO_PIN_0 | GPIO_PIN_1 |
                                             GPIO_PIN_2 | GPIO_PIN_3)) |
-              (GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1) << 3));
-
+              (GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1) << 3));     */
+   /*
     //
     // Determine the switches that are at a different state than the debounced
     // state.
@@ -1190,7 +1190,7 @@ SysTickThSwIntHandler(void)
   if((ulDelta & 0x01) && !(g_ucSwitches & 0x01) && (UpTask != NULL))
   {
     UpTask();
-  }
+  }                                    */
   //Wait for the user to release the button
   //while(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1));
   
@@ -1199,13 +1199,13 @@ SysTickThSwIntHandler(void)
 
   //Re-read switch to make sure it is unpressed.
   //while(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1));
-                                  */           
+                                            
   //Clear the interrupt
   /*GPIOPinIntClear(GPIO_PORTF_BASE, GPIO_PIN_1);
   GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
   GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
   GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
-  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);*/
+  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1); */
 
 
   //TimerIntClear(TIMER2_BASE, TIMER_TIMA_TIMEOUT);
@@ -1216,7 +1216,7 @@ SysTickThSwIntHandler(void)
   if(!count)
   {
     TriggerPendSV();
-	count = 10;
+	  count = 10;
   }
   count--;
 }
@@ -1294,6 +1294,3 @@ SwitchIntHandler(void)
 }
  
 //******************************EOF**************************************
-
-
-
