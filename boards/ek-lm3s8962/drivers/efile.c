@@ -17,17 +17,16 @@
 #include "drivers/tff.h"
 
 //FIL * Files[10];
-FIL CurFile;
-FIL * Fp;	//Global file pointer, only one file can be open at a time
-DIR * Directory;  //Global directory pointer
-
+volatile FIL CurFile;
+volatile FIL * Fp;	//Global file pointer, only one file can be open at a time
+volatile DIR * Directory;  //Global directory pointer
+volatile FATFS fileSystem;
 
 int eFile_Init(void) // initialize file system
 {
 
   FRESULT res;
-  FATFS newFileSystem;
-  FATFS *fs = &newFileSystem;
+  FATFS *fs = &fileSystem;
   unsigned short i;
   res = f_mount(0, fs);   // assign initialized FS object to FS pointer on drive 0
 
@@ -128,7 +127,8 @@ int eFile_Close(void)
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int eFile_WClose(void) // close the file for writing
 {
-  FRESULT res = fclose(Fp);			/* Open or create a file */
+  FRESULT res;			/* Open or create a file */
+  res = f_close(Fp);
   if(res)
   {
     return 1; 

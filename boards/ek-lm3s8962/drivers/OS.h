@@ -10,7 +10,7 @@
 #define BLOCKED 1
 #define UNBLOCKED 0
 #define MAX_NUM_OS_THREADS 4
-#define STACK_SIZE 2056   			//Stack size in bytes
+#define STACK_SIZE 4096   			//Stack size in bytes
 #define MAX_THREAD_SW_PER_MS 1000
 #define MIN_THREAD_SW_PER_MS 1
 #define MAX_OS_FIFOSIZE 128 		// can be any size
