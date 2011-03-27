@@ -19,7 +19,10 @@
 //FIL * Files[10];
 FIL CurFile;
 FIL * Fp;	//Global file pointer, only one file can be open at a time
-FATFS fileSystem;
+static FATFS fileSystem;
+unsigned char buff[512];
+
+BYTE ReadOnlyFlag = 0;
 
 int eFile_Init(void) // initialize file system
 {
@@ -45,9 +48,6 @@ int eFile_Init(void) // initialize file system
 	fs->sects_clust = 32;	/* Sectors per cluster */
 	fs->n_fats = 1;			/* Number of FAT copies */
 
-  
-  res = f_mkdir("Root");
-  if(res) return 1;  
   return 0; 
 }
 //---------- eFile_Format-----------------
@@ -55,8 +55,23 @@ int eFile_Init(void) // initialize file system
 // Input: none
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int eFile_Format(void) // erase disk, add format
-{   
-  return 1;   
+{  
+  FRESULT res;
+  DSTATUS result;  
+  int i; 
+  unsigned short block;
+
+  for(block = 0; block < 0xFF; block++){
+    for(i=0;i<512;i++){
+      buff[i] = 0;        
+    }
+//    GPIO_PF3 = 0x08;     // PF3 high for 100 block writes
+    eDisk_WriteBlock(buff,block); // save to disk
+//    GPIO_PF3 = 0x00;
+  }
+  res = f_mkdir("Root");
+  if(res) return 1; 
+  return 0;   
 }
 //---------- eFile_Create-----------------
 // Create a new, empty file with one allocated block
@@ -78,6 +93,7 @@ int eFile_Create( char name[])  // create new file, make it empty
 int eFile_WOpen(char name[])      // open a file for writing 
 {
   FRESULT res;
+  ReadOnlyFlag = 0;
   Fp = &CurFile;
   res = f_open(Fp, name, FA_WRITE);     //params: empty Fp, path ptr, mode
   if(res) return 1;
@@ -133,6 +149,7 @@ int eFile_WClose(void) // close the file for writing
 int eFile_ROpen( char name[])      // open a file for reading 
 {
   FRESULT res;
+  ReadOnlyFlag = 1;
   Fp = &CurFile;
   res = f_open(Fp, name, FA_READ);     //params: empty Fp, path ptr, mode
   if(res) return 1;
@@ -143,17 +160,18 @@ int eFile_ROpen( char name[])      // open a file for reading
 // Input: none
 // Output: return by reference data
 //         0 if successful and 1 on failure (e.g., end of file)
+
 int eFile_ReadNext( char *pt)       // get next byte 
 {
-   WORD numBytesRead = 0;
-   WORD *numBytesPt = &numBytesRead;
-   WORD numBytesToRead = 1;
+  WORD numBytesRead = 0;
+  WORD *numBytesPt = &numBytesRead;
+  WORD numBytesToRead = 1;
    f_read(Fp, pt, numBytesToRead, numBytesPt);			/* Read data from a file */
    if(numBytesRead == numBytesToRead)
    {
       return 0;
    }
-   return 1;
+   return 0;  ///!!
 }                              
 //---------- eFile_RClose-----------------
 // close the reading file
@@ -162,6 +180,7 @@ int eFile_ReadNext( char *pt)       // get next byte
 int eFile_RClose(void) // close the file for writing
 {
   FRESULT res = f_close(Fp);			/* Open or create a file */
+  ReadOnlyFlag = 0;
   if(res)
   {
     return 1; 
@@ -202,13 +221,16 @@ int eFile_Delete(char name[])  // remove this file
 // Output: 0 if successful and 1 on failure (e.g., trouble read/write to flash)
 int eFile_RedirectToFile(char *name)
 {
-  FRESULT res = f_open(Fp, name, FA_WRITE);			/* Open or create a file */
-  if(res)
-  {
-    return 1; 
+  unsigned char nextChar; 
+  if(eFile_WOpen(name)){diskError("eFile_WOpen",0); return 1;}
+  for(;;){
+    if(UARTRxFifo_Get(&nextChar))
+	{
+	  if(nextChar == '#') return 0;
+      if(eFile_Write(nextChar)){diskError("eFile_Write",0); return 1;}
+	}
   }
-  return 0; 
-  
+  return 0;  
 }
 //---------- eFile_EndRedirectToFile-----------------
 // close the previously open file

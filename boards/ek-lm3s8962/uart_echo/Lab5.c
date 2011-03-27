@@ -129,7 +129,7 @@ void Producer(unsigned short data){
 // inputs:  none
 // outputs: none
 unsigned long Idlecount=0;
-void IdleTask(void){ 
+void IdleTask(void){
   while(1) { 
     Idlecount++;        // debugging 
   }
@@ -150,7 +150,7 @@ extern void Interpreter(void);
 // execute   eFile_Init();  after periodic interrupts have started
 
 //*******************lab 5 main **********
-int realmain(void){        // lab 5 real main
+int main(void){        // lab 5 real main
   OS_Init();           // initialize, disable interrupts
   Running = 0;         // robot not running
   DataLost = 0;        // lost data between producer and consumer
@@ -158,12 +158,13 @@ int realmain(void){        // lab 5 real main
 
 //********initialize communication channels
   OS_Fifo_Init(512);    // ***note*** 4 is not big enough*****
-  ADC_Collect(0, 1000, &Producer); // start ADC sampling, channel 0, 1000 Hz
+  ADC_Open();
+  ADC_Collect(0, 1000, &Producer); // start ADC sampling, channel 0, 1000 Hz 
 
 //*******attach background tasks***********
   OS_AddButtonTask(&ButtonPush,2);
   OS_AddButtonTask(&DownPush,3);
-  OS_AddPeriodicThread(disk_timerproc,10*TIME_1MS,5);
+  OS_AddPeriodicThread(disk_timerproc,TIME_1MS,5);
 
   NumCreated = 0 ;
 // create initial foreground threads
@@ -183,7 +184,7 @@ void diskError(char* errtype, unsigned long n){
   OSuart_OutString(UART0_BASE, errtype);
   sprintf(string," disk error %u",n);
   OSuart_OutString(UART0_BASE, string);
-  OS_Kill();
+//  OS_Kill();
 }
 void TestDisk(void){  DSTATUS result;  unsigned short block;  int i; unsigned long n;
   // simple test of eDisk
@@ -233,6 +234,14 @@ void TestFile(void){   int i; char data; DSTATUS result;
   if(eFile_Init())              diskError("eFile_Init",0); 
 //  if(eFile_Format())            diskError("eFile_Format",0); 
   eFile_Directory();
+  if(eFile_ROpen("file1"))      diskError("eFile_ROpen",0);
+  eFile_Directory();
+  for(i=0;i<1000;i++){
+    if(eFile_ReadNext(&data))   diskError("eFile_ReadNext",i);
+    OSuart_OutChar(UART0_BASE, data);
+	SysCtlDelay(SysCtlClockGet()/10000);
+  }
+  eFile_Directory();	
   if(eFile_Create("file1"))     diskError("eFile_Create",0);
   if(eFile_WOpen("file1"))      diskError("eFile_WOpen",0);
   for(i=0;i<1000;i++){
@@ -244,21 +253,34 @@ void TestFile(void){   int i; char data; DSTATUS result;
   }
   if(eFile_WClose())            diskError("eFile_Close",0);
   eFile_Directory();
-  if(eFile_ROpen("file1"))      diskError("eFile_ROpen",0);
+  if(eFile_Create("file2"))     diskError("eFile_Create",0);
+  if(eFile_WOpen("file2"))      diskError("eFile_WOpen",0);
+  for(i=0;i<1000;i++){
+    if(eFile_Write('a'+i%26))   diskError("eFile_Write",i);
+    if(i%52==51){
+      if(eFile_Write('\n'))     diskError("eFile_Write",i);  
+      if(eFile_Write('\r'))     diskError("eFile_Write",i);
+    }
+  }
+  if(eFile_WClose())            diskError("eFile_Close",0);
+  eFile_Directory();
+/*  if(eFile_ROpen("file1"))      diskError("eFile_ROpen",0);
+  eFile_Directory();
   for(i=0;i<1000;i++){
     if(eFile_ReadNext(&data))   diskError("eFile_ReadNext",i);
     OSuart_OutChar(UART0_BASE, data);
-	SysCtlDelay(SysCtlClockGet()/1000);
+	SysCtlDelay(SysCtlClockGet()/10000);
   }
-  if(eFile_Delete("file1"))     diskError("eFile_Delete",0);
   eFile_Directory();
+  if(eFile_Delete("file1"))     diskError("eFile_Delete",0);
+//  eFile_Directory();	 */
   OSuart_OutString(UART0_BASE, "Successful test of creating a file\n\r");
   OS_Kill();
 }
 //******************* test main1 **********
 // SYSTICK interrupts, period established by OS_Launch
 // Timer interrupts, period established by first call to OS_AddPeriodicThread
-int main(void){   // testmain1
+int testmain1(void){   // testmain1
   OS_Init();           // initialize, disable interrupts
 //*******attach background tasks***********
   OS_AddPeriodicThread(&disk_timerproc,TIME_1MS,0);   // time out routines for disk

@@ -182,11 +182,12 @@ OSuart_Interpret(unsigned char nextChar)
   short first = 1;
   short command, equation, cmdptr = 0; 
   short event = 0;
-  const short numcommands = 7;
-  char * commands[numcommands] = {"NumSamples", "NumCreated", "DataLost", "format", "dir", "printfile", "deletefile"};
-  char * descriptions[numcommands] = {" - Display NumSamples\r\n", " - Display NumCreated\r\n", " - Display DataLost\r\n", 
-                                      " - Format entire disk", " - Print contents of directory", " - Print contents of file",
-                                      " - Delete file"};
+  const short numcommands = 10;
+  unsigned char data;
+  char * commands[numcommands] = {"NumSamples", "NumCreated", "DataLost","openSD", "format", "dir", "createfile", "writefile", "printfile", "deletefile"};
+  char * descriptions[numcommands] = {" - Display NumSamples\r\n", " - Display NumCreated\r\n", " - Display DataLost\r\n", " - Open SD card\r\n", 
+                                      " - Format entire disk\r\n", " - Print contents of directory\r\n", " - Create a new file\r\n",
+									  " - Write to file\r\n", " - Print contents of file\r\n", " - Delete file\r\n"};
   switch(nextChar)
   {
     case '\x7F':
@@ -326,6 +327,7 @@ OSuart_Interpret(unsigned char nextChar)
         
         OSuart_OutString(UART0_BASE, commands[event]);
         OSuart_OutString(UART0_BASE, descriptions[event]);
+		SysCtlDelay(SysCtlClockGet()/1000);
       }
 	   }
      // Display the number of samples
@@ -350,20 +352,49 @@ OSuart_Interpret(unsigned char nextChar)
 		  OSuart_OutString(UART0_BASE, " =");
 		  OSuart_OutString(UART0_BASE, string);	      //"format", "dir", "printfile", "deletefile"
 	   }
+	 cmdptr++;
+	   if(strcasecmp(token, commands[cmdptr]) == 0)        //openSD
+	   {
+  		 if(eDisk_Init(0)) 			   diskError("eDisk_Init",0);	 
+         if(eFile_Init())              diskError("eFile_Init",0); 	
+	   }
+	 cmdptr++;
 	   if(strcasecmp(token, commands[cmdptr]) == 0)        //format
 	   {	 
-       eFile_Format();	
+         if(eFile_Format())            diskError("eFile_Format",0);
+		 OSuart_OutString(UART0_BASE, "\r\nFormat Complete"); 	
 	   }
      cmdptr++;
 	   if(strcasecmp(token, commands[cmdptr]) == 0)        //dir
 	   {	 
-       eFile_Directory();	
+         eFile_Directory();	
+	   }
+	 cmdptr++;
+	   if(strcasecmp(token, commands[cmdptr]) == 0)        //createfile
+	   {
+	     token = strtok_r(NULL , " ", &last);	 
+         if(eFile_Create(token))     diskError("eFile_Create",0);	
+	   }
+	 cmdptr++;
+	   if(strcasecmp(token, commands[cmdptr]) == 0)        //writefile
+	   {
+	     OSuart_OutString(UART0_BASE, "\r\nType '#' to end redirection/close file\r\n\r\n");
+	     token = strtok_r(NULL , " ", &last);
+         if(eFile_RedirectToFile(token)) OSuart_OutString(UART0_BASE, "Redirect Error");
+		 if(eFile_EndRedirectToFile()) OSuart_OutString(UART0_BASE, "End Redirect Error"); 
+		 OSuart_OutString(UART0_BASE, "\r\nWrite Complete\r\n");	
 	   }
      cmdptr++;
 	   if(strcasecmp(token, commands[cmdptr]) == 0)        //printfile
-	   {	 
+	   {
+	   OSuart_OutString(UART0_BASE, "\r\n\r\n");	 
        token = strtok_r(NULL , " ", &last);
        eFile_ROpen(token);
+	   for(event = 0; event < 25; event++){
+         if(eFile_ReadNext(&data))   diskError("eFile_ReadNext",0);
+         OSuart_OutChar(UART0_BASE, data);
+	     SysCtlDelay(SysCtlClockGet()/10000);
+       }
        eFile_ReadNext(token);
        eFile_RClose();	
 	   }
@@ -371,7 +402,7 @@ OSuart_Interpret(unsigned char nextChar)
 	   if(strcasecmp(token, commands[cmdptr]) == 0)        //deletefile
 	   {	 
        token = strtok_r(NULL , " ", &last);
-       eFile_Delete(token);	       	
+       if(eFile_Delete(token))     diskError("eFile_Delete",0);       	
 	   }
      cmdptr++;
 
@@ -510,8 +541,8 @@ OSuart_OutChar(unsigned long ulBase, char string)
   ASSERT(UARTBaseValid(ulBase));
   if(!UARTTxFifo_Put(string))
   {
-    oLED_Message(0, 0, "UART TX", 0);
-    oLED_Message(0, 1, "FIFO FULL", 0);
+//    oLED_Message(0, 0, "UART TX", 0);
+//    oLED_Message(0, 1, "FIFO FULL", 0);
   }
 
   

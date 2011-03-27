@@ -37,12 +37,14 @@
 
 #include <string.h>		
 #include "tff.h" /* Tiny-FatFs declarations */
-#include "edisk.h"
+#include "drivers/edisk.h"
+#include "drivers/efile.h"
 #include "hw_memmap.h"
 #include "OSuart.h"
 
 static FATFS *FatFs;			/* Pointer to the file system objects (logical drive) */
 static WORD fsid;				/* File system mount ID */
+extern BYTE ReadOnlyFlag;
 
 
 /*-------------------------------------------------------------------------
@@ -68,6 +70,8 @@ BOOL move_window (		/* TRUE: successful, FALSE: failed */
 	wsect = fs->winsect;
 	if (wsect != sector) {	/* Changed current window */
 #if !_FS_READONLY
+  	if(!ReadOnlyFlag)
+  	{
 		BYTE n;
 		if (fs->winflag) {	/* Write back dirty window if needed */
 			if (eDisk_Write(0, fs->win, wsect, 1) != RES_OK)
@@ -80,6 +84,7 @@ BOOL move_window (		/* TRUE: successful, FALSE: failed */
 				}
 			}
 		}
+	   }
 #endif
 		if (sector) {
 			if (eDisk_Read(0, fs->win, sector, 1) != RES_OK)
@@ -87,6 +92,7 @@ BOOL move_window (		/* TRUE: successful, FALSE: failed */
 			fs->winsect = sector;
 		}
 	}
+
 	return TRUE;
 }
 
@@ -1580,7 +1586,7 @@ int print_dir(DIR* dirobj)
 	FILINFO *finfo = &fn;
 	fs = dirobj->fs;
 	
-
+	OSuart_OutString(UART0_BASE,"\r\nRoot/:\r\n");
 	while (dirobj->sect) {
 		if (!move_window(dirobj->sect))
 			return 1;  // error FR_RW_ERROR;
@@ -1589,7 +1595,9 @@ int print_dir(DIR* dirobj)
 		if (c == 0) break;								/* Has it reached to end of dir? */
 		if (c != 0xE5 && !(dir[DIR_Attr] & AM_VOL))		/* Is it a valid entry? */
 			get_fileinfo(finfo, dir);
-			OSuart_OutString(UART0_BASE,finfo->fname);							//Output filename
+			OSuart_OutString(UART0_BASE,"     ");
+			OSuart_OutString(UART0_BASE,finfo->fname);
+			OSuart_OutString(UART0_BASE,"\r\n");
 		if (!next_dir_entry(dirobj)) dirobj->sect = 0;	/* Next entry */
 	}
 	return FR_OK;  
