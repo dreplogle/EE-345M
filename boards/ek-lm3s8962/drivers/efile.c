@@ -153,10 +153,11 @@ int eFile_ROpen( char name[])      // open a file for reading
 //         0 if successful and 1 on failure (e.g., end of file)
 int eFile_ReadNext( char *pt)       // get next byte 
 {
-   WORD * numBytesRead;
+   WORD numBytesRead = 0;
+   WORD * numBytesPt = &numBytesRead;
    WORD numBytesToRead = 1;
-   f_read(Fp, pt, numBytesToRead, numBytesRead);			/* Read data from a file */
-   if(numBytesRead == &numBytesToRead)
+   f_read(Fp, pt, numBytesToRead, numBytesPt);			/* Read data from a file */
+   if(numBytesRead == numBytesToRead)
    {
       return 0;
    }
