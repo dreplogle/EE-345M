@@ -1576,9 +1576,11 @@ int print_dir(DIR* dirobj)
 	BYTE *dir, c;
 	FRESULT res;
 	FATFS *fs;
-	FILINFO *finfo;
+	FILINFO fn;
+	FILINFO *finfo = &fn;
 	fs = dirobj->fs;
 	
+
 	while (dirobj->sect) {
 		if (!move_window(dirobj->sect))
 			return 1;  // error FR_RW_ERROR;

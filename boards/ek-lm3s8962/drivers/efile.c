@@ -17,43 +17,34 @@
 #include "drivers/tff.h"
 
 //FIL * Files[10];
-volatile FIL CurFile;
-volatile FIL * Fp;	//Global file pointer, only one file can be open at a time
-volatile DIR * Directory;  //Global directory pointer
-volatile FATFS fileSystem;
+FIL CurFile;
+FIL * Fp;	//Global file pointer, only one file can be open at a time
+FATFS fileSystem;
 
 int eFile_Init(void) // initialize file system
 {
 
   FRESULT res;
+
   FATFS *fs = &fileSystem;
-  unsigned short i;
   res = f_mount(0, fs);   // assign initialized FS object to FS pointer on drive 0
 
 	fs->id = 1;				/* File system mount ID */
-	fs->n_rootdir = 0;		/* Number of root directory entries */
+	fs->n_rootdir = 1;		/* Number of root directory entries */
 	fs->winsect = 0;		/* Current sector appearing in the win[] */
 	fs->fatbase = 0;		/* FAT start sector */
 	fs->dirbase = 0;		/* Root directory start sector */
-	fs->database = 40;		/* Data start sector */
-	fs->sects_fat = 100000;		/* Sectors per fat */
-	fs->max_clust = 11;		/* Maximum cluster# + 1 */
+	fs->database = 128;		/* Data start sector */
+	fs->sects_fat = 4096;	/* Sectors per fat */
+	fs->max_clust = 128;		/* Maximum cluster# + 1 */
 #if !_FS_READONLY
 	fs->last_clust = 0;		/* Last allocated cluster */
-	fs->free_clust = 10000;		/* Number of free clusters */
-#if _USE_FSINFO
-//	DWORD	fsi_sector;		/* fsinfo sector */
-//	BYTE	fsi_flag;		/* fsinfo dirty flag (1:must be written back) */
-//	BYTE	pad1;
-#endif
+	fs->free_clust = 128;	/* Number of free clusters */
 #endif
 	fs->fs_type = 1;		/* FAT sub type */
-	fs->sects_clust = 10;	/* Sectors per cluster */
-	fs->n_fats = 2;			/* Number of FAT copies */
-//	BYTE	winflag;		/* win[] dirty flag (1:must be written back) */
-	for(i=0; i < 512; i++){
-		fs->win[i] = 0;		/* Disk access window for Directory/FAT/File */
-	}
+	fs->sects_clust = 32;	/* Sectors per cluster */
+	fs->n_fats = 1;			/* Number of FAT copies */
+
   
   res = f_mkdir("Root");
   if(res) return 1;  
@@ -142,6 +133,7 @@ int eFile_WClose(void) // close the file for writing
 int eFile_ROpen( char name[])      // open a file for reading 
 {
   FRESULT res;
+  Fp = &CurFile;
   res = f_open(Fp, name, FA_READ);     //params: empty Fp, path ptr, mode
   if(res) return 1;
   return 0;	
@@ -154,7 +146,7 @@ int eFile_ROpen( char name[])      // open a file for reading
 int eFile_ReadNext( char *pt)       // get next byte 
 {
    WORD numBytesRead = 0;
-   WORD * numBytesPt = &numBytesRead;
+   WORD *numBytesPt = &numBytesRead;
    WORD numBytesToRead = 1;
    f_read(Fp, pt, numBytesToRead, numBytesPt);			/* Read data from a file */
    if(numBytesRead == numBytesToRead)
@@ -169,7 +161,7 @@ int eFile_ReadNext( char *pt)       // get next byte
 // Output: 0 if successful and 1 on failure (e.g., wasn't open)
 int eFile_RClose(void) // close the file for writing
 {
-  FRESULT res = fclose(Fp);			/* Open or create a file */
+  FRESULT res = f_close(Fp);			/* Open or create a file */
   if(res)
   {
     return 1; 
@@ -194,7 +186,7 @@ int eFile_Directory(void)
 // delete this file
 // Input: file name is a single ASCII letter
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
-int eFile_Delete( char name[])  // remove this file 
+int eFile_Delete(char name[])  // remove this file 
 {
   FRESULT res = f_unlink(name);   /* Delete an existing file or directory */
   if(res)
@@ -224,7 +216,7 @@ int eFile_RedirectToFile(char *name)
 // Output: 0 if successful and 1 on failure (e.g., wasn't open)
 int eFile_EndRedirectToFile(void)
 {
-  FRESULT res = fclose(Fp);			/* Open or create a file */
+  FRESULT res = f_close(Fp);			/* Open or create a file */
   if(res)
   {
     return 1; 

@@ -37,6 +37,7 @@
 #include "string.h"
 #include "drivers/OS.h"
 #include "drivers/OSuart.h"
+#include "drivers/eFile.h"
 
 // Global Variables
   AddFifo(UARTRx, 256, unsigned char, 1, 0);   // UARTRx Buffer
@@ -356,7 +357,7 @@ OSuart_Interpret(unsigned char nextChar)
      cmdptr++;
 	   if(strcasecmp(token, commands[cmdptr]) == 0)        //dir
 	   {	 
-       eFile_Directory(&OSuart_OutString);	
+       eFile_Directory();	
 	   }
      cmdptr++;
 	   if(strcasecmp(token, commands[cmdptr]) == 0)        //printfile
@@ -364,7 +365,7 @@ OSuart_Interpret(unsigned char nextChar)
        token = strtok_r(NULL , " ", &last);
        eFile_ROpen(token);
        eFile_ReadNext(token);
-       eFile_RClose(token);	
+       eFile_RClose();	
 	   }
      cmdptr++;
 	   if(strcasecmp(token, commands[cmdptr]) == 0)        //deletefile
@@ -461,8 +462,8 @@ OSuart_OutString(unsigned long ulBase, char *string)
   {
     if(!UARTTxFifo_Put(string[i]))
     {
-      oLED_Message(0, 0, "UART TX", 0);
-      oLED_Message(0, 1, "FIFO FULL", 0);
+//      oLED_Message(0, 0, "UART TX", 0);
+//      oLED_Message(0, 1, "FIFO FULL", 0);
     }
      i++;
   }
@@ -502,7 +503,6 @@ OSuart_OutString(unsigned long ulBase, char *string)
 void 
 OSuart_OutChar(unsigned long ulBase, char string)
 {  
-  int i = 0;
   unsigned char uartData;
   //
     // Check the arguments.

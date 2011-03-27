@@ -248,6 +248,7 @@ void TestFile(void){   int i; char data; DSTATUS result;
   for(i=0;i<1000;i++){
     if(eFile_ReadNext(&data))   diskError("eFile_ReadNext",i);
     OSuart_OutChar(UART0_BASE, data);
+	SysCtlDelay(SysCtlClockGet()/1000);
   }
   if(eFile_Delete("file1"))     diskError("eFile_Delete",0);
   eFile_Directory();
