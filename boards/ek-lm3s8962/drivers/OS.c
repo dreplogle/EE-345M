@@ -346,10 +346,15 @@ OS_AddButtonTask(void(*task)(void), unsigned long priority)
   
   // Enable GPIO PortF module
   SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
-
+  SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);
+  GPIOPinTypeGPIOInput(GPIO_PORTE_BASE, (GPIO_PIN_0 | GPIO_PIN_1 |
+                                         GPIO_PIN_2 | GPIO_PIN_3));
   // Make the switch pin an input
   GPIOPinTypeGPIOInput(GPIO_PORTF_BASE, GPIO_PIN_1);
   GPIOPadConfigSet(GPIO_PORTF_BASE, GPIO_PIN_1, GPIO_STRENGTH_2MA,
+                     GPIO_PIN_TYPE_STD_WPU);
+    GPIOPadConfigSet(GPIO_PORTE_BASE, (GPIO_PIN_0 | GPIO_PIN_1 |
+                     GPIO_PIN_2 | GPIO_PIN_3), GPIO_STRENGTH_2MA,
                      GPIO_PIN_TYPE_STD_WPU);
 
   // Enable interrupts associated with the switch
@@ -1137,10 +1142,10 @@ SysTickThSwIntHandler(void)
     //
     // Read the state of the push buttons.
     //
-    /*ulData = (GPIOPinRead(GPIO_PORTE_BASE, (GPIO_PIN_0 | GPIO_PIN_1 |
+    ulData = (GPIOPinRead(GPIO_PORTE_BASE, (GPIO_PIN_0 | GPIO_PIN_1 |
                                             GPIO_PIN_2 | GPIO_PIN_3)) |
-              (GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1) << 3));     */
-   /*
+              (GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1) << 3));     
+   
     //
     // Determine the switches that are at a different state than the debounced
     // state.
@@ -1190,7 +1195,7 @@ SysTickThSwIntHandler(void)
   if((ulDelta & 0x01) && !(g_ucSwitches & 0x01) && (UpTask != NULL))
   {
     UpTask();
-  }                                    */
+  }                                    
   //Wait for the user to release the button
   //while(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1));
   
@@ -1205,7 +1210,7 @@ SysTickThSwIntHandler(void)
   GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
   GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
   GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
-  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1); */
+  GPIOPinIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);   */
 
 
   //TimerIntClear(TIMER2_BASE, TIMER_TIMA_TIMEOUT);
