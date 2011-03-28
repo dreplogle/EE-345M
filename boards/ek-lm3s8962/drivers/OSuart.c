@@ -402,7 +402,6 @@ OSuart_Interpret(unsigned char nextChar)
          if(eFile_ReadNext(&data))   diskError("eFile_ReadNext",0);
 		 if(data == '\0') break;
          OSuart_OutChar(UART0_BASE, data);
-         OSuart_OutChar(UART0_BASE, 'a');
 	     SysCtlDelay(SysCtlClockGet()/10000);
        }
        eFile_RClose();	

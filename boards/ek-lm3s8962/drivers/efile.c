@@ -16,12 +16,12 @@
 #include "edisk.h"        /* Include file for user provided disk functions */
 #include "drivers/ff.h"
 #include "inc/hw_memmap.h"
-#include "ff.h"
 
 //FIL * Files[10];
+FATFS FileSystem;
+FATFS *fs;
 FIL CurFile;
 FIL * Fp;	//Global file pointer, only one file can be open at a time
-static FATFS fileSystem;
 unsigned char buff[512];
 
 
@@ -46,35 +46,38 @@ int eFile_Format(void) // erase disk, add format
   DSTATUS result;  
   int i; 
   unsigned short block;
-  FATFS *fs = &fileSystem;
-  void *toWrite = fs;
 
+  for(i = 0; i<512; i++)
+  {
+    buff[i] = 0;
+  }
   for(block = 0; block < 0xFF; block++){
 //    GPIO_PF3 = 0x08;     // PF3 high for 100 block writes
     eDisk_WriteBlock(buff,block); // save to disk
 //    GPIO_PF3 = 0x00;
   }
-  res = f_mkfs(0, 0, 512);
-  if(res) return 1;
-
-
-  res = f_mount(0, fs);   // assign initialized FS object to FS pointer on drive 0
-
-	fs->id = 1;				/* File system mount ID */
+  fs = &FileSystem;
+  	fs->id = 1;				/* File system mount ID */
 	fs->n_rootdir = 0;		/* Number of root directory entries */
-//	fs->winsect = 0;		/* Current sector appearing in the win[] */
+	fs->winsect = 0;		/* Current sector appearing in the win[] */
 	fs->fatbase = 8;		/* FAT start sector */
-	fs->dirbase = 32;		/* Root directory start sector */
+	fs->dirbase = 16;		/* Root directory start sector */
 	fs->database = 128;		/* Data start sector */
-	fs->sects_fat = 4096;	/* Sectors per fat */
+	fs->sects_fat = 1024;		/* Sectors per fat */
 	fs->max_clust = 128;		/* Maximum cluster# + 1 */
 #if !_FS_READONLY
 	fs->last_clust = 0;		/* Last allocated cluster */
-	fs->free_clust = 128;	/* Number of free clusters */
+	fs->free_clust = 1024;		/* Number of free clusters */
 #endif
 	fs->fs_type = 1;		/* FAT sub type */
-	fs->sects_clust = 32;	/* Sectors per cluster */
+	fs->sects_clust = 8;	/* Sectors per cluster */
 	fs->n_fats = 1;			/* Number of FAT copies */
+
+  res = f_mount(0, fs);
+  if(res) return 1;
+  res = f_mkfs(0, 0, 16);
+  if(res) return 1;
+  res = f_mkdir("Root");  //automount in here
 
   if(res) return 1; 
   return 0;   
@@ -99,7 +102,6 @@ int eFile_Create( char name[])  // create new file, make it empty
 int eFile_WOpen(char name[])      // open a file for writing 
 {
   FRESULT res;
-  ReadOnlyFlag = 0;
   Fp = &CurFile;
   res = f_open(Fp, name, FA_WRITE);     //params: empty Fp, path ptr, mode
   if(res) return 1;

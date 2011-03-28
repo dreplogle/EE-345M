@@ -16,7 +16,7 @@
 
 #ifndef _FATFS
 
-#define _MCU_ENDIAN        1
+#define _MCU_ENDIAN        2
 /* The _MCU_ENDIAN defines which access method is used to the FAT structure.
 /  1: Enable word access.
 /  2: Disable word access and use byte-by-byte access instead.
@@ -39,7 +39,7 @@
 #define _DRIVES        2
 /* Number of logical drives to be used. This affects the size of internal table. */
 
-#define    _USE_MKFS    0
+#define    _USE_MKFS    1
 /* When _USE_MKFS is set to 1 and _FS_READONLY is set to 0, f_mkfs function is
 /  enabled. */
 
