@@ -164,14 +164,20 @@ int eFile_ResetFP(void)
 
 int eFile_ReadNext( char *pt)       // get next byte 
 {
+  FRESULT res;
   WORD numBytesRead = 0;
   WORD *numBytesPt = &numBytesRead;
   WORD numBytesToRead = 1;
-   f_read(Fp, pt, numBytesToRead, numBytesPt);			/* Read data from a file */
-   if(numBytesRead == numBytesToRead)
-   {
-      return 0;
-   }
+  res = f_read(Fp, pt, numBytesToRead, numBytesPt);			/* Read data from a file */
+  if(res) return 1;
+  if(numBytesRead == numBytesToRead)
+  {
+     return 0;
+  }
+  else
+  {
+     return 1;
+  }
    return 0;  ///!!
 }                              
 //---------- eFile_RClose-----------------
@@ -195,6 +201,7 @@ int eFile_RClose(void) // close the file for writing
 int eFile_Directory(void)   
 {
 	FRESULT res;
+  char string[30];
   DIR foundDir;
 	DIR *directory = &foundDir;
   FILINFO foundFil;
@@ -224,8 +231,9 @@ int eFile_Directory(void)
       {
           break;
       }
+      sprintf(string, "\t %i \r\n", filinfo->fsize);
       OSuart_OutString(UART0_BASE, filinfo->fname);
-      OSuart_OutString(UART0_BASE, "\r\n");
+      OSuart_OutString(UART0_BASE, string);
   }
   res = f_readdir(directory, filinfo);
   if(res) return 1;
