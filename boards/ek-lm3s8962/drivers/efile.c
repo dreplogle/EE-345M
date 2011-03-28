@@ -18,10 +18,10 @@
 #include "inc/hw_memmap.h"
 
 //FIL * Files[10];
-FATFS FileSystem;
-FATFS *fs;
 FIL CurFile;
 FIL * Fp;	//Global file pointer, only one file can be open at a time
+static FATFS fileSystem;
+static FATFS * FsPtr;
 unsigned char buff[512];
 
 
@@ -29,10 +29,8 @@ int eFile_Init(void) // initialize file system
 {
   const char *path = 0; 
   FRESULT res;
-
-  res = f_mount(0, NULL);
-  res = f_mkdir("Root");  //automount in here
-//  res = f_mount(0, fs);   // assign initialized FS object to FS pointer on drive 0
+  FsPtr = &fileSystem;
+  res = f_mount(0, FsPtr);
   if(res) return 1;
   return 0; 
 }
@@ -43,7 +41,8 @@ int eFile_Init(void) // initialize file system
 int eFile_Format(void) // erase disk, add format
 {  
   FRESULT res;
-  DSTATUS result;  
+  DSTATUS result;
+  BYTE ALLOC_SIZE = 16;  
   int i; 
   unsigned short block;
 
@@ -55,30 +54,13 @@ int eFile_Format(void) // erase disk, add format
 //    GPIO_PF3 = 0x08;     // PF3 high for 100 block writes
     eDisk_WriteBlock(buff,block); // save to disk
 //    GPIO_PF3 = 0x00;
-  }
-  fs = &FileSystem;
-  	fs->id = 1;				/* File system mount ID */
-	fs->n_rootdir = 0;		/* Number of root directory entries */
-	fs->winsect = 0;		/* Current sector appearing in the win[] */
-	fs->fatbase = 8;		/* FAT start sector */
-	fs->dirbase = 16;		/* Root directory start sector */
-	fs->database = 128;		/* Data start sector */
-	fs->sects_fat = 1024;		/* Sectors per fat */
-	fs->max_clust = 128;		/* Maximum cluster# + 1 */
-#if !_FS_READONLY
-	fs->last_clust = 0;		/* Last allocated cluster */
-	fs->free_clust = 1024;		/* Number of free clusters */
-#endif
-	fs->fs_type = 1;		/* FAT sub type */
-	fs->sects_clust = 8;	/* Sectors per cluster */
-	fs->n_fats = 1;			/* Number of FAT copies */
 
-  res = f_mount(0, fs);
+  }
+  res = f_mkfs(0, 0, ALLOC_SIZE);
   if(res) return 1;
-  res = f_mkfs(0, 0, 16);
+  res = f_mount(0, FsPtr);   // assign initialized FS object to FS pointer on drive 0
   if(res) return 1;
   res = f_mkdir("Root");  //automount in here
-
   if(res) return 1; 
   return 0;   
 }
