@@ -14,7 +14,7 @@
 #include <string.h>
 #include "efile.h"            /* FatFs declarations */
 #include "edisk.h"        /* Include file for user provided disk functions */
-#include "drivers/tff.h"
+#include "ff.h"
 
 //FIL * Files[10];
 FIL CurFile;
@@ -26,9 +26,12 @@ BYTE ReadOnlyFlag = 0;
 
 int eFile_Init(void) // initialize file system
 {
+  const char *path = 0; 
   FRESULT res;
-  FATFS *fs = &fileSystem;
-  res = f_mount(0, fs);   // assign initialized FS object to FS pointer on drive 0
+  res = f_mount(0, NULL);
+  res = f_mkdir("Root");  //automount in here
+//  res = f_mount(0, fs);   // assign initialized FS object to FS pointer on drive 0
+  if(res) return 1;
   return 0; 
 }
 //---------- eFile_Format-----------------
@@ -74,7 +77,7 @@ int eFile_Format(void) // erase disk, add format
   eDisk_Write(0, toWrite, 0, 8); // Filesystem object stored in blocks 0->7.
 
 
-  res = f_mkdir("Root");
+
   if(res) return 1; 
   return 0;   
 }

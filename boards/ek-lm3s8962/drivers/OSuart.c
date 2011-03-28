@@ -365,7 +365,8 @@ OSuart_Interpret(unsigned char nextChar)
 	   }
 	 cmdptr++;
 	   if(strcasecmp(token, commands[cmdptr]) == 0)        //format
-	   {	 
+	   {
+	     if(eDisk_Init(0)) 			   diskError("eDisk_Init",0);	 
          if(eFile_Format())            diskError("eFile_Format",0);
 		 OSuart_OutString(UART0_BASE, "\r\nFormat Complete"); 	
 	   }
