@@ -779,12 +779,12 @@ FRESULT f_mount (
 	FATFS *fs		/* Pointer to new file system object (NULL for unmount)*/
 )
 {
-//	FATFS *fsobj;
+	FATFS *fsobj;
 
 	if (drv) return FR_INVALID_DRIVE;
-//	fsobj = FatFs;
+	fsobj = FatFs;
 	FatFs = fs;
-//	if (fsobj) memset(fsobj, 0, sizeof(FATFS));
+	if (fsobj) memset(fsobj, 0, sizeof(FATFS));
 	if (fs) memset(fs, 0, sizeof(FATFS));
 
 	return FR_OK;

@@ -182,10 +182,10 @@ OSuart_Interpret(unsigned char nextChar)
   short first = 1;
   short command, equation, cmdptr = 0; 
   short event = 0;
-  const short numcommands = 10;
+  const short numcommands = 11;
   unsigned char data;
-  char * commands[numcommands] = {"NumSamples", "NumCreated", "DataLost","openSD", "format", "dir", "createfile", "writefile", "printfile", "deletefile"};
-  char * descriptions[numcommands] = {" - Display NumSamples\r\n", " - Display NumCreated\r\n", " - Display DataLost\r\n", " - Open SD card\r\n", 
+  char * commands[numcommands] = {"NumSamples", "NumCreated", "DataLost","openSD", "closeSD", "format", "dir", "createfile", "writefile", "printfile", "deletefile"};
+  char * descriptions[numcommands] = {" - Display NumSamples\r\n", " - Display NumCreated\r\n", " - Display DataLost\r\n", " - Open SD card\r\n", " - Close SD card\r\n", 
                                       " - Format entire disk\r\n", " - Print contents of directory\r\n", " - Create a new file\r\n",
 									  " - Write to file\r\n", " - Print contents of file\r\n", " - Delete file\r\n"};
   switch(nextChar)
@@ -358,9 +358,15 @@ OSuart_Interpret(unsigned char nextChar)
   		 if(eDisk_Init(0)) 			   diskError("eDisk_Init",0);	 
          if(eFile_Init())              diskError("eFile_Init",0); 	
 	   }
-	   cmdptr++;
+	 cmdptr++;
+	 if(strcasecmp(token, commands[cmdptr]) == 0)        //closeSD
+	   {
+	     eFile_Close(); 	
+	   }
+	 cmdptr++;
 	   if(strcasecmp(token, commands[cmdptr]) == 0)        //format
-	   {	 
+	   {
+	     if(eDisk_Init(0)) 			   diskError("eDisk_Init",0);	 
          if(eFile_Format())            diskError("eFile_Format",0);
 		 OSuart_OutString(UART0_BASE, "\r\nFormat Complete"); 	
 	   }
@@ -381,8 +387,8 @@ OSuart_Interpret(unsigned char nextChar)
 	   {
 	     OSuart_OutString(UART0_BASE, "\r\nType '#' to end redirection/close file\r\n\r\n");
 	     token = strtok_r(NULL , " ", &last);
-         if(eFile_RedirectToFile(token)) OSuart_OutString(UART0_BASE, "Redirect Error");
-		 if(eFile_EndRedirectToFile()) OSuart_OutString(UART0_BASE, "End Redirect Error"); 
+         if(eFile_RedirectToFile(token)) OSuart_OutString(UART0_BASE, "\r\nRedirect Error");
+		 if(eFile_EndRedirectToFile()) OSuart_OutString(UART0_BASE, "\r\nEnd Redirect Error"); 
 		 OSuart_OutString(UART0_BASE, "\r\nWrite Complete\r\n");	
 	   }
      cmdptr++;
@@ -391,13 +397,14 @@ OSuart_Interpret(unsigned char nextChar)
 	   OSuart_OutString(UART0_BASE, "\r\n\r\n");	 
        token = strtok_r(NULL , " ", &last);
        eFile_ROpen(token);
-	     for(event = 0; event < 25; event++){
+//	   eFile_ResetFP();
+	   for(;;){
          if(eFile_ReadNext(&data))   diskError("eFile_ReadNext",0);
+		 if(data == '\0') break;
          OSuart_OutChar(UART0_BASE, data);
          OSuart_OutChar(UART0_BASE, 'a');
 	     SysCtlDelay(SysCtlClockGet()/10000);
        }
-       eFile_ReadNext(token);
        eFile_RClose();	
 	   }
      cmdptr++;

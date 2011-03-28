@@ -53,6 +53,8 @@ int eFile_WClose(void); // close the file for writing
 // Input: file name is a single ASCII letter
 // Output: 0 if successful and 1 on failure (e.g., trouble read to flash)
 int eFile_ROpen( char name[]);      // open a file for reading 
+
+int eFile_ResetFP(void);
    
 //---------- eFile_ReadNext-----------------
 // retreive data from open file

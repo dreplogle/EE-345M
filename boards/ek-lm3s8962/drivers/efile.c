@@ -16,6 +16,7 @@
 #include "edisk.h"        /* Include file for user provided disk functions */
 #include "drivers/ff.h"
 #include "inc/hw_memmap.h"
+#include "ff.h"
 
 //FIL * Files[10];
 FIL CurFile;
@@ -26,32 +27,13 @@ unsigned char buff[512];
 
 int eFile_Init(void) // initialize file system
 {
-
+  const char *path = 0; 
   FRESULT res;
 
-  FATFS *fs = &fileSystem;
-  res = f_mount(0, fs);   // assign initialized FS object to FS pointer on drive 0
-
-	fs->id = 1;				/* File system mount ID */
-	fs->n_rootdir = 1;		/* Number of root directory entries */
-	fs->winsect = 0;		/* Current sector appearing in the win[] */
-	fs->fatbase = 0;		/* FAT start sector */
-	fs->dirbase = 0;		/* Root directory start sector */
-	fs->database = 128;		/* Data start sector */
-	fs->sects_fat = 4096;	/* Sectors per fat */
-	fs->max_clust = 128;		/* Maximum cluster# + 1 */
-#if !_FS_READONLY
-	fs->last_clust = 0;		/* Last allocated cluster */
-	fs->free_clust = 128;	/* Number of free clusters */
-#endif
-	fs->fs_type = 1;		/* FAT sub type */
-	fs->sects_clust = 32;	/* Sectors per cluster */
-	fs->n_fats = 1;			/* Number of FAT copies */
-
-
-
-
-
+  res = f_mount(0, NULL);
+  res = f_mkdir("Root");  //automount in here
+//  res = f_mount(0, fs);   // assign initialized FS object to FS pointer on drive 0
+  if(res) return 1;
   return 0; 
 }
 //---------- eFile_Format-----------------
@@ -64,9 +46,9 @@ int eFile_Format(void) // erase disk, add format
   DSTATUS result;  
   int i; 
   unsigned short block;
-  for(i=0;i<512;i++){
-    buff[i] = 0;        
-  }
+  FATFS *fs = &fileSystem;
+  void *toWrite = fs;
+
   for(block = 0; block < 0xFF; block++){
 //    GPIO_PF3 = 0x08;     // PF3 high for 100 block writes
     eDisk_WriteBlock(buff,block); // save to disk
@@ -74,7 +56,26 @@ int eFile_Format(void) // erase disk, add format
   }
   res = f_mkfs(0, 0, 512);
   if(res) return 1;
-  res = f_mkdir("Root");
+
+
+  res = f_mount(0, fs);   // assign initialized FS object to FS pointer on drive 0
+
+	fs->id = 1;				/* File system mount ID */
+	fs->n_rootdir = 0;		/* Number of root directory entries */
+//	fs->winsect = 0;		/* Current sector appearing in the win[] */
+	fs->fatbase = 8;		/* FAT start sector */
+	fs->dirbase = 32;		/* Root directory start sector */
+	fs->database = 128;		/* Data start sector */
+	fs->sects_fat = 4096;	/* Sectors per fat */
+	fs->max_clust = 128;		/* Maximum cluster# + 1 */
+#if !_FS_READONLY
+	fs->last_clust = 0;		/* Last allocated cluster */
+	fs->free_clust = 128;	/* Number of free clusters */
+#endif
+	fs->fs_type = 1;		/* FAT sub type */
+	fs->sects_clust = 32;	/* Sectors per cluster */
+	fs->n_fats = 1;			/* Number of FAT copies */
+
   if(res) return 1; 
   return 0;   
 }
@@ -125,7 +126,7 @@ int eFile_Write( char data)
 // Output: 0 if successful and 1 on failure (not currently open)
 int eFile_Close(void) 
 {
- 	FRESULT res = f_mount(0, NULL);   // unmount initialized fs
+  FRESULT res = f_mount(0, NULL);   // unmount initialized fs
   if(res)
   {
     return 1; 
@@ -140,7 +141,12 @@ int eFile_Close(void)
 int eFile_WClose(void) // close the file for writing
 {
   FRESULT res;			/* Open or create a file */
+  char data = '\0';
+  const void * dat = &data;
+  WORD * bytesWritten;
+  res = f_write (Fp, dat, 1, bytesWritten);
   res = f_close(Fp);
+  Fp = NULL;
   if(res)
   {
     return 1; 
@@ -163,7 +169,13 @@ int eFile_ROpen( char name[])      // open a file for reading
   res = f_open(Fp, name, FA_READ);     //params: empty Fp, path ptr, mode
   if(res) return 1;
   return 0;	
-}   
+} 
+
+int eFile_ResetFP(void)
+{
+  Fp->fptr = 0;
+  return 0;
+}  
 //---------- eFile_ReadNext-----------------
 // retreive data from open file
 // Input: none
@@ -189,7 +201,6 @@ int eFile_ReadNext( char *pt)       // get next byte
 int eFile_RClose(void) // close the file for writing
 {
   FRESULT res = f_close(Fp);			/* Open or create a file */
-  
   if(res)
   {
     return 1; 
@@ -253,10 +264,5 @@ int eFile_RedirectToFile(char *name)
 // Output: 0 if successful and 1 on failure (e.g., wasn't open)
 int eFile_EndRedirectToFile(void)
 {
-  FRESULT res = f_close(Fp);			/* Open or create a file */
-  if(res)
-  {
-    return 1; 
-  }
-  return 0; 
+  return eFile_WClose(); 
 }
