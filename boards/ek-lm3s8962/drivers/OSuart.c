@@ -60,6 +60,7 @@ extern unsigned long NumSamples;   // incremented every sample
 extern unsigned long DataLost;     // data sent by Producer, but not received by Consumer
 extern unsigned long RunTimeProfile[NUM_EVENTS][2];
 extern int EventIndex;
+extern int WriteToFile;
 
 //*****************************************************************************
 //
@@ -176,6 +177,7 @@ void
 OSuart_Interpret(unsigned char nextChar)
 {
   char operator = Buffer[BufferPt - 2];
+  unsigned char toWrite;  
   char * token, * last;
   char string[10];
   long total = 0;
@@ -376,19 +378,26 @@ OSuart_Interpret(unsigned char nextChar)
          OSuart_OutString(UART0_BASE, "\r\n\r\n");
          eFile_Directory();
 	   }
-	   cmdptr++;
+	 cmdptr++;
 	   if(strcasecmp(token, commands[cmdptr]) == 0)        //createfile
 	   {
 	     token = strtok_r(NULL , " ", &last);	 
          if(eFile_Create(token))     diskError("eFile_Create",0);	
 	   }
-	   cmdptr++;
+	 cmdptr++;
 	   if(strcasecmp(token, commands[cmdptr]) == 0)        //writefile
 	   {
 	     OSuart_OutString(UART0_BASE, "\r\nType '#' to end redirection/close file\r\n\r\n");
 	     token = strtok_r(NULL , " ", &last);
-         if(eFile_RedirectToFile(token)) OSuart_OutString(UART0_BASE, "\r\nRedirect Error");
-		 if(eFile_EndRedirectToFile()) OSuart_OutString(UART0_BASE, "\r\nEnd Redirect Error"); 
+         if(eFile_WOpen(token))  {diskError("eFile_WOpen",0);}
+         while(toWrite != '#'){
+           if(UARTRxFifo_Get(&toWrite))
+      	   {
+		    if(toWrite == '#') break; 
+            if(eFile_Write(toWrite)) {diskError("eFile_Write",0);}
+	       }
+         }
+		 eFile_WClose();
 		 OSuart_OutString(UART0_BASE, "\r\nWrite Complete\r\n");	
 	   }
      cmdptr++;
@@ -507,24 +516,30 @@ OSuart_OutString(unsigned long ulBase, char *string)
      i++;
   }
   
-  //
-  // Disable the TX interrupt while loading the HW TX FIFO.
-  //
-  UARTIntDisable(ulBase, UART_INT_TX);
+	//
+	// Disable the TX interrupt while loading the HW TX FIFO.
+	//
+	UARTIntDisable(ulBase, UART_INT_TX);
+	
+	//
+	//  Load the initial segment of the string into the HW FIFO
+	//
+	while(UARTSpaceAvail(ulBase) && UARTTxFifo_Get(&uartData)) 
+	{
+	UARTCharPut(ulBase,uartData);
+	  if(WriteToFile)
+	  {
+	    if(eFile_Write(uartData)){diskError("eFile_Write",0);}
+	  }
+	}
+	 
+	//
+	//  Enable TX interrupts so that an interrupt will occur when
+	//  the TX FIFO is nearly empty (interrupt level set in main program).
+	//
+	UARTIntEnable(ulBase, UART_INT_TX);
+  
 
-  //
-  //  Load the initial segment of the string into the HW FIFO
-  //
-  while(UARTSpaceAvail(ulBase) && UARTTxFifo_Get(&uartData)) 
-  {
-    UARTCharPut(ulBase,uartData);
-  }
-     
-  //
-  //  Enable TX interrupts so that an interrupt will occur when
-  //  the TX FIFO is nearly empty (interrupt level set in main program).
-  //
-  UARTIntEnable(ulBase, UART_INT_TX);
 }
 
 //*****************************************************************************

@@ -23,7 +23,7 @@
 #define FOREGROUND_THREAD_START 0x03
 
 #define TIME_1MS 50000		  		// #clock cycles per ms in 50MHz mode
-#define TIMESLICE TIME_1MS*2  		//Thread switching period in ms
+#define TIMESLICE TIME_1MS  		//Thread switching period in ms
 #define PERIOD TIME_1MS/2       	// 2kHz sampling period in system time units
 // 10-sec finite time experiment duration 
 #define RUNLENGTH 10000   // display results and quit when NumSamples==RUNLENGTH

@@ -23,6 +23,7 @@ FIL * Fp;	//Global file pointer, only one file can be open at a time
 static FATFS fileSystem;
 static FATFS * FsPtr;
 unsigned char buff[512];
+int WriteToFile = 0;
 
 
 int eFile_Init(void) // initialize file system
@@ -251,15 +252,8 @@ int eFile_Delete(char name[])  // remove this file
 // Output: 0 if successful and 1 on failure (e.g., trouble read/write to flash)
 int eFile_RedirectToFile(char *name)
 {
-  unsigned char nextChar; 
+  WriteToFile = 1;
   if(eFile_WOpen(name)){diskError("eFile_WOpen",0); return 1;}
-  for(;;){
-    if(UARTRxFifo_Get(&nextChar))
-	{
-	  if(nextChar == '#') return 0;
-      if(eFile_Write(nextChar)){diskError("eFile_Write",0); return 1;}
-	}
-  }
   return 0;  
 }
 //---------- eFile_EndRedirectToFile-----------------
@@ -268,5 +262,6 @@ int eFile_RedirectToFile(char *name)
 // Output: 0 if successful and 1 on failure (e.g., wasn't open)
 int eFile_EndRedirectToFile(void)
 {
+  WriteToFile = 0;
   return eFile_WClose(); 
 }

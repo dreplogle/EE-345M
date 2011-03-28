@@ -41,8 +41,6 @@ unsigned short FilterOn = 1;
 
 int Running;                // true while robot is running
 
-#define TIMESLICE TIME_1MS  // thread switch time in system time units
-
 #define GPIO_PF0  (*((volatile unsigned long *)0x40025004))
 #define GPIO_PF1  (*((volatile unsigned long *)0x40025008))
 #define GPIO_PF2  (*((volatile unsigned long *)0x40025010))
@@ -69,6 +67,7 @@ unsigned long t=0;
   char string[100];    
   DataLost = 0;          // new run with no lost data 
   OSuart_OutString(UART0_BASE, "Robot running...");
+  eFile_Create("Robot");
   eFile_RedirectToFile("Robot");
   OSuart_OutString(UART0_BASE, "time(sec)\tdata(volts)\n\r");
   do{
@@ -79,7 +78,7 @@ unsigned long t=0;
     sprintf(string, "%0u.%02u\t%0u.%03u\n\r",time/100,time%100,voltage/1000,voltage%1000);
     OSuart_OutString(UART0_BASE, string);
   }
-  while(time < 1000);       // change this to mean 10 seconds
+  while(time < 1000000);       // change this to mean 10 seconds
   eFile_EndRedirectToFile();
   OSuart_OutString(UART0_BASE, "done.\n\r");
   Running = 0;                // robot no longer running
@@ -163,7 +162,7 @@ int main(void){        // lab 5 real main
 
 //*******attach background tasks***********
   OS_AddButtonTask(&ButtonPush,2);
-  OS_AddButtonTask(&DownPush,3);
+  OS_AddDownTask(&DownPush,3);
   OS_AddPeriodicThread(disk_timerproc,TIME_1MS,5);
 
   NumCreated = 0 ;
