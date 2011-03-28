@@ -399,7 +399,10 @@ OSuart_Interpret(unsigned char nextChar)
        eFile_ROpen(token);
 //	   eFile_ResetFP();
 	   for(;;){
-         if(eFile_ReadNext(&data))   diskError("eFile_ReadNext",0);
+         if(eFile_ReadNext(&data)) {
+           diskError("eFile_ReadNext",0);
+           break;
+        }
 		 if(data == '\0') break;
          OSuart_OutChar(UART0_BASE, data);
 	     SysCtlDelay(SysCtlClockGet()/10000);

@@ -163,7 +163,7 @@ int main(void){        // lab 5 real main
 
 //*******attach background tasks***********
   OS_AddButtonTask(&ButtonPush,2);
-  OS_AddButtonTask(&DownPush,3);
+  OS_AddDownTask(&DownPush,3);
   OS_AddPeriodicThread(disk_timerproc,TIME_1MS,5);
 
   NumCreated = 0 ;

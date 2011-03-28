@@ -161,14 +161,20 @@ int eFile_ResetFP(void)
 
 int eFile_ReadNext( char *pt)       // get next byte 
 {
+  FRESULT res;
   WORD numBytesRead = 0;
   WORD *numBytesPt = &numBytesRead;
   WORD numBytesToRead = 1;
-   f_read(Fp, pt, numBytesToRead, numBytesPt);			/* Read data from a file */
-   if(numBytesRead == numBytesToRead)
-   {
-      return 0;
-   }
+  res = f_read(Fp, pt, numBytesToRead, numBytesPt);			/* Read data from a file */
+  if(res) return 1;
+  if(numBytesRead == numBytesToRead)
+  {
+     return 0;
+  }
+  else
+  {
+     return 1;
+  }
    return 0;  ///!!
 }                              
 //---------- eFile_RClose-----------------

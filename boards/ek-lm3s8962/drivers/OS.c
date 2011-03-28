@@ -353,7 +353,7 @@ OS_AddButtonTask(void(*task)(void), unsigned long priority)
   GPIOPinTypeGPIOInput(GPIO_PORTF_BASE, GPIO_PIN_1);
   GPIOPadConfigSet(GPIO_PORTF_BASE, GPIO_PIN_1, GPIO_STRENGTH_2MA,
                      GPIO_PIN_TYPE_STD_WPU);
-    GPIOPadConfigSet(GPIO_PORTE_BASE, (GPIO_PIN_0 | GPIO_PIN_1 |
+  GPIOPadConfigSet(GPIO_PORTE_BASE, (GPIO_PIN_0 | GPIO_PIN_1 |
                      GPIO_PIN_2 | GPIO_PIN_3), GPIO_STRENGTH_2MA,
                      GPIO_PIN_TYPE_STD_WPU);
 
