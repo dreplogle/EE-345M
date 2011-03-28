@@ -57,7 +57,6 @@ int eFile_Format(void) // erase disk, add format
   res = f_mkfs(0, 0, ALLOC_SIZE);
   if(res) return 1;
   res = f_mount(0, FsPtr);   // assign initialized FS object to FS pointer on drive 0
-  res = f_mkdir("Root");  //automount in here
   if(res) return 1; 
   return 0;   
 }
@@ -141,12 +140,9 @@ int eFile_WClose(void) // close the file for writing
 int eFile_ROpen( char name[])      // open a file for reading 
 {
   FRESULT res;
-  DIR Directory;
-  DIR * DirObj = &Directory;
+  DIR directory;
+  DIR * DirObj = &directory;
   Fp = &CurFile;
-   
-  res = f_opendir(DirObj, "Root");
-  if(res) return 1;
   res = f_open(Fp, name, FA_READ);     //params: empty Fp, path ptr, mode
   if(res) return 1;
   return 0;	
@@ -200,11 +196,36 @@ int eFile_Directory(void)
 	DIR *directory = &foundDir;
   FILINFO foundFil;
   FILINFO * filinfo = &foundFil;
-	res = f_opendir(directory, "Root");
+	res = f_opendir(directory, "");
   if(res) return 1;
-	res = f_readdir(directory, filinfo);
+	for(;;)
+  {
+      //
+      // Read an entry from the directory.
+      //
+      res = f_readdir(directory, filinfo);
+  
+      //
+      // Check for error and return if there is a problem.
+      //
+      if(res != FR_OK)
+      {
+          return(res);
+      }
+
+      //
+      // If the file name is blank, then this is the end of the
+      // listing.
+      //
+      if(!filinfo->fname[0])
+      {
+          break;
+      }
+      OSuart_OutString(UART0_BASE, filinfo->fname);
+      OSuart_OutString(UART0_BASE, "\r\n");
+  }
+  res = f_readdir(directory, filinfo);
   if(res) return 1;
-  OSuart_OutString(UART0_BASE, filinfo->fname);
 	return 0;
 }
 
