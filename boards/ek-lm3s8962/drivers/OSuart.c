@@ -37,7 +37,6 @@
 #include "string.h"
 #include "drivers/OS.h"
 #include "drivers/OSuart.h"
-#include "drivers/eFile.h"
 
 // Global Variables
   AddFifo(UARTRx, 256, unsigned char, 1, 0);   // UARTRx Buffer
@@ -184,14 +183,10 @@ OSuart_Interpret(unsigned char nextChar)
   short first = 1;
   short command, equation, cmdptr = 0; 
   short event = 0;
-  const short numcommands = 13;
+  const short numcommands = 3;
   unsigned char data;
-  char * commands[numcommands] = {"NumSamples", "NumCreated", "DataLost","openSD", "closeSD", "format", "dir", "createfile", "writefile", "printfile", "deletefile",
-                                  "testDiskRead", "testDiskWrite"};
-  char * descriptions[numcommands] = {" - Display NumSamples\r\n", " - Display NumCreated\r\n", " - Display DataLost\r\n", " - Open SD card\r\n", " - Close SD card\r\n", 
-                                      " - Format entire disk\r\n", " - Print contents of directory\r\n", " - Create a new file\r\n",
-									  " - Write to file\r\n", " - Print contents of file\r\n", " - Delete file\r\n", " - To determine read bandwidth\r\n",
-									  " - To determine write bandwidth\r\n"};
+  char * commands[numcommands] = {"NumSamples", "NumCreated", "DataLost"};
+  char * descriptions[numcommands] = {" - Display NumSamples\r\n", " - Display NumCreated\r\n", " - Display DataLost\r\n"};
   switch(nextChar)
   {
     case '\x7F':
@@ -356,85 +351,6 @@ OSuart_Interpret(unsigned char nextChar)
 		  OSuart_OutString(UART0_BASE, " =");
 		  OSuart_OutString(UART0_BASE, string);	      //"format", "dir", "printfile", "deletefile"
 	   }
-	   cmdptr++;
-	   if(strcasecmp(token, commands[cmdptr]) == 0)        //openSD
-	   {
-  		 if(eDisk_Init(0)) 			   diskError("eDisk_Init",0);	 
-         if(eFile_Init())              diskError("eFile_Init",0); 	
-	   }
-	 cmdptr++;
-	 if(strcasecmp(token, commands[cmdptr]) == 0)        //closeSD
-	   {
-	     eFile_Close(); 	
-	   }
-	 cmdptr++;
-	   if(strcasecmp(token, commands[cmdptr]) == 0)        //format
-	   {
-	     if(eDisk_Init(0)) 			   diskError("eDisk_Init",0);	 
-         if(eFile_Format())            diskError("eFile_Format",0);
-		 OSuart_OutString(UART0_BASE, "\r\nFormat Complete"); 	
-	   }
-     cmdptr++;
-	   if(strcasecmp(token, commands[cmdptr]) == 0)        //dir
-	   {	 
-         OSuart_OutString(UART0_BASE, "\r\n\r\n");
-         eFile_Directory();
-	   }
-	 cmdptr++;
-	   if(strcasecmp(token, commands[cmdptr]) == 0)        //createfile
-	   {
-	     token = strtok_r(NULL , " ", &last);	 
-         if(eFile_Create(token))     diskError("eFile_Create",0);	
-	   }
-	 cmdptr++;
-	   if(strcasecmp(token, commands[cmdptr]) == 0)        //writefile
-	   {
-	     OSuart_OutString(UART0_BASE, "\r\nType '#' to end redirection/close file\r\n\r\n");
-	     token = strtok_r(NULL , " ", &last);
-         if(eFile_WOpen(token))  {diskError("eFile_WOpen",0);}
-         while(toWrite != '#'){
-           if(UARTRxFifo_Get(&toWrite))
-      	   {
-		    if(toWrite == '#') break; 
-            if(eFile_Write(toWrite)) {diskError("eFile_Write",0);}
-	       }
-         }
-		 eFile_WClose();
-		 OSuart_OutString(UART0_BASE, "\r\nWrite Complete\r\n");	
-	   }
-     cmdptr++;
-	   if(strcasecmp(token, commands[cmdptr]) == 0)        //printfile
-	   {
-	   OSuart_OutString(UART0_BASE, "\r\n\r\n");	 
-       token = strtok_r(NULL , " ", &last);
-       eFile_ROpen(token);
-	   eFile_ResetFP();
-	   for(;;){
-         if(eFile_ReadNext(&data)) {
-           break;	//Finished reading
-        }
-         OSuart_OutChar(UART0_BASE, data);
-	     SysCtlDelay(SysCtlClockGet()/1000);
-       }
-       eFile_RClose();	
-	   }
-     cmdptr++;
-	   if(strcasecmp(token, commands[cmdptr]) == 0)        //deletefile
-	   {	 
-       token = strtok_r(NULL , " ", &last);
-       if(eFile_Delete(token))     diskError("eFile_Delete",0);       	
-	   }
-     cmdptr++;
-	   if(strcasecmp(token, commands[cmdptr]) == 0)        //testDiskRead
-	   {	 
-         if(eFile_MeasureReadCapability())  OSuart_OutString(UART0_BASE, "  Write Error\r\n");		
-	   }
-     cmdptr++;
-	   if(strcasecmp(token, commands[cmdptr]) == 0)        //testDiskWrite
-	   {	 
-         if(eFile_MeasureWriteCapability())  OSuart_OutString(UART0_BASE, "  Write Error\r\n");	
-	   }
-     cmdptr++;
 
       
      token = strtok_r(NULL , " ", &last);  	
@@ -538,15 +454,8 @@ OSuart_OutString(unsigned long ulBase, char *string)
 	//  Load the initial segment of the string into the HW FIFO
 	//
 	while(UARTSpaceAvail(ulBase) && UARTTxFifo_Get(&uartData)) 
-	{
-	  if(WriteToFile)
-	  {
-	    if(eFile_Write(uartData)){diskError("eFile_Write",0);}
-	  }
-	  else
-	  {
+  {
 	  	UARTCharPut(ulBase,uartData);
-	  }
 	}
 	 
 	//
