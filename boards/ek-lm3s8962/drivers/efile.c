@@ -20,9 +20,9 @@
 //FIL * Files[10];
 FIL CurFile;
 FIL * Fp;	//Global file pointer, only one file can be open at a time
-static FATFS fileSystem;
+static FATFS FileSystem;
 static FATFS * FsPtr;
-unsigned char buff[512];
+unsigned char Buff[512];
 int WriteToFile = 0;
 
 
@@ -88,7 +88,7 @@ int eFile_Init(void) // initialize file system
 {
   const char *path = 0; 
   FRESULT res;
-  FsPtr = &fileSystem;
+  FsPtr = &FileSystem;
   res = f_mount(0, FsPtr);
   if(res) return 1;
   return 0; 
@@ -107,11 +107,11 @@ int eFile_Format(void) // erase disk, add format
 
   for(i = 0; i<512; i++)
   {
-    buff[i] = 0;
+    Buff[i] = 0;
   }
   for(block = 0; block < 0xFF; block++){
 //    GPIO_PF3 = 0x08;     // PF3 high for 100 block writes
-    eDisk_WriteBlock(buff,block); // save to disk
+    eDisk_WriteBlock(Buff,block); // save to disk
 //    GPIO_PF3 = 0x00;
 
   }
