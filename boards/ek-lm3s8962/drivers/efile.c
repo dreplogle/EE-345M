@@ -198,6 +198,7 @@ int eFile_RClose(void) // close the file for writing
 int eFile_Directory(void)   
 {
 	FRESULT res;
+  char string[30];
   DIR foundDir;
 	DIR *directory = &foundDir;
   FILINFO foundFil;
@@ -227,8 +228,9 @@ int eFile_Directory(void)
       {
           break;
       }
+      sprintf(string, "\t %i \r\n", filinfo->fsize);
       OSuart_OutString(UART0_BASE, filinfo->fname);
-      OSuart_OutString(UART0_BASE, "\r\n");
+      OSuart_OutString(UART0_BASE, string);
   }
   res = f_readdir(directory, filinfo);
   if(res) return 1;
