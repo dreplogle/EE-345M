@@ -26,6 +26,64 @@ unsigned char buff[512];
 int WriteToFile = 0;
 
 
+#define GPIO_B0 (*((volatile unsigned long *)(0x40005004)))
+#define GPIO_B1 (*((volatile unsigned long *)(0x40005008)))
+#define GPIO_B2 (*((volatile unsigned long *)(0x40005010)))
+#define GPIO_B3 (*((volatile unsigned long *)(0x40005020)))
+
+
+DSTATUS eFile_MeasureWriteCapability(void)
+{
+  BYTE testBuffer[512];
+  DSTATUS result;
+  unsigned int i;
+  
+  for(i = 0; i < 512; i++)
+  {
+    testBuffer[i] = 0xFF;
+  }
+
+  result = eDisk_Init(0);
+  if(result)
+  {
+    return result;
+  }
+  for(i = 1; i < 101; i++)
+  {
+  	GPIO_B0 = 0x01;
+    result = eDisk_WriteBlock(testBuffer, i);
+	GPIO_B0 = 0x00;
+  }
+  return result;
+}
+
+DSTATUS eFile_MeasureReadCapability(void)
+{
+  BYTE testBuffer[512];
+  DSTATUS result;
+  unsigned int i;
+  
+  for(i = 0; i < 512; i++)
+  {
+    testBuffer[i] = 0xFF;
+  }
+
+  result = eDisk_Init(0);
+  if(result)
+  {
+    return result;
+  }
+  for(i = 1; i < 101; i++)
+  {
+  	GPIO_B0 = 0x01;
+    result = eDisk_ReadBlock(testBuffer, i);
+	GPIO_B0 = 0x00;
+  }
+  return result;
+}
+ 
+
+
 int eFile_Init(void) // initialize file system
 {
   const char *path = 0; 

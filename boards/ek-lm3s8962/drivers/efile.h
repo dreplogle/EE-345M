@@ -94,3 +94,7 @@ int eFile_RedirectToFile(char *name);
 // redirect printf data back to UART
 // Output: 0 if successful and 1 on failure (e.g., wasn't open)
 int eFile_EndRedirectToFile(void);
+
+
+unsigned char eFile_MeasureReadCapability(void);
+unsigned char eFile_MeasureWriteCapability(void);

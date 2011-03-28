@@ -61,7 +61,7 @@ int Running;                // true while robot is running
 void Robot(void){   
 unsigned long data;      // ADC sample, 0 to 1023
 unsigned long voltage;   // in mV,      0 to 3000
-unsigned long time;      // in 10msec,  0 to 1000 
+unsigned long time = 0;      // in 10msec,  0 to 1000 
 unsigned long t=0;
   //OS_ClearMsTime();
   char string[100];    
@@ -72,15 +72,15 @@ unsigned long t=0;
   OSuart_OutString(UART0_BASE, "time(sec)\tdata(volts)\n\r");
   do{
     t++;
-    time=OS_Time();            // 10ms resolution in this OS
-    OS_Fifo_Get(&data);        // 1000 Hz sampling get from producer
+    time+=OS_Time()/10000;            // 10ms resolution in this OS
+    while(!OS_Fifo_Get(&data));        // 1000 Hz sampling get from producer
     voltage = (300*data)/1024;   // in mV
-    sprintf(string, "%0u.%02u\t%0u.%03u\n\r",time/100,time%100,voltage/1000,voltage%1000);
+    sprintf(string, "%0u.%02u\t\t%0u.%03u\n\r",time/100,time%100,voltage/1000,voltage%1000);
     OSuart_OutString(UART0_BASE, string);
   }
-  while(time < 1000000);       // change this to mean 10 seconds
+  while(time < 100000);       // change this to mean 10 seconds
   eFile_EndRedirectToFile();
-  OSuart_OutString(UART0_BASE, "done.\n\r");
+  OSuart_OutString(UART0_BASE, "done.\n\r");										    
   Running = 0;                // robot no longer running
   OS_Kill();
 }

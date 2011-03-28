@@ -184,12 +184,14 @@ OSuart_Interpret(unsigned char nextChar)
   short first = 1;
   short command, equation, cmdptr = 0; 
   short event = 0;
-  const short numcommands = 11;
+  const short numcommands = 13;
   unsigned char data;
-  char * commands[numcommands] = {"NumSamples", "NumCreated", "DataLost","openSD", "closeSD", "format", "dir", "createfile", "writefile", "printfile", "deletefile"};
+  char * commands[numcommands] = {"NumSamples", "NumCreated", "DataLost","openSD", "closeSD", "format", "dir", "createfile", "writefile", "printfile", "deletefile",
+                                  "testDiskRead", "testDiskWrite"};
   char * descriptions[numcommands] = {" - Display NumSamples\r\n", " - Display NumCreated\r\n", " - Display DataLost\r\n", " - Open SD card\r\n", " - Close SD card\r\n", 
                                       " - Format entire disk\r\n", " - Print contents of directory\r\n", " - Create a new file\r\n",
-									  " - Write to file\r\n", " - Print contents of file\r\n", " - Delete file\r\n"};
+									  " - Write to file\r\n", " - Print contents of file\r\n", " - Delete file\r\n", " - To determine read bandwidth\r\n",
+									  " - To determine write bandwidth\r\n"};
   switch(nextChar)
   {
     case '\x7F':
@@ -406,15 +408,13 @@ OSuart_Interpret(unsigned char nextChar)
 	   OSuart_OutString(UART0_BASE, "\r\n\r\n");	 
        token = strtok_r(NULL , " ", &last);
        eFile_ROpen(token);
-//	   eFile_ResetFP();
+	   eFile_ResetFP();
 	   for(;;){
          if(eFile_ReadNext(&data)) {
-           diskError("eFile_ReadNext",0);
-           break;
+           break;	//Finished reading
         }
-		 if(data == '\0') break;
          OSuart_OutChar(UART0_BASE, data);
-	     SysCtlDelay(SysCtlClockGet()/10000);
+	     SysCtlDelay(SysCtlClockGet()/1000);
        }
        eFile_RClose();	
 	   }
@@ -423,6 +423,16 @@ OSuart_Interpret(unsigned char nextChar)
 	   {	 
        token = strtok_r(NULL , " ", &last);
        if(eFile_Delete(token))     diskError("eFile_Delete",0);       	
+	   }
+     cmdptr++;
+	   if(strcasecmp(token, commands[cmdptr]) == 0)        //testDiskRead
+	   {	 
+         if(eFile_MeasureReadCapability())  OSuart_OutString(UART0_BASE, "  Write Error\r\n");		
+	   }
+     cmdptr++;
+	   if(strcasecmp(token, commands[cmdptr]) == 0)        //testDiskWrite
+	   {	 
+         if(eFile_MeasureWriteCapability())  OSuart_OutString(UART0_BASE, "  Write Error\r\n");	
 	   }
      cmdptr++;
 
@@ -529,10 +539,13 @@ OSuart_OutString(unsigned long ulBase, char *string)
 	//
 	while(UARTSpaceAvail(ulBase) && UARTTxFifo_Get(&uartData)) 
 	{
-	UARTCharPut(ulBase,uartData);
 	  if(WriteToFile)
 	  {
 	    if(eFile_Write(uartData)){diskError("eFile_Write",0);}
+	  }
+	  else
+	  {
+	  	UARTCharPut(ulBase,uartData);
 	  }
 	}
 	 
