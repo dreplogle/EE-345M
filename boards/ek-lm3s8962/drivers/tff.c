@@ -70,8 +70,6 @@ BOOL move_window (		/* TRUE: successful, FALSE: failed */
 	wsect = fs->winsect;
 	if (wsect != sector) {	/* Changed current window */
 #if !_FS_READONLY
-  	if(!ReadOnlyFlag)
-  	{
 		BYTE n;
 		if (fs->winflag) {	/* Write back dirty window if needed */
 			if (eDisk_Write(0, fs->win, wsect, 1) != RES_OK)
@@ -84,7 +82,7 @@ BOOL move_window (		/* TRUE: successful, FALSE: failed */
 				}
 			}
 		}
-	   }
+	  
 #endif
 		if (sector) {
 			if (eDisk_Read(0, fs->win, sector, 1) != RES_OK)
@@ -656,7 +654,7 @@ FRESULT auto_mount (		/* FR_OK(0): successful, !=0: any error occured */
 	/* Is the file system object registered? */
 	if (!fs) return FR_NOT_ENABLED;
 
-	/* Chekck if the logical drive has been mounted or not */
+	/* Check if the logical drive has been mounted or not */
 	if (fs->fs_type) {
 		stat = eDisk_Status(0);
 		if (!(stat & STA_NOINIT)) {				/* If the physical drive is kept initialized */

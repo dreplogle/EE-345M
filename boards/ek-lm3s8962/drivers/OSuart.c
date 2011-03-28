@@ -352,13 +352,13 @@ OSuart_Interpret(unsigned char nextChar)
 		  OSuart_OutString(UART0_BASE, " =");
 		  OSuart_OutString(UART0_BASE, string);	      //"format", "dir", "printfile", "deletefile"
 	   }
-	 cmdptr++;
+	   cmdptr++;
 	   if(strcasecmp(token, commands[cmdptr]) == 0)        //openSD
 	   {
   		 if(eDisk_Init(0)) 			   diskError("eDisk_Init",0);	 
          if(eFile_Init())              diskError("eFile_Init",0); 	
 	   }
-	 cmdptr++;
+	   cmdptr++;
 	   if(strcasecmp(token, commands[cmdptr]) == 0)        //format
 	   {	 
          if(eFile_Format())            diskError("eFile_Format",0);
@@ -367,15 +367,16 @@ OSuart_Interpret(unsigned char nextChar)
      cmdptr++;
 	   if(strcasecmp(token, commands[cmdptr]) == 0)        //dir
 	   {	 
-         eFile_Directory();	
+         OSuart_OutString(UART0_BASE, "\r\n\r\n");
+         eFile_Directory();
 	   }
-	 cmdptr++;
+	   cmdptr++;
 	   if(strcasecmp(token, commands[cmdptr]) == 0)        //createfile
 	   {
 	     token = strtok_r(NULL , " ", &last);	 
          if(eFile_Create(token))     diskError("eFile_Create",0);	
 	   }
-	 cmdptr++;
+	   cmdptr++;
 	   if(strcasecmp(token, commands[cmdptr]) == 0)        //writefile
 	   {
 	     OSuart_OutString(UART0_BASE, "\r\nType '#' to end redirection/close file\r\n\r\n");
@@ -390,9 +391,10 @@ OSuart_Interpret(unsigned char nextChar)
 	   OSuart_OutString(UART0_BASE, "\r\n\r\n");	 
        token = strtok_r(NULL , " ", &last);
        eFile_ROpen(token);
-	   for(event = 0; event < 25; event++){
+	     for(event = 0; event < 25; event++){
          if(eFile_ReadNext(&data))   diskError("eFile_ReadNext",0);
          OSuart_OutChar(UART0_BASE, data);
+         OSuart_OutChar(UART0_BASE, 'a');
 	     SysCtlDelay(SysCtlClockGet()/10000);
        }
        eFile_ReadNext(token);

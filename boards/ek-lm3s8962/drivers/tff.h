@@ -16,7 +16,7 @@
 
 #ifndef _FATFS
 
-#define _MCU_ENDIAN		0
+#define _MCU_ENDIAN		2
 /* The _MCU_ENDIAN defines which access method is used to the FAT structure.
 /  1: Enable word access.
 /  2: Disable word access and use byte-by-byte access instead.

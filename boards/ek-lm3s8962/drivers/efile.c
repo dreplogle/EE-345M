@@ -14,7 +14,8 @@
 #include <string.h>
 #include "efile.h"            /* FatFs declarations */
 #include "edisk.h"        /* Include file for user provided disk functions */
-#include "drivers/tff.h"
+#include "drivers/ff.h"
+#include "inc/hw_memmap.h"
 
 //FIL * Files[10];
 FIL CurFile;
@@ -22,7 +23,6 @@ FIL * Fp;	//Global file pointer, only one file can be open at a time
 static FATFS fileSystem;
 unsigned char buff[512];
 
-BYTE ReadOnlyFlag = 0;
 
 int eFile_Init(void) // initialize file system
 {
@@ -48,6 +48,10 @@ int eFile_Init(void) // initialize file system
 	fs->sects_clust = 32;	/* Sectors per cluster */
 	fs->n_fats = 1;			/* Number of FAT copies */
 
+
+
+
+
   return 0; 
 }
 //---------- eFile_Format-----------------
@@ -60,15 +64,16 @@ int eFile_Format(void) // erase disk, add format
   DSTATUS result;  
   int i; 
   unsigned short block;
-
+  for(i=0;i<512;i++){
+    buff[i] = 0;        
+  }
   for(block = 0; block < 0xFF; block++){
-    for(i=0;i<512;i++){
-      buff[i] = 0;        
-    }
 //    GPIO_PF3 = 0x08;     // PF3 high for 100 block writes
     eDisk_WriteBlock(buff,block); // save to disk
 //    GPIO_PF3 = 0x00;
   }
+  res = f_mkfs(0, 0, 512);
+  if(res) return 1;
   res = f_mkdir("Root");
   if(res) return 1; 
   return 0;   
@@ -149,8 +154,12 @@ int eFile_WClose(void) // close the file for writing
 int eFile_ROpen( char name[])      // open a file for reading 
 {
   FRESULT res;
-  ReadOnlyFlag = 1;
+  DIR Directory;
+  DIR * DirObj = &Directory;
   Fp = &CurFile;
+   
+  res = f_opendir(DirObj, "Root");
+  if(res) return 1;
   res = f_open(Fp, name, FA_READ);     //params: empty Fp, path ptr, mode
   if(res) return 1;
   return 0;	
@@ -180,7 +189,7 @@ int eFile_ReadNext( char *pt)       // get next byte
 int eFile_RClose(void) // close the file for writing
 {
   FRESULT res = f_close(Fp);			/* Open or create a file */
-  ReadOnlyFlag = 0;
+  
   if(res)
   {
     return 1; 
@@ -194,10 +203,16 @@ int eFile_RClose(void) // close the file for writing
 //         0 if successful and 1 on failure (e.g., trouble reading from flash)
 int eFile_Directory(void)   
 {
-	DIR foundDir;
+	FRESULT res;
+  DIR foundDir;
 	DIR *directory = &foundDir;
-	f_opendir (directory, "Root");
-	print_dir(directory);
+  FILINFO foundFil;
+  FILINFO * filinfo = &foundFil;
+	res = f_opendir(directory, "Root");
+  if(res) return 1;
+	res = f_readdir(directory, filinfo);
+  if(res) return 1;
+  OSuart_OutString(UART0_BASE, filinfo->fname);
 	return 0;
 }
 
