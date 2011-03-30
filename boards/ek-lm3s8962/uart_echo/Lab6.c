@@ -21,8 +21,7 @@
 #include "drivers/OSuart.h"
 #include "drivers/rit128x96x4.h"
 #include "lm3s8962.h"
-#include "drivers/edisk.h"
-#include "drivers/efile.h"
+#include "drivers/can_fifo.c"
 
 unsigned long NumCreated;   // number of foreground threads created
 unsigned long NumSamples;   // incremented every sample

@@ -1,0 +1,153 @@
+<html>
+<body>
+<pre>
+<h1>µVision Build Log</h1>
+<h2>Project:</h2>
+C:\Users\Aravind\Documents\StellarisWare\boards\ek-lm3s8962\Small Board\SmallBoard.uvproj
+Project File Date:  03/30/2011
+
+<h2>Output:</h2>
+Build target 'Target 1'
+assembling Startup.s...
+compiling Lab6.c...
+Lab6.c(11): error:  #5: cannot open source input file "inc/hw_memmap.h": No such file or directory
+compiling ping.c...
+..\drivers\ping.c(98): warning:  #550-D: variable "delay" was set but never used
+compiling OS.c...
+..\drivers\OS.c(26): error:  #5: cannot open source input file "inc/hw_ints.h": No such file or directory
+compiling OSuart.c...
+..\drivers\OSuart.c(26): error:  #5: cannot open source input file "inc/hw_ints.h": No such file or directory
+assembling OS_asm.s...
+assembling ThreadStack.s...
+compiling can_fifo.c...
+..\drivers\can_fifo.c(26): error:  #5: cannot open source input file "inc/hw_ints.h": No such file or directory
+compiling adc.c...
+..\..\..\driverlib\adc.c(41): error:  #5: cannot open source input file "inc/hw_adc.h": No such file or directory
+Target not created
+Build target 'Target 1'
+assembling Startup.s...
+compiling Lab6.c...
+..\..\..\inc/hw_sysctl.h(810): warning:  #47-D: incompatible redefinition of macro "SYSCTL_RCC_XTAL_M" (declared at line 3654 of "C:\Program Files\Keil\ARM\INC\Luminary\lm3s8962.h")
+Lab6.c(135): warning:  #1-D: last line of file ends without a newline
+compiling ping.c...
+..\drivers\ping.c(98): warning:  #550-D: variable "delay" was set but never used
+compiling OS.c...
+..\drivers\OS.c(254): warning:  #177-D: variable "timeIoff" was declared but never referenced
+..\drivers\OS.c(470): warning:  #177-D: variable "timeIoff" was declared but never referenced
+..\drivers\OS.c(576): warning:  #177-D: variable "timeIoff" was declared but never referenced
+..\drivers\OS.c(617): warning:  #177-D: variable "timeIoff" was declared but never referenced
+..\drivers\OS.c(676): warning:  #177-D: variable "timeIoff" was declared but never referenced
+..\drivers\OS.c(866): warning:  #177-D: variable "timeIoff" was declared but never referenced
+..\drivers\OS.c(887): warning:  #177-D: variable "timeIoff" was declared but never referenced
+..\drivers\OS.c(921): warning:  #177-D: variable "timeIoff" was declared but never referenced
+..\drivers\OS.c(1138): warning:  #177-D: variable "timeIoff" was declared but never referenced
+..\drivers\OS.c(1240): warning:  #177-D: variable "timeIoff" was declared but never referenced
+..\drivers\OS.c(1301): warning:  #1-D: last line of file ends without a newline
+compiling OSuart.c...
+..\drivers\OSuart.c(226): warning:  #167-D: argument of type "unsigned char *" is incompatible with parameter of type "char *"
+..\drivers\OSuart.c(228): warning:  #223-D: function "atoi" declared implicitly
+..\drivers\OSuart.c(236): warning:  #167-D: argument of type "unsigned char *" is incompatible with parameter of type "char *"
+..\drivers\OSuart.c(240): warning:  #223-D: function "atoi" declared implicitly
+..\drivers\OSuart.c(245): warning:  #223-D: function "atoi" declared implicitly
+..\drivers\OSuart.c(254): warning:  #167-D: argument of type "unsigned char *" is incompatible with parameter of type "char *"
+..\drivers\OSuart.c(258): warning:  #223-D: function "atoi" declared implicitly
+..\drivers\OSuart.c(263): warning:  #223-D: function "atoi" declared implicitly
+..\drivers\OSuart.c(275): warning:  #167-D: argument of type "unsigned char *" is incompatible with parameter of type "char *"
+..\drivers\OSuart.c(279): warning:  #223-D: function "atoi" declared implicitly
+..\drivers\OSuart.c(284): warning:  #223-D: function "atoi" declared implicitly
+..\drivers\OSuart.c(318): warning:  #167-D: argument of type "unsigned char *" is incompatible with parameter of type "char *"
+..\drivers\OSuart.c(179): warning:  #177-D: variable "toWrite" was declared but never referenced
+..\drivers\OSuart.c(187): warning:  #177-D: variable "data" was declared but never referenced
+..\drivers\OSuart.c(373): warning:  #223-D: function "sprintf" declared implicitly
+assembling OS_asm.s...
+assembling ThreadStack.s...
+compiling can_fifo.c...
+compiling adc.c...
+linking...
+SmallBoard.axf: Error: L6200E: Symbol g_sCAN multiply defined (by can_fifo.o and lab6.o).
+SmallBoard.axf: Error: L6200E: Symbol g_ulLEDCount multiply defined (by can_fifo.o and lab6.o).
+SmallBoard.axf: Error: L6200E: Symbol NumSamples multiply defined (by ping.o and lab6.o).
+SmallBoard.axf: Error: L6200E: Symbol DataLost multiply defined (by ping.o and lab6.o).
+SmallBoard.axf: Error: L6200E: Symbol CANIntHandler multiply defined (by can_fifo.o and lab6.o).
+SmallBoard.axf: Error: L6200E: Symbol CANTransmitFIFO multiply defined (by can_fifo.o and lab6.o).
+SmallBoard.axf: Error: L6200E: Symbol CANReceiveFIFO multiply defined (by can_fifo.o and lab6.o).
+SmallBoard.axf: Error: L6200E: Symbol ToggleLED multiply defined (by can_fifo.o and lab6.o).
+Target not created
+Build target 'Target 1'
+compiling Lab6.c...
+Lab6.c(134): warning:  #1-D: last line of file ends without a newline
+linking...
+SmallBoard.axf: Error: L6200E: Symbol NumSamples multiply defined (by ping.o and lab6.o).
+SmallBoard.axf: Error: L6200E: Symbol DataLost multiply defined (by ping.o and lab6.o).
+Target not created
+Build target 'Target 1'
+compiling ping.c...
+..\drivers\ping.c(96): warning:  #550-D: variable "delay" was set but never used
+..\drivers\ping.c(190): error:  #20: identifier "DataLost" is undefined
+Target not created
+Build target 'Target 1'
+compiling ping.c...
+..\drivers\ping.c(96): warning:  #550-D: variable "delay" was set but never used
+linking...
+SmallBoard.axf: Error: L6218E: Undefined symbol GPIODirModeSet (referred from ping.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol GPIOPadConfigSet (referred from ping.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol GPIOPinWrite (referred from ping.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol IntEnable (referred from ping.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol IntMasterDisable (referred from ping.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol IntMasterEnable (referred from ping.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol SysCtlPeripheralEnable (referred from ping.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol TimerConfigure (referred from ping.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol TimerControlEvent (referred from ping.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol TimerEnable (referred from ping.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol TimerIntClear (referred from ping.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol TimerIntEnable (referred from ping.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol TimerValueGet (referred from ping.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol GPIOPinIntClear (referred from os.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol GPIOPinIntDisable (referred from os.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol GPIOPinRead (referred from os.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol GPIOPinTypeGPIOInput (referred from os.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol GPIOPinTypeGPIOOutput (referred from os.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol IntPrioritySet (referred from os.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol SysCtlClockSet (referred from os.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol SysTickEnable (referred from os.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol SysTickIntEnable (referred from os.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol SysTickPeriodSet (referred from os.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol TimerDisable (referred from os.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol TimerLoadSet (referred from os.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol GPIOPinTypeUART (referred from osuart.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol Int2Str (referred from osuart.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol SysCtlClockGet (referred from osuart.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol SysCtlDelay (referred from osuart.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol UARTCharGetNonBlocking (referred from osuart.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol UARTCharPut (referred from osuart.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol UARTCharPutNonBlocking (referred from osuart.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol UARTCharsAvail (referred from osuart.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol UARTConfigSetExpClk (referred from osuart.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol UARTFIFOEnable (referred from osuart.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol UARTFIFOLevelSet (referred from osuart.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol UARTIntClear (referred from osuart.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol UARTIntDisable (referred from osuart.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol UARTIntEnable (referred from osuart.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol UARTIntStatus (referred from osuart.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol UARTSpaceAvail (referred from osuart.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol CANIntClear (referred from can_fifo.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol CANIntStatus (referred from can_fifo.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol CANMessageGet (referred from can_fifo.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol CANMessageSet (referred from can_fifo.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol CANStatusGet (referred from can_fifo.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol RIT128x96x4StringDraw (referred from can_fifo.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol IntDisable (referred from adc.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol IntRegister (referred from adc.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol IntUnregister (referred from adc.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol TimerControlTrigger (referred from adc.o).
+Target not created
+Build target 'Target 1'
+linking...
+SmallBoard.axf: Error: L6218E: Undefined symbol Int2Str (referred from osuart.o).
+SmallBoard.axf: Error: L6218E: Undefined symbol RIT128x96x4StringDraw (referred from can_fifo.o).
+Target not created
+Build target 'Target 1'
+compiling rit128x96x4.c...
+linking...
+Program Size: Code=14276 RO-data=1776 RW-data=548 ZI-data=12612  
+"SmallBoard.axf" - 0 Error(s), 0 Warning(s).

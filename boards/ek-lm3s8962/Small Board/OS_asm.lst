@@ -1,0 +1,398 @@
+
+
+
+ARM Macro Assembler    Page 1 
+
+
+    1 00000000         ;*******************************************************
+                       **********************
+    2 00000000         ; OS_asm.s 
+    3 00000000         ; 
+    4 00000000         ;
+    5 00000000         ; Written by: Katy Loeffler 2/7/2011
+    6 00000000         ;*******************************************************
+                       **********************
+    7 00000000         
+    8 00000000         
+    9 00000000         
+   10 00000000                 THUMB
+   11 00000000                 REQUIRE8
+   12 00000000                 PRESERVE8
+   13 00000000                 AREA             |.text|, CODE, READONLY, ALIGN=
+2
+   14 00000000         
+   15 00000000                 EXPORT           StackInit
+   16 00000000                 EXPORT           LaunchInternal
+   17 00000000                 EXPORT           SwitchThreads
+   18 00000000                 EXPORT           TriggerPendSV
+   19 00000000                 EXPORT           SRSave
+   20 00000000                 EXPORT           SRRestore
+   21 00000000         
+   22 00000000                 IMPORT           CurrentThread
+   23 00000000                 IMPORT           NextThread
+   24 00000000         
+   25 00000000 E000ED04 
+                       NVIC_INT_CTRL
+                               EQU              0xE000ED04  ; Interrupt control
+                                                             state register.
+   26 00000000 10000000 
+                       NVIC_PENDSVSET
+                               EQU              0x10000000  ; Value to trigger 
+                                                            PendSV exception.
+   27 00000000 00000004 
+                       NEXT_PTR_OFFSET
+                               EQU              4
+   28 00000000         
+   29 00000000         
+   30 00000000        0 
+                       ThreadStkPtr
+                               RN               R0
+   31 00000000        1 
+                       task    RN               R1
+   32 00000000         
+   33 00000000         
+   34 00000000         ;*******************************************************
+                       **************
+   35 00000000         ;
+   36 00000000         ; Enter a critical section.  Copied from uCOSII.
+   37 00000000         ;
+   38 00000000         ;*******************************************************
+                       **************
+   39 00000000         SRSave
+   40 00000000 F3EF 8010       MRS              R0, PRIMASK
+   41 00000004 B672            CPSID            I
+   42 00000006 4770            BX               LR
+   43 00000008         
+
+
+
+ARM Macro Assembler    Page 2 
+
+
+   44 00000008         ;*******************************************************
+                       **************
+   45 00000008         ;
+   46 00000008         ; Exit a critical section.  Copied from uCOSII.
+   47 00000008         ;
+   48 00000008         ;*******************************************************
+                       **************
+   49 00000008         SRRestore
+   50 00000008 F380 8810       MSR              PRIMASK, R0
+   51 0000000C 4770            BX               LR
+   52 0000000E         
+   53 0000000E         ;*******************************************************
+                       **************
+   54 0000000E         ;
+   55 0000000E         ; Initialize the stack of a new thread
+   56 0000000E         ;
+   57 0000000E         ; R0 is first parameter, holds the Thread SP
+   58 0000000E         ; R1 is the second parameter, holds the address of the f
+                       irst function
+   59 0000000E         ;
+   60 0000000E         ; Returns: R0 is the new position of the stack pointer
+   61 0000000E         ;
+   62 0000000E         ; Written by Katy Loeffler
+   63 0000000E         ;
+   64 0000000E         ;*******************************************************
+                       **************
+   65 0000000E         StackInit
+   66 0000000E B672            CPSID            I
+   67 00000010 B410            PUSH             {R4}        ; We'll use R4 for 
+                                                            manipulation
+   68 00000012 466A            MOV              R2, R13     ; Save current stac
+                                                            k pointer in R2
+   69 00000014 4685            MOV              R13, R0     ; Assign SP to Thre
+                                                            adSP based on R0 pa
+                                                            rameter
+   70 00000016         
+   71 00000016 BC10            POP              {R4}        ; Throw away
+   72 00000018 F04F 7480       MOV              R4, #0x01000000
+   73 0000001C B410            PUSH             {R4}        ; Fake PSR
+   74 0000001E B402            PUSH             {R1}        ; Initial PC value 
+                                                            passed in R1
+   75 00000020 F04F 340E       MOV              R4, #0x0E0E0E0E
+   76 00000024 B410            PUSH             {R4}        ; Fake LR
+   77 00000026 F04F 3412       MOV              R4, #0x12121212
+   78 0000002A B410            PUSH             {R4}        ; Fake R12
+   79 0000002C F04F 3403       MOV              R4, #0x03030303
+   80 00000030 B410            PUSH             {R4}        ; Fake R3
+   81 00000032 F04F 3402       MOV              R4, #0x02020202
+   82 00000036 B410            PUSH             {R4}        ; Fake R2
+   83 00000038 F04F 3401       MOV              R4, #0x01010101
+   84 0000003C B410            PUSH             {R4}        ; Fake R1
+   85 0000003E F04F 1401       MOV              R4, #0x00010001
+   86 00000042 B410            PUSH             {R4}        ; Fake R0
+   87 00000044 F04F 3411       MOV              R4, #0x11111111
+   88 00000048 B410            PUSH             {R4}        ; Fake R11
+   89 0000004A F04F 3410       MOV              R4, #0x10101010
+   90 0000004E B410            PUSH             {R4}        ; Fake R10
+   91 00000050 F04F 3409       MOV              R4, #0x09090909
+   92 00000054 B410            PUSH             {R4}        ; Fake R9
+
+
+
+ARM Macro Assembler    Page 3 
+
+
+   93 00000056 F04F 3408       MOV              R4, #0x08080808
+   94 0000005A B410            PUSH             {R4}        ; Fake R8
+   95 0000005C F04F 3407       MOV              R4, #0x07070707
+   96 00000060 B410            PUSH             {R4}        ; Fake R7
+   97 00000062 F04F 3406       MOV              R4, #0x06060606
+   98 00000066 B410            PUSH             {R4}        ; Fake R6
+   99 00000068 F04F 3405       MOV              R4, #0x05050505
+  100 0000006C B410            PUSH             {R4}        ; Fake R15
+  101 0000006E F04F 3404       MOV              R4, #0x04040404
+  102 00000072 B410            PUSH             {R4}        ; Fake R4
+  103 00000074 F06F 0406       MOV              R4, #0xFFFFFFF9
+  104 00000078 B410            PUSH             {R4}        ; Push LR value ont
+                                                            o stack tell the pr
+                                                            ocessor
+  105 0000007A         ; to enter thread mode the first time the thread
+  106 0000007A         ; is accessed.
+  107 0000007A         
+  108 0000007A 4668            MOV              R0, R13     ; Return the new Th
+                                                            readSP
+  109 0000007C 4695            MOV              R13, R2     ; Restore the curre
+                                                            nt SP
+  110 0000007E BC10            POP              {R4}        ; Restore R4
+  111 00000080 B662            CPSIE            I
+  112 00000082 4770            BX               LR
+  113 00000084         
+  114 00000084         ;*******************************************************
+                       ***********************
+  115 00000084         ;
+  116 00000084         ; Launch the operating system. 
+  117 00000084         ;
+  118 00000084         ; R0 is the first parameter, holds the SP of the first t
+                       hread to be executed.
+  119 00000084         ;
+  120 00000084         ; Returns: none.
+  121 00000084         ;*******************************************************
+                       ***********************
+  122 00000084         LaunchInternal
+  123 00000084         ;CPSID I
+  124 00000084 4685            MOV              R13, R0     ; Load thread SP
+  125 00000086 F85D EB04       POP              {LR}
+  126 0000008A E8BD 0FF0       POP              {R4,R5,R6,R7,R8,R9,R10,R11} ; P
+                                                            op registers for ne
+                                                            w thread
+  127 0000008E E8BD 100F       POP              {R0-R3,R12}
+  128 00000092 F85D EB04       POP              {LR}        ; Throw away
+  129 00000096 F85D EB04       POP              {LR}        ; LR = PC     
+  130 0000009A B662            CPSIE            I
+  131 0000009C 4770            BX               LR
+  132 0000009E         
+  133 0000009E         
+  134 0000009E         ;*******************************************************
+                       ***********************
+  135 0000009E         ;
+  136 0000009E         ; Switch Threads: Push R4-R11 on the stack and save the 
+                       SP of the old thread
+  137 0000009E         ; in the TCB, then restore the SP of the new thread and 
+                       pop R4-R11.
+  138 0000009E         ;
+  139 0000009E         ; Input: none
+
+
+
+ARM Macro Assembler    Page 4 
+
+
+  140 0000009E         ;
+  141 0000009E         ; Returns: R0 is the SP of the outgoing thread to be sav
+                       ed in the TCB
+  142 0000009E         ; Written by Katy Loeffler
+  143 0000009E         ;
+  144 0000009E         ;*******************************************************
+                       ***********************
+  145 0000009E         SwitchThreads
+  146 0000009E B672            CPSID            I
+  147 000000A0 490C            LDR              R1, =CurrentThread
+  148 000000A2 6808            LDR              R0,[R1]
+  149 000000A4 E92D 0FF0       PUSH             {R11,R10,R9,R8,R7,R6,R5,R4} ; P
+                                                            ush registers for o
+                                                            ld thread
+  150 000000A8 B500            PUSH             {LR}
+  151 000000AA F8C0 D000       STR              R13,[R0]    ; Save new SP in TC
+                                                            B, it is the first 
+                                                            entry
+  152 000000AE 480A            LDR              R0, =NextThread
+  153 000000B0 6800            LDR              R0,[R0]     ; Dereference
+  154 000000B2 6008            STR              R0,[R1]
+  155 000000B4 F8D0 D000       LDR              R13,[R0]    ; Get stack pointer
+                                                            
+  156 000000B8 F85D EB04       POP              {LR}
+  157 000000BC E8BD 0FF0       POP              {R4,R5,R6,R7,R8,R9,R10,R11} ; P
+                                                            op registers for ne
+                                                            w thread   
+  158 000000C0 B662            CPSIE            I
+  159 000000C2 4770            BX               LR
+  160 000000C4         
+  161 000000C4         ;*******************************************************
+                       ***********************
+  162 000000C4         ;
+  163 000000C4         ; Trigger a PendSV exception.  This function was copied 
+                       from uOSII.
+  164 000000C4         ;
+  165 000000C4         ;*******************************************************
+                       ***********************
+  166 000000C4         TriggerPendSV
+  167 000000C4 B672            CPSID            I
+  168 000000C6 4805            LDR              R0, =NVIC_INT_CTRL ; Trigger th
+                                                            e PendSV exception 
+                                                            (causes context swi
+                                                            tch)
+  169 000000C8 F04F 5180       LDR              R1, =NVIC_PENDSVSET
+  170 000000CC 6001            STR              R1, [R0]
+  171 000000CE B662            CPSIE            I
+  172 000000D0 4770            BX               LR
+  173 000000D2         
+  174 000000D2         ;*******************************************************
+                       ***********************
+  175 000000D2         ;
+  176 000000D2         ; Make sure the end of this section is aligned.
+  177 000000D2         ;
+  178 000000D2         ;*******************************************************
+                       ***********************
+  179 000000D2 00 00           ALIGN
+  180 000000D4         
+  181 000000D4         ;*******************************************************
+
+
+
+ARM Macro Assembler    Page 5 
+
+
+                       ***********************
+  182 000000D4         ;
+  183 000000D4         ; Tell the assembler that we're done.
+  184 000000D4         ;
+  185 000000D4         ;*******************************************************
+                       ***********************
+  186 000000D4                 END
+              00000000 
+              00000000 
+              E000ED04 
+Command Line: --debug --xref --cpu=Cortex-M3 --apcs=interwork --depend=OS_asm.d
+ -oOS_asm.o -I.. -I..\..\.. -I"C:\Program Files\Keil\ARM\INC" -I"C:\Program Fil
+es\Keil\ARM\INC\Luminary" --predefine="__EVAL SETA 1" --list=.\OS_asm.lst ..\dr
+ivers\OS_asm.s
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Relocatable symbols
+
+.text 00000000
+
+Symbol: .text
+   Definitions
+      At line 13 in file ..\drivers\OS_asm.s
+   Uses
+      None
+Comment: .text unused
+LaunchInternal 00000084
+
+Symbol: LaunchInternal
+   Definitions
+      At line 122 in file ..\drivers\OS_asm.s
+   Uses
+      At line 16 in file ..\drivers\OS_asm.s
+Comment: LaunchInternal used once
+SRRestore 00000008
+
+Symbol: SRRestore
+   Definitions
+      At line 49 in file ..\drivers\OS_asm.s
+   Uses
+      At line 20 in file ..\drivers\OS_asm.s
+Comment: SRRestore used once
+SRSave 00000000
+
+Symbol: SRSave
+   Definitions
+      At line 39 in file ..\drivers\OS_asm.s
+   Uses
+      At line 19 in file ..\drivers\OS_asm.s
+Comment: SRSave used once
+StackInit 0000000E
+
+Symbol: StackInit
+   Definitions
+      At line 65 in file ..\drivers\OS_asm.s
+   Uses
+      At line 15 in file ..\drivers\OS_asm.s
+Comment: StackInit used once
+SwitchThreads 0000009E
+
+Symbol: SwitchThreads
+   Definitions
+      At line 145 in file ..\drivers\OS_asm.s
+   Uses
+      At line 17 in file ..\drivers\OS_asm.s
+Comment: SwitchThreads used once
+TriggerPendSV 000000C4
+
+Symbol: TriggerPendSV
+   Definitions
+      At line 166 in file ..\drivers\OS_asm.s
+   Uses
+      At line 18 in file ..\drivers\OS_asm.s
+Comment: TriggerPendSV used once
+7 symbols
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Absolute symbols
+
+NEXT_PTR_OFFSET 00000004
+
+Symbol: NEXT_PTR_OFFSET
+   Definitions
+      At line 27 in file ..\drivers\OS_asm.s
+   Uses
+      None
+Comment: NEXT_PTR_OFFSET unused
+NVIC_INT_CTRL E000ED04
+
+Symbol: NVIC_INT_CTRL
+   Definitions
+      At line 25 in file ..\drivers\OS_asm.s
+   Uses
+      At line 168 in file ..\drivers\OS_asm.s
+Comment: NVIC_INT_CTRL used once
+NVIC_PENDSVSET 10000000
+
+Symbol: NVIC_PENDSVSET
+   Definitions
+      At line 26 in file ..\drivers\OS_asm.s
+   Uses
+      At line 169 in file ..\drivers\OS_asm.s
+Comment: NVIC_PENDSVSET used once
+3 symbols
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+External symbols
+
+CurrentThread 00000000
+
+Symbol: CurrentThread
+   Definitions
+      At line 22 in file ..\drivers\OS_asm.s
+   Uses
+      At line 147 in file ..\drivers\OS_asm.s
+Comment: CurrentThread used once
+NextThread 00000000
+
+Symbol: NextThread
+   Definitions
+      At line 23 in file ..\drivers\OS_asm.s
+   Uses
+      At line 152 in file ..\drivers\OS_asm.s
+Comment: NextThread used once
+2 symbols
+340 symbols in table

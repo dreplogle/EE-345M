@@ -1,0 +1,13 @@
+can_fifo.o: ..\drivers\can_fifo.c
+can_fifo.o: ..\..\..\inc/hw_ints.h
+can_fifo.o: ..\..\..\inc/hw_memmap.h
+can_fifo.o: ..\..\..\inc/hw_sysctl.h
+can_fifo.o: ..\..\..\inc/hw_can.h
+can_fifo.o: ..\..\..\inc/hw_types.h
+can_fifo.o: ..\..\..\driverlib/can.h
+can_fifo.o: ..\..\..\driverlib/debug.h
+can_fifo.o: ..\..\..\driverlib/gpio.h
+can_fifo.o: ..\..\..\driverlib/interrupt.h
+can_fifo.o: ..\..\..\driverlib/sysctl.h
+can_fifo.o: ..\..\..\driverlib/systick.h
+can_fifo.o: ..\drivers/rit128x96x4.h
