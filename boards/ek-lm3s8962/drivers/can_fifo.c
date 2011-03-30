@@ -56,10 +56,7 @@
 //
 //*****************************************************************************
 
-//
-// Size of the FIFOs allocated to the CAN controller.
-//
-#define CAN_FIFO_SIZE           (8 * 8)
+
 
 //
 // Message object used by the transmit message FIFO.
@@ -80,6 +77,52 @@
 // The CAN bit rate.
 //
 #define CAN_BITRATE             250000
+
+struct
+{
+    //
+    // This holds the information for the data receive message object that is
+    // used to receive data for each CAN controller.
+    //
+    tCANMsgObject MsgObjectRx;
+
+    //
+    // This holds the information for the data send message object that is used
+    // to send data for each CAN controller.
+    //
+    tCANMsgObject MsgObjectTx;
+
+    //
+    // Receive buffer.
+    //
+    unsigned char pucBufferRx[CAN_FIFO_SIZE];
+
+    //
+    // Transmit buffer.
+    //
+    unsigned char pucBufferTx[CAN_FIFO_SIZE];
+
+    //
+    // Bytes remaining to be received.
+    //
+    unsigned long ulBytesRemaining;
+
+    //
+    // Bytes transmitted.
+    //
+    unsigned long ulBytesTransmitted;
+
+    //
+    // The current state of the CAN controller.
+    //
+    enum
+    {
+        CAN_IDLE,
+        CAN_SENDING,
+        CAN_WAIT_RX,
+        CAN_PROCESS,
+    } eState;
+} g_sCAN;
 
 //
 // Used by the ToggleLED function to set the toggle rate.

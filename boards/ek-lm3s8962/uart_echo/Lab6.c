@@ -116,7 +116,6 @@ int main(void){        // lab 5 real main
 
 //********initialize communication channels
   OS_Fifo_Init(512);    // ***note*** 4 is not big enough*****
-  //CAN_Init();
   ADC_Open();
   ADC_Collect(0, 1000, &Producer); // start ADC sampling, channel 0, 1000 Hz 
 
