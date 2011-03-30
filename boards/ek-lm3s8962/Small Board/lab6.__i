@@ -1,1 +1,0 @@
--c --cpu Cortex-M3 -D__EVAL -g -O0 --apcs=interwork -I.. -I..\..\.. -I "C:\Program Files\Keil\ARM\INC" -I "C:\Program Files\Keil\ARM\INC\Luminary" -o "lab6.o" --omf_browse "lab6.crf" --depend "lab6.d" "Lab6.c"
