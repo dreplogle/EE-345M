@@ -17,6 +17,8 @@
 #ifndef TACHO
 #define TACHO
 
+#define MAX_TACH_FIFOSIZE 128 		// can be any size
+
 // ************* Tachometer_Init ***********
 // Initializes tachometer I/O pins and interrupts
 // Inputs: none
