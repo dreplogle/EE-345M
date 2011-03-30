@@ -109,6 +109,46 @@ void DownPush(void){
 
 }
 
+//*************GetIR***************
+// Background thread for IR sensor,
+// called when ADC finishes a conversion
+// and generates an interrupt.
+void GetIR(unsigned short data){  
+  if(Running){
+    if(IR_Fifo_Put(data)){     
+      NumSamples++;
+    } else{ 
+      DataLost++;
+    } 
+  }
+}
+
+//************IR DAQ thread********
+// Samples the ADC0 at 20Hz, recieves
+// data in FIFO, filters data,
+// sends data through CAN. 
+AddFifo(IR_, 32, unsigned short, 1, 0);   // UARTTx Buffer
+
+void IRSensor(void){
+  unsigned short data[3], i, sampleOut;
+
+  ADC_Collect(0, 20, &GetIR); //ADC sample on channel 0, 20Hz
+  
+  for(;;){
+    for(i = 0; i<3; i++){	      // Get 3 samples for median filter 
+      while(!IR_Fifo_Get(&data[i]));
+    }
+   
+    //3-Element median filter
+    if((data[0]<=data[1]&&data[0]>=data[2])||(data[0]<=data[2]&&data[0]>=data[1])) sampleOut = data[0];
+    else if((data[1]<=data[0]&&data[1]>=data[2])||(data[1]<=data[2]&&data[1]>=data[0])) sampleOut = data[1];
+    else if((data[2]<=data[1]&&data[2]>=data[0])||(data[2]<=data[0]&&data[2]>=data[1])) sampleOut = data[2];  
+    else sampleOut = 0xFF;       // Median finding error
+
+    //CAN_Out(sampleOut)
+  }
+}
+
 //*******************lab 5 main **********
 int main(void){        // lab 5 real main
   OS_Init();           // initialize, disable interrupts
