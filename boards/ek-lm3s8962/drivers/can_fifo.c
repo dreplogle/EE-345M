@@ -35,6 +35,7 @@
 #include "driverlib/sysctl.h"
 #include "driverlib/systick.h"
 #include "drivers/rit128x96x4.h"
+#include "drivers/can_fifo.h"
 
 //*****************************************************************************
 //
@@ -81,70 +82,10 @@
 #define CAN_BITRATE             250000
 
 //
-// This structure holds all of the state information for the CAN transfers.
-//
-struct
-{
-    //
-    // This holds the information for the data receive message object that is
-    // used to receive data for each CAN controller.
-    //
-    tCANMsgObject MsgObjectRx;
-
-    //
-    // This holds the information for the data send message object that is used
-    // to send data for each CAN controller.
-    //
-    tCANMsgObject MsgObjectTx;
-
-    //
-    // Receive buffer.
-    //
-    unsigned char pucBufferRx[CAN_FIFO_SIZE];
-
-    //
-    // Transmit buffer.
-    //
-    unsigned char pucBufferTx[CAN_FIFO_SIZE];
-
-    //
-    // Bytes remaining to be received.
-    //
-    unsigned long ulBytesRemaining;
-
-    //
-    // Bytes transmitted.
-    //
-    unsigned long ulBytesTransmitted;
-
-    //
-    // The current state of the CAN controller.
-    //
-    enum
-    {
-        CAN_IDLE,
-        CAN_SENDING,
-        CAN_WAIT_RX,
-        CAN_PROCESS,
-    } eState;
-} g_sCAN;
-
-//
 // Used by the ToggleLED function to set the toggle rate.
 //
 unsigned long g_ulLEDCount;
-
-//*****************************************************************************
-//
-// The error routine that is called if the driver library encounters an error.
-//
-//*****************************************************************************
-#ifdef DEBUG
-void
-__error__(char *pcFilename, unsigned long ulLine)
-{
-}
-#endif
+int iIdx;
 
 //*****************************************************************************
 //
@@ -439,11 +380,9 @@ ToggleLED(void)
 // This is the main loop for the application.
 //
 //*****************************************************************************
-/*int
-main(void)
+void
+CAN(void)
 {
-    int iIdx;
-
     //
     // If running on Rev A2 silicon, turn the LDO voltage up to 2.75V.  This is
     // a workaround to allow the PLL to operate reliably.
@@ -528,11 +467,11 @@ main(void)
     // Set the initial state to idle.
     //
     g_sCAN.eState = CAN_IDLE;
-    */
+    
     //
     // Initialize the CAN FIFO buffer.
     //
-    /*for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
+    for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
     {
         g_sCAN.pucBufferTx[iIdx] = iIdx + 0x1;
     }
@@ -556,116 +495,4 @@ main(void)
     // Initialized the LED toggle count.
     //
     g_ulLEDCount = 0;
-
-    //
-    // Loop forever.
-    //
-    while(1)
-    {
-        switch(g_sCAN.eState)
-        {
-            case CAN_IDLE:
-            {
-                //
-                // Switch to sending state.
-                //
-                g_sCAN.eState = CAN_SENDING;
-
-                //
-                // Initialize the transmit count to zero.
-                //
-                g_sCAN.ulBytesTransmitted = 0;
-
-                //
-                // Schedule all of the CAN transmissions.
-                //
-                CANTransmitFIFO(g_sCAN.pucBufferTx, CAN_FIFO_SIZE);
-
-                break;
-            }
-            case CAN_SENDING:
-            {
-                //
-                // Wait for all bytes to go out.
-                //
-                if(g_sCAN.ulBytesTransmitted == CAN_FIFO_SIZE)
-                {
-                    //
-                    // Switch to wait for RX state.
-                    //
-                    g_sCAN.eState = CAN_WAIT_RX;
-                }
-
-                break;
-            }
-            case CAN_WAIT_RX:
-            {
-                //
-                // Wait for all new data to be received.
-                //
-                if(g_sCAN.ulBytesRemaining == 0)
-                {
-                    //
-                    // Switch to wait for Process data state.
-                    //
-                    g_sCAN.eState = CAN_PROCESS;
-
-                    //
-                    // Reset the buffer pointer.
-                    //
-                    g_sCAN.MsgObjectRx.pucMsgData = g_sCAN.pucBufferRx;
-
-                    //
-                    // Reset the number of bytes expected.
-                    //
-                    g_sCAN.ulBytesRemaining = CAN_FIFO_SIZE;
-                }
-                break;
-            }
-            case CAN_PROCESS:
-            {
-                //
-                // Compare the received data to the data that was sent out.
-                //
-                for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
-                {
-                    if(g_sCAN.pucBufferTx[iIdx] != g_sCAN.pucBufferRx[iIdx])
-                    {
-                        //
-                        // Detected an Error Condition.
-                        //
-                        RIT128x96x4StringDraw("Error   ", 14, 34, 15);
-                        break;
-                    }
-                }
-
-                //
-                // Change the CAN FIFO data.
-                //
-                for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
-                {
-                    //
-                    // Increment the data to change it.
-                    //
-                    g_sCAN.pucBufferTx[iIdx] += 0xB;
-                }
-
-                //
-                // Handle the LED toggle.
-                //
-                ToggleLED();
-
-                //
-                // Return to the idle state.
-                //
-                g_sCAN.eState = CAN_IDLE;
-
-                break;
-            }
-            default:
-            {
-                break;
-            }
-        }
-    }
-}*/
+}

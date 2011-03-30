@@ -21,7 +21,7 @@
 #include "drivers/OSuart.h"
 #include "drivers/rit128x96x4.h"
 #include "lm3s8962.h"
-#include "drivers/can_fifo.c"
+#include "drivers/can_fifo.h"
 
 unsigned long NumCreated;   // number of foreground threads created
 unsigned long NumSamples;   // incremented every sample
@@ -84,7 +84,6 @@ void IdleTask(void){
   }
 }
 
-
 //******** Interpreter **************
 // your intepreter from Lab 4 
 // foreground thread, accepts input from serial port, outputs to serial port
@@ -117,6 +116,7 @@ int main(void){        // lab 5 real main
 
 //********initialize communication channels
   OS_Fifo_Init(512);    // ***note*** 4 is not big enough*****
+  //CAN_Init();
   ADC_Open();
   ADC_Collect(0, 1000, &Producer); // start ADC sampling, channel 0, 1000 Hz 
 
@@ -127,7 +127,8 @@ int main(void){        // lab 5 real main
 
   NumCreated = 0 ;
 // create initial foreground threads
-  NumCreated += OS_AddThread(&Interpreter,128,2); 
+  NumCreated += OS_AddThread(&Interpreter,128,2);
+  NumCreated += OS_AddThread(&CAN,128,2); 
   NumCreated += OS_AddThread(&IdleTask,128,7);  // runs when nothing useful to do
  
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
