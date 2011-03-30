@@ -22,6 +22,7 @@
 #include "drivers/rit128x96x4.h"
 #include "lm3s8962.h"
 #include "drivers/can_fifo.h"
+#include "drivers/tachometer.h"
 
 unsigned long NumCreated;   // number of foreground threads created
 unsigned long NumSamples;   // incremented every sample
