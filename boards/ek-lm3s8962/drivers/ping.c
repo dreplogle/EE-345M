@@ -201,6 +201,7 @@ void pingConsumer(void)
 	unsigned long pulseWidthUSec = pulseWidth / NUMBER_OF_CYCLES_IN_USEC;
 	unsigned long tempDistance = pulseWidthUSec * SPEED_OF_SOUND;
 	tempDistance = tempDistance / NUMBER_OF_NM_IN_MM;
+	tempDistance = tempDistance * 10;
 	distance = tempDistance;
 
 	//Transmit by CAN
