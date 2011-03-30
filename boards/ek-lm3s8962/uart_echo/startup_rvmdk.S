@@ -87,6 +87,7 @@ __heap_limit
 		EXTERN  SysTickThSwIntHandler
 		EXTERN  PendSVHandler
 		EXTERN  SwitchIntHandler
+		EXTERN  Tachometer_InputCapture
 
 ;******************************************************************************
 ;
@@ -112,7 +113,7 @@ __Vectors
         DCD     PendSVHandler	            ; The PendSV handler
         DCD     SysTickThSwIntHandler       ; The SysTick handler
         DCD     IntDefaultHandler                    ; GPIO Port A
-        DCD     IntDefaultHandler                    ; GPIO Port B
+        DCD     Tachometer_InputCapture                    ; GPIO Port B
         DCD     IntDefaultHandler                    ; GPIO Port C
         DCD     IntDefaultHandler           ; GPIO Port D
         DCD     IntDefaultHandler           ; GPIO Port E

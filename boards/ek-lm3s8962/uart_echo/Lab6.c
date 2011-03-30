@@ -120,6 +120,8 @@ int main(void){        // lab 5 real main
   ADC_Open();
   ADC_Collect(0, 1000, &Producer); // start ADC sampling, channel 0, 1000 Hz 
 
+  Tachometer_Init(2);
+
 //*******attach background tasks***********
   OS_AddButtonTask(&ButtonPush,2);
   OS_AddDownTask(&DownPush,3);
@@ -133,4 +135,5 @@ int main(void){        // lab 5 real main
  
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes
-} 
+}
+ 
