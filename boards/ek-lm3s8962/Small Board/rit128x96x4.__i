@@ -1,1 +1,0 @@
--c --cpu Cortex-M3 -D__EVAL -g -O0 --apcs=interwork -I.. -I..\..\.. -I "C:\Program Files\Keil\ARM\INC" -I "C:\Program Files\Keil\ARM\INC\Luminary" -o "rit128x96x4.o" --omf_browse "rit128x96x4.crf" --depend "rit128x96x4.d" "..\drivers\rit128x96x4.c"

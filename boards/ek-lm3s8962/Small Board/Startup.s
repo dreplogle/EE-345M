@@ -77,6 +77,17 @@ __heap_limit
         AREA    RESET, CODE, READONLY
         THUMB
 
+
+;******************************************************************************
+;
+; External declaration for the interrupt handler used by the application.
+;
+;******************************************************************************
+		
+        EXTERN pingInterruptHandler
+
+
+
 ;******************************************************************************
 ;
 ; The vector table.
@@ -120,7 +131,7 @@ __Vectors
         DCD     IntDefaultHandler           ; ADC Sequence 3
         DCD     IntDefaultHandler           ; Watchdog
         DCD     IntDefaultHandler           ; Timer 0A
-        DCD     IntDefaultHandler           ; Timer 0B
+        DCD     pingInterruptHandler           ; Timer 0B
         DCD     IntDefaultHandler           ; Timer 1A
         DCD     IntDefaultHandler           ; Timer 1B
         DCD     IntDefaultHandler           ; Timer 2A
