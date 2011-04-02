@@ -63,6 +63,7 @@ unsigned long data;      // ADC sample, 0 to 1023
 unsigned long voltage;   // in mV,      0 to 3000
 unsigned long time = 0;      // in 10msec,  0 to 1000 
 unsigned long t=0;
+unsigned int i;
   //OS_ClearMsTime();
   char string[100];    
   DataLost = 0;          // new run with no lost data 
@@ -70,7 +71,7 @@ unsigned long t=0;
   eFile_Create("Robot");
   eFile_RedirectToFile("Robot");
   OSuart_OutString(UART0_BASE, "time(sec)\tdata(volts)\n\r");
-  do{
+  for(i = 1000; i > 0; i--){
     t++;
     time+=OS_Time()/10000;            // 10ms resolution in this OS
     while(!OS_Fifo_Get(&data));        // 1000 Hz sampling get from producer
@@ -78,28 +79,13 @@ unsigned long t=0;
     sprintf(string, "%0u.%02u\t\t%0u.%03u\n\r",time/100,time%100,voltage/1000,voltage%1000);
     OSuart_OutString(UART0_BASE, string);
   }
-  while(time < 100000);       // change this to mean 10 seconds
   eFile_EndRedirectToFile();
   OSuart_OutString(UART0_BASE, "done.\n\r");										    
   Running = 0;                // robot no longer running
   OS_Kill();
 }
   
-//************ButtonPush*************
-// Called when Select Button pushed
-// background threads execute once and return
-void ButtonPush(void){
-  if(Running==0){
-    Running = 1;  // prevents you from starting two robot threads
-    NumCreated += OS_AddThread(&Robot,128,1);  // start a 20 second run
-  }
-}
-//************DownPush*************
-// Called when Down Button pushed
-// background threads execute once and return
-void DownPush(void){
 
-}
 
 
 
@@ -129,9 +115,28 @@ void Producer(unsigned short data){
 // outputs: none
 unsigned long Idlecount=0;
 void IdleTask(void){
-  while(1) { 
-    Idlecount++;        // debugging 
+  unsigned long data;      // ADC sample, 0 to 1023
+  unsigned long voltage;   // in mV,      0 to 3000
+  unsigned long time = 0;      // in 10msec,  0 to 1000 
+  unsigned long t=0;
+  char string[100];
+  unsigned int i;    
+  DataLost = 0;          // new run with no lost data 
+  OSuart_OutString(UART0_BASE, "Robot running 2...");
+  eFile_Create("Robot2");
+  eFile_RedirectToFile("Robot2");
+  OSuart_OutString(UART0_BASE, "time(sec)\tdata(volts)\n\r");
+  for(i = 1000; i > 0; i--){
+    t++;
+    time+=OS_Time()/10000;            // 10ms resolution in this OS
+    while(!OS_Fifo_Get(&data));        // 1000 Hz sampling get from producer
+    voltage = (300*data)/1024;   // in mV
+    sprintf(string, "%0u.%02u\t\t%0u.%03u\n\r",time/100,time%100,voltage/1000,voltage%1000);
+    OSuart_OutString(UART0_BASE, string);
   }
+
+  eFile_EndRedirectToFile();
+  OSuart_OutString(UART0_BASE, "done 2.\n\r");
 }
 
 
@@ -147,6 +152,23 @@ extern void Interpreter(void);
 // 3) print file
 // 4) delete file
 // execute   eFile_Init();  after periodic interrupts have started
+
+//************ButtonPush*************
+// Called when Select Button pushed
+// background threads execute once and return
+void ButtonPush(void){
+  if(Running==0){
+    Running = 1;  // prevents you from starting two robot threads
+    NumCreated += OS_AddThread(&Robot,128,1);  // start a 20 second run
+	NumCreated += OS_AddThread(&IdleTask,128,1);  // start a 20 second run
+  }
+}
+//************DownPush*************
+// Called when Down Button pushed
+// background threads execute once and return
+void DownPush(void){
+
+}
 
 //*******************lab 5 main **********
 int main(void){        // lab 5 real main
@@ -168,7 +190,7 @@ int main(void){        // lab 5 real main
   NumCreated = 0 ;
 // create initial foreground threads
   NumCreated += OS_AddThread(&Interpreter,128,2); 
-  NumCreated += OS_AddThread(&IdleTask,128,7);  // runs when nothing useful to do
+//  NumCreated += OS_AddThread(&IdleTask,128,7);  // runs when nothing useful to do
  
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes
