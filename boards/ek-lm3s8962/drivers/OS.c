@@ -206,9 +206,9 @@ OS_Init(void)
 
   OS_DebugProfileInit();
   // Initialize oLED display
-  //RIT128x96x4Init(1000000);
+  RIT128x96x4Init(1000000);
   // Initialize ADC
-  //ADC_Open();
+  ADC_Open();
   // Initialize serial communication
   OSuart_Open();
 

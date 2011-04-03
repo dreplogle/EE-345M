@@ -22,6 +22,7 @@
 #include "drivers/rit128x96x4.h"
 #include "lm3s8962.h"
 #include "drivers/can_fifo.c"
+#include "math.h"
 
 unsigned long NumCreated;   // number of foreground threads created
 unsigned long NumSamples;   // incremented every sample
@@ -113,29 +114,40 @@ void DownPush(void){
 // called when ADC finishes a conversion
 // and generates an interrupt.
 void GetIR(unsigned short data){  
-  if(Running){
-    if(IR_Fifo_Put(data)){     
-      NumSamples++;
-    } else{ 
-      DataLost++;
-    } 
-  }
+  if(RawIR_Fifo_Put(data)){     
+    NumSamples++;
+  } else{ 
+    DataLost++;
+  } 
 }
 
 //************IR DAQ thread********
 // Samples the ADC0 at 20Hz, recieves
 // data in FIFO, filters data,
 // sends data through CAN. 
-AddFifo(IR_, 32, unsigned short, 1, 0);   // UARTTx Buffer
+#define IR_SAMPLING_RATE	20               // in Hz
+AddFifo(RawIR_, 32, unsigned short, 1, 0);   // Raw IR data, ADC samples
+AddFifo(IR_, 32, unsigned short, 1, 0);   // IR data after median filter
+struct IR_STATS{
+  short average;
+  short stdev;
+  short maxdev;
+};
+struct IR_STATS IR_Stats;
+unsigned short stats[IR_SAMPLING_RATE];
 
 void IRSensor(void){
-  unsigned short data[3], i, sampleOut;
+  unsigned short data[3],sampleOut,i;
+  static unsigned int newest = 0;
+  long sum;
+  unsigned short max,min;
+  
 
-  ADC_Collect(0, 20, &GetIR); //ADC sample on channel 0, 20Hz
+  ADC_Collect(0, IR_SAMPLING_RATE, &GetIR); //ADC sample on channel 0, 20Hz
   
   for(;;){
     for(i = 0; i<3; i++){	      // Get 3 samples for median filter 
-      while(!IR_Fifo_Get(&data[i]));
+      while(!RawIR_Fifo_Get(&data[i]));
     }
    
     //3-Element median filter
@@ -144,12 +156,45 @@ void IRSensor(void){
     else if((data[2]<=data[1]&&data[2]>=data[0])||(data[2]<=data[0]&&data[2]>=data[1])) sampleOut = data[2];  
     else sampleOut = 0xFF;       // Median finding error
 
-    //CAN_Out(sampleOut)
+	if(IR_Fifo_Put(sampleOut)){     
+      NumSamples++;
+    } else{ 
+      DataLost++;
+    }
+
+	stats[newest] = sampleOut;
+	newest++;
+	if(newest >= IR_SAMPLING_RATE) newest = 0;
+
+	//Average = sum of all values/number of values
+	//Maximum deviation = max value - min value
+	max = 0;
+	min = 0xFFFF;
+	sum = 0;
+	for(i = 0; i < IR_SAMPLING_RATE; i++){
+      sum += (long)stats[i];
+	  if(stats[i] < min) min = stats[i];
+	  if(stats[i] > max) max = stats[i];	  
+	}
+    IR_Stats.average = (short)(sum/IR_SAMPLING_RATE);
+	IR_Stats.maxdev = (short)(max - min);
+
+	//Standard deviation = sqrt(sum of (each value - average)^2 / number of values)
+	sum = 0;
+	for(i = 0; i < IR_SAMPLING_RATE; i++){
+      sum +=(long)((short)stats[i]-(short)IR_Stats.average)*((short)stats[i]-(short)IR_Stats.average);	  
+	}
+	sum = sum/IR_SAMPLING_RATE;
+	IR_Stats.stdev = (short)sqrt(sum);
+
+	oLED_Message(0, 0, "IR Avg", IR_Stats.average);
+	oLED_Message(0, 1, "IR StdDev", IR_Stats.stdev);
+	oLED_Message(0, 2, "IR MaxDev", IR_Stats.maxdev);
   }
 }
 
-//*******************lab 5 main **********
-int main(void){        // lab 5 real main
+//*******************lab 6 main **********
+int main(void){       
   OS_Init();           // initialize, disable interrupts
   Running = 0;         // robot not running
   DataLost = 0;        // lost data between producer and consumer
@@ -157,8 +202,6 @@ int main(void){        // lab 5 real main
 
 //********initialize communication channels
   OS_Fifo_Init(512);    // ***note*** 4 is not big enough*****
-  ADC_Open();
-  ADC_Collect(0, 1000, &Producer); // start ADC sampling, channel 0, 1000 Hz 
 
 //*******attach background tasks***********
   OS_AddButtonTask(&ButtonPush,2);
@@ -168,7 +211,7 @@ int main(void){        // lab 5 real main
   NumCreated = 0 ;
 // create initial foreground threads
   NumCreated += OS_AddThread(&Interpreter,128,2); 
-  NumCreated += OS_AddThread(&IdleTask,128,7);  // runs when nothing useful to do
+  NumCreated += OS_AddThread(&IRSensor,128,7);  // runs when nothing useful to do
  
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes
