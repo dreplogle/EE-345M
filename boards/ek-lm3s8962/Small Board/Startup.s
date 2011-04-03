@@ -85,7 +85,13 @@ __heap_limit
 ;******************************************************************************
 		
         EXTERN pingInterruptHandler
-
+		EXTERN Timer3AIntHandler 
+		EXTERN Timer3BIntHandler 
+		EXTERN Timer2IntHandler
+		EXTERN SysTickThSwIntHandler
+		EXTERN PendSVHandler
+		EXTERN SwitchIntHandler
+		EXTERN Tachometer_InputCapture
 
 
 ;******************************************************************************
@@ -109,10 +115,10 @@ __Vectors
         DCD     IntDefaultHandler           ; SVCall Handler
         DCD     IntDefaultHandler           ; Debug Monitor Handler
         DCD     0                           ; Reserved
-        DCD     IntDefaultHandler           ; PendSV Handler
-        DCD     IntDefaultHandler           ; SysTick Handler
+        DCD     PendSVHandler           ; PendSV Handler
+        DCD     SysTickThSwIntHandler           ; SysTick Handler
         DCD     IntDefaultHandler           ; GPIO Port A
-        DCD     IntDefaultHandler           ; GPIO Port B
+        DCD     Tachometer_InputCapture           ; GPIO Port B
         DCD     IntDefaultHandler           ; GPIO Port C
         DCD     IntDefaultHandler           ; GPIO Port D
         DCD     IntDefaultHandler           ; GPIO Port E
@@ -146,8 +152,8 @@ __Vectors
         DCD     IntDefaultHandler           ; GPIO Port H
         DCD     IntDefaultHandler           ; UART2 Rx and Tx
         DCD     IntDefaultHandler           ; SSI1 Rx and Tx
-        DCD     IntDefaultHandler           ; Timer 3 subtimer A
-        DCD     IntDefaultHandler           ; Timer 3 subtimer B
+        DCD     Timer3AIntHandler           ; Timer 3 subtimer A
+        DCD     Timer3BIntHandler           ; Timer 3 subtimer B
         DCD     IntDefaultHandler           ; I2C1 Master and Slave
         DCD     IntDefaultHandler           ; Quadrature Encoder 1
         DCD     IntDefaultHandler           ; CAN0

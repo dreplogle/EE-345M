@@ -9,6 +9,9 @@ unsigned long NumCreated;
 
 #define PING_PERIOD 50000 //This is in units of 2000 ns increments
 
+void Tachometer_InputCapture(void){}//delete this function when you get the real tachometer input
+//capture function
+
 int main(void) //Add code to test Ping functions
 {
 	OS_Init();
