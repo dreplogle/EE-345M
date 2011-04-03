@@ -58,3 +58,30 @@ int OSTestMain(void)
 	OS_Launch(TIMESLICE);
 
 }
+
+unsigned long testFifoData = 0;
+void FifoProducer(void)
+{
+	Ping_Fifo_Put(testFifoData);
+	testFifoData++;
+}
+
+
+unsigned long testFifoGet[100];
+unsigned long testFifoGetIndex = 0;
+void FifoConsumer(void)
+{
+	if (testFifoGetIndex < 100)
+	{
+		testFifoGet[testFifoGetIndex] = Ping_Fifo_Get();
+		testFifoGetIndex++;
+	}
+}
+int FifoTestMain(void)
+{
+	OS_Init();
+	Ping_Fifo_Init();
+	OS_AddPeriodicThread(&FifoProducer, 10000, 0);
+	OS_AddThread(&FifoConsumer, 800, 1);
+	OS_Launch(TIMESLICE); 
+}
