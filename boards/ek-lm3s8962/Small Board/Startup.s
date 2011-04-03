@@ -84,6 +84,8 @@ __heap_limit
 ;
 ;******************************************************************************
 		
+		EXTERN UARTIntHandler
+		EXTERN ADC0Seq3IntHandler
         EXTERN pingInterruptHandler
 		EXTERN Timer3AIntHandler 
 		EXTERN Timer3BIntHandler 
@@ -122,7 +124,7 @@ __Vectors
         DCD     IntDefaultHandler           ; GPIO Port C
         DCD     IntDefaultHandler           ; GPIO Port D
         DCD     IntDefaultHandler           ; GPIO Port E
-        DCD     IntDefaultHandler           ; UART0
+        DCD     UARTIntHandler           ; UART0
         DCD     IntDefaultHandler           ; UART1
         DCD     IntDefaultHandler           ; SSI
         DCD     IntDefaultHandler           ; I2C
@@ -134,7 +136,7 @@ __Vectors
         DCD     IntDefaultHandler           ; ADC Sequence 0
         DCD     IntDefaultHandler           ; ADC Sequence 1
         DCD     IntDefaultHandler           ; ADC Sequence 2
-        DCD     IntDefaultHandler           ; ADC Sequence 3
+        DCD     ADC0Seq3IntHandler           ; ADC Sequence 3
         DCD     IntDefaultHandler           ; Watchdog
         DCD     IntDefaultHandler           ; Timer 0A
         DCD     pingInterruptHandler           ; Timer 0B

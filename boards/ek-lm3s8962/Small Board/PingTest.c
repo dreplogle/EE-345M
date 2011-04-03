@@ -12,7 +12,7 @@ unsigned long NumCreated;
 void Tachometer_InputCapture(void){}//delete this function when you get the real tachometer input
 //capture function
 
-int main(void) //Add code to test Ping functions
+int realmain(void) //Add code to test Ping functions
 {
 	OS_Init();
 	OS_AddPeriodicThread(&pingProducer, PING_PERIOD, 0);
@@ -52,12 +52,15 @@ void Thread3(void)
 	}
 }
 
-int OSTestMain(void)
+void Interpreter(void);
+int main(void)
 {
 	OS_Init();
-	OS_AddThread(&Thread1, 800, 1);
-	OS_AddThread(&Thread2, 800, 1);
-	OS_AddThread(&Thread3, 800, 1);
+	OS_Fifo_Init(512);
+	OS_AddThread(&Thread1, 1024, 1);
+	OS_AddThread(&Thread2, 1024, 2);
+	OS_AddThread(&Thread3, 1024, 3);
+	OS_AddThread(&Interpreter, 1024, 4);
 	OS_Launch(TIMESLICE);
 
 }
