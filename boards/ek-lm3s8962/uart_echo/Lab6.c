@@ -21,8 +21,9 @@
 #include "drivers/OSuart.h"
 #include "drivers/rit128x96x4.h"
 #include "lm3s8962.h"
-#include "drivers/can_fifo.c"
 #include "math.h"
+#include "drivers/can_fifo.h"
+#include "drivers/tachometer.h"
 
 unsigned long NumCreated;   // number of foreground threads created
 unsigned long NumSamples;   // incremented every sample
@@ -85,7 +86,6 @@ void IdleTask(void){
   }
 }
 
-
 //******** Interpreter **************
 // your intepreter from Lab 4 
 // foreground thread, accepts input from serial port, outputs to serial port
@@ -97,16 +97,13 @@ extern void Interpreter(void);
 // Called when Select Button pushed
 // background threads execute once and return
 void ButtonPush(void){
-  if(Running==0){
-    Running = 1;  // prevents you from starting two robot threads
-    NumCreated += OS_AddThread(&IdleTask,128,1);  // start a 20 second run
-  }
+  CAN_Send();
 }
 //************DownPush*************
 // Called when Down Button pushed
 // background threads execute once and return
 void DownPush(void){
-
+  CAN_Receive();
 }
 
 //*************GetIR***************
@@ -207,6 +204,8 @@ int main(void){
 //********initialize communication channels
   OS_Fifo_Init(512);    // ***note*** 4 is not big enough*****
 
+  //Tachometer_Init(2);
+
 //*******attach background tasks***********
   OS_AddButtonTask(&ButtonPush,2);
   OS_AddDownTask(&DownPush,3);
@@ -215,8 +214,10 @@ int main(void){
 
   NumCreated = 0 ;
 // create initial foreground threads
-  NumCreated += OS_AddThread(&Interpreter,128,2); 
   NumCreated += OS_AddThread(&IRSensor,128,7);  // runs when nothing useful to do
+  NumCreated += OS_AddThread(&Interpreter,128,2);
+  NumCreated += OS_AddThread(&CAN,128,2); 
+  NumCreated += OS_AddThread(&IdleTask,128,7);  // runs when nothing useful to do
  
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes

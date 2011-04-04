@@ -11,16 +11,18 @@
 #include <stdio.h>
 
 #define SYSCTL_RCGC2_R     (*((volatile unsigned long *)0x400FE108)) 
-#define GPIO_AFSEL_R		(*((volatile unsigned long *)0x40007420)) 
+#define GPIOA_AFSEL_R		(*((volatile unsigned long *)0x40004420)) 
 #define FIVE_USEC 250
-#define PIN_4_WRITE 0x10 
-#define MAX_16_BIT_TCNT 
+#define PIN_6_WRITE 0x40 
+#define MAX_16_BIT_TCNT 0xFFFF
 #define NUMBER_OF_CYCLES_IN_USEC 50
 #define SPEED_OF_SOUND 34029 //speed of sound in 10 nm/us units
 #define NUMBER_OF_NM_IN_MM 1000000
 
 unsigned long Ping_Data_Lost = 0;
 Sema4Type Ping_Fifo_Available;
+unsigned long NumSamples = 0;
+unsigned long DataLost = 0;
 
 //*****************************************************************************
 //
@@ -42,7 +44,7 @@ struct buf_st {
   char buf [PING_BUF_SIZE];                           // Buffer
 };
 
-static struct buf_st pingbuf = { 0, 0, };
+struct buf_st pingbuf = { 0, 0, };
 #define PING_BUFLEN ((unsigned short)(pingbuf.in - pingbuf.out))
 
 
@@ -52,7 +54,7 @@ static struct buf_st pingbuf = { 0, 0, };
 // Inputs: size of the FIFO
 // Outputs: none
 void Ping_Fifo_Init(void){
-	OS_InitSemaphore(&Ping_Fifo_Available, 0);
+//	OS_InitSemaphore(&Ping_Fifo_Available, 0);
 	pingbuf.in = 0;
   	pingbuf.out = 0;
 	
@@ -72,7 +74,8 @@ int Ping_Fifo_Put(unsigned long data){
   	p->buf [p->in & (PING_BUF_SIZE - 1)] = data;           // Add data to the transmit buffer.
   	p->in++;
 
-	OS_Signal(&Ping_Fifo_Available);
+
+//	OS_Signal(&Ping_Fifo_Available);
 	return 1;
 
 }
@@ -83,29 +86,35 @@ int Ping_Fifo_Put(unsigned long data){
 // Outputs: buffer entry
 unsigned long Ping_Fifo_Get(void){ 
   	struct buf_st *p = &pingbuf;
-	OS_Wait(&Ping_Fifo_Available);
+//	OS_Wait(&Ping_Fifo_Available);
+	if (PING_BUFLEN == 0)
+	{
+		return 0;
+	}
   	return (p->buf [(p->out++) & (PING_BUF_SIZE - 1)]);
 }
 
 
 
+#define PING_TIMER_PRESCALE 50
 
-
-void Ping_Init(void)
+void Ping_Init(unsigned long periodicTimer, unsigned long subTimer)
 {
 	unsigned long delay;
 
 	//Initialize Ping FIFO
 	Ping_Fifo_Init();
 
-	//Enable Port D
-	SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
-
-
-	//Configure PD4 to be an output
+	//Enable Port A
+	SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
 	delay = SYSCTL_RCGC2_R;    // allow time to finish  
-	GPIODirModeSet(GPIO_PORTD_BASE, GPIO_PIN_4, GPIO_DIR_MODE_OUT);
-	GPIOPadConfigSet(GPIO_PORTD_BASE, GPIO_PIN_4, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
+
+	//Configure PA6 to be an output
+	GPIODirModeSet(GPIO_PORTA_BASE, GPIO_PIN_6, GPIO_DIR_MODE_OUT);
+	GPIOPadConfigSet(GPIO_PORTA_BASE, GPIO_PIN_6, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
+
+	//Set prescale of periodic timers
+	TimerPrescaleSet(periodicTimer, subTimer, PING_TIMER_PRESCALE);
 
 
 }
@@ -116,32 +125,38 @@ void pingProducer(void)
 	unsigned long startTime = OS_Time();
 	unsigned long endTime = OS_Time();
 
+	TimerIntClear(TIMER2_BASE, TIMER_TIMA_TIMEOUT);
 
-	//send a 5 us pulse	on PD4
+	//send a 5 us pulse	on PA6
+	GPIODirModeSet(GPIO_PORTA_BASE, GPIO_PIN_6, GPIO_DIR_MODE_OUT);
+
 	IntMasterDisable();
-	GPIOPinWrite(GPIO_PORTD_BASE, GPIO_PIN_4, PIN_4_WRITE);
+	GPIOPinWrite(GPIO_PORTA_BASE, GPIO_PIN_6, PIN_6_WRITE);
 	while ( OS_TimeDifference(endTime, startTime) < FIVE_USEC)
 	{
 		endTime = OS_Time();
 	}
-	GPIOPinWrite(GPIO_PORTD_BASE, GPIO_PIN_4, 0);
+	GPIOPinWrite(GPIO_PORTA_BASE, GPIO_PIN_6, 0);
 	IntMasterEnable();
 
 	
-	//make PD4 an input and set it to input capture
-	GPIODirModeSet(GPIO_PORTD_BASE, GPIO_PIN_4, GPIO_DIR_MODE_IN);
-	GPIO_AFSEL_R = PIN_4_WRITE;
+	//make PA6 an input and set it to input capture
+//	GPIODirModeSet(GPIO_PORTA_BASE, GPIO_PIN_6, GPIO_DIR_MODE_IN);
+	GPIOA_AFSEL_R |= PIN_6_WRITE;
 
 
 	//make Timer 0B an input capture timer and interrupt on edges
-	TimerConfigure(TIMER0_BASE, TIMER_CFG_B_CAP_TIME);
+	TimerConfigure(TIMER0_BASE, TIMER_CFG_16_BIT_PAIR | TIMER_CFG_B_CAP_TIME);
 	TimerControlEvent(TIMER0_BASE, TIMER_B, TIMER_EVENT_BOTH_EDGES);
+	TimerLoadSet(TIMER0_BASE, TIMER_B, 0xFFFF);
 	TimerIntEnable(TIMER0_BASE, TIMER_CAPB_EVENT);
 
 
 	//Enable capture interrupts and timer 0B
 	IntEnable(INT_TIMER0B);
 	TimerEnable(TIMER0_BASE, TIMER_B);
+
+	NumSamples++;
 
 }
 
@@ -187,25 +202,34 @@ void pingInterruptHandler(void)
 		if(!Ping_Fifo_Put(pulseWidth));
 		{
 			Ping_Data_Lost++;
+			DataLost = Ping_Data_Lost;
 		}
 	}
 }
 
 unsigned long distance = 0;
-int CANTransmitFIFO(unsigned char *pucData, unsigned long ulSize);
+//int CANTransmitFIFO(unsigned char *pucData, unsigned long ulSize);
 unsigned char distanceBuffer[10];
 
 void pingConsumer(void)
 {
-	unsigned long pulseWidth = Ping_Fifo_Get();
-	unsigned long pulseWidthUSec = pulseWidth / NUMBER_OF_CYCLES_IN_USEC;
-	unsigned long tempDistance = pulseWidthUSec * SPEED_OF_SOUND;
-	tempDistance = tempDistance / NUMBER_OF_NM_IN_MM;
-	distance = tempDistance;
+	unsigned long pulseWidth;
+	unsigned long pulseWidthUSec;
+	unsigned long tempDistance;
 
-	//Transmit by CAN
-	sprintf( (char*) &distanceBuffer, "%ul",distance);
-	CANTransmitFIFO( (unsigned char*) &distanceBuffer, 3);
+	while(1)
+	{
+		pulseWidth = Ping_Fifo_Get();
+		pulseWidthUSec = pulseWidth / NUMBER_OF_CYCLES_IN_USEC;
+		tempDistance = pulseWidthUSec * SPEED_OF_SOUND;
+		tempDistance = tempDistance / NUMBER_OF_NM_IN_MM;
+		tempDistance = tempDistance * 10;
+		distance = tempDistance;
+	
+		//Transmit by CAN
+		sprintf( (char*) &distanceBuffer, "%ul",distance);
+	//	CANTransmitFIFO( (unsigned char*) &distanceBuffer, 3);
+	}
 }
 
 

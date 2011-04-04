@@ -1,7 +1,8 @@
 //*****************************************************************************
 //
-// can_fifo.c - This application uses the CAN controller to communicate with
-//              device board using the CAN controllers FIFO mode.
+// can_device_fifo.c - This is the application that runs on the CAN device
+//                     board and uses the CAN controller to communicate with
+//                     the main board in FIFO mode.
 //
 // Copyright (c) 2009-2011 Texas Instruments Incorporated.  All rights reserved.
 // Software License Agreement
@@ -34,39 +35,34 @@
 #include "driverlib/interrupt.h"
 #include "driverlib/sysctl.h"
 #include "driverlib/systick.h"
-#include "drivers/rit128x96x4.h"
-#include "drivers/can_fifo.h"
 
 //*****************************************************************************
 //
 //! \addtogroup example_list
-//! <h1>CAN FIFO mode example (can_fifo)</h1>
+//! <h1>CAN device FIFO mode example (can_device_fifo)</h1>
 //!
 //! This application uses the CAN controller in FIFO mode to communicate with
-//! the CAN device board.  The CAN device board must have the can_device_fifo
-//! example program loaded and running prior to starting this application.
-//! This program expects the CAN device board to echo back the data that it
-//! receives and this application will then compare the data received with the
-//! transmitted data and look for differences.  This application will then
-//! modify the data and continue transmitting and receiving data over the CAN
-//! bus indefinitely.
-//!
-//! \note This application must be started after the can_device_fifo example
-//! has started on the CAN device board.
+//! the CAN FIFO mode example program that is running on the main board. The
+//! main board must have the can_fifo example program loaded for this example
+//! to function. This application will simply echo all data that it receives
+//! back in it's receive FIFO back out it's transmit FIFO.
 //
 //*****************************************************************************
 
-
+//
+// Size of the FIFOs allocated to the CAN controller.
+//
+#define CAN_FIFO_SIZE           (8 * 8)
 
 //
 // Message object used by the transmit message FIFO.
 //
-#define TRANSMIT_MESSAGE_ID     8
+#define TRANSMIT_MESSAGE_ID     11
 
 //
 // Message object used by the receive message FIFO.
 //
-#define RECEIVE_MESSAGE_ID      11
+#define RECEIVE_MESSAGE_ID      8
 
 //
 // The number of FIFO transfers that cause a toggle of the LED.
@@ -78,6 +74,9 @@
 //
 #define CAN_BITRATE             250000
 
+//
+// This structure holds all of the state information for the CAN transfers.
+//
 struct
 {
     //
@@ -124,11 +123,24 @@ struct
     } eState;
 } g_sCAN;
 
+
 //
 // Used by the ToggleLED function to set the toggle rate.
 //
 unsigned long g_ulLEDCount;
+unsigned long g_ulLEDCount;
 int iIdx;
+//*****************************************************************************
+//
+// The error routine that is called if the driver library encounters an error.
+//
+//*****************************************************************************
+#ifdef DEBUG
+void
+__error__(char *pcFilename, unsigned long ulLine)
+{
+}
+#endif
 
 //*****************************************************************************
 //
@@ -357,12 +369,6 @@ CANReceiveFIFO(unsigned char *pucData, unsigned long ulSize)
             g_sCAN.MsgObjectRx.ulMsgLen = ulSize;
 
             //
-            // Clear the MSG_OBJ_FIFO to indicate that this is the last data in
-            // a chain of FIFO entries.
-            //
-            g_sCAN.MsgObjectRx.ulFlags &= ~MSG_OBJ_FIFO;
-
-            //
             // This is the last message object in a FIFO so don't set the FIFO
             // to indicate that the FIFO ends with this message object.
             //
@@ -388,24 +394,19 @@ ToggleLED(void)
     if(g_ulLEDCount < TOGGLE_RATE)
     {
         //
-        // Turn on the LED.
+        // Turn off the LED.
         //
-        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, GPIO_PIN_0);
+        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, 0);
     }
     else if(g_ulLEDCount == TOGGLE_RATE)
     {
         //
-        // Turn off the LED.
+        // Turn on the LED.
         //
-        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, 0);
+        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, GPIO_PIN_2);
     }
     else if(g_ulLEDCount == (TOGGLE_RATE << 1))
     {
-        //
-        // Update the LCD do incated that things are still running.
-        //
-        RIT128x96x4StringDraw("Running", 14, 34, 15);
-
         //
         // Reset the toggle count.
         //
@@ -423,28 +424,9 @@ ToggleLED(void)
 // This is the main loop for the application.
 //
 //*****************************************************************************
-void CAN_Send(void)
+int
+main(void)
 {
-  for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
-  {
-    g_sCAN.pucBufferTx[iIdx] = iIdx + 0x1;
-  }
-  //
-  // Initialize the transmit count to zero.
-  //
-  g_sCAN.ulBytesTransmitted = 0;
-  CANTransmitFIFO(g_sCAN.pucBufferTx, CAN_FIFO_SIZE);
-  g_sCAN.eState = CAN_SENDING;
-}
-void CAN_Receive(void)
-{
-  g_sCAN.eState = CAN_WAIT_RX;
-}
-
-void
-CAN(void)
-{
-    char string[10];
     //
     // If running on Rev A2 silicon, turn the LDO voltage up to 2.75V.  This is
     // a workaround to allow the PLL to operate reliably.
@@ -461,11 +443,6 @@ CAN(void)
                    SYSCTL_XTAL_8MHZ);
 
     //
-    // Initialize the OLED display.
-    //
-    RIT128x96x4Init(1000000);
-
-    //
     // Configure CAN 0 Pins.
     //
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
@@ -475,12 +452,16 @@ CAN(void)
     // Configure LED pin.
     //
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
-    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_0);
+
+    //
+    // Configure GPIO Pin used for the LED.
+    //
+    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_2);
 
     //
     // Turn off the LED.
     //
-    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, 0);
+    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, 0);
 
     //
     // Enable the CAN controller.
@@ -506,11 +487,6 @@ CAN(void)
     CANEnable(CAN0_BASE);
 
     //
-    // Hello!
-    //
-    RIT128x96x4StringDraw("CAN FIFO Loopback", 14, 24, 15);
-
-    //
     // Enable interrupts from CAN controller.
     //
     CANIntEnable(CAN0_BASE, CAN_INT_MASTER | CAN_INT_ERROR);
@@ -526,19 +502,19 @@ CAN(void)
     IntMasterEnable();
 
     //
-    // Set the initial state to idle.
+    // Set the initial state to wait for data.
     //
     g_sCAN.eState = CAN_WAIT_RX;
-    
-    //
-    // Initialize the CAN FIFO buffer.
-    //
-
 
     //
     // Reset the buffer pointer.
     //
     g_sCAN.MsgObjectRx.pucMsgData = g_sCAN.pucBufferRx;
+
+    //for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
+    //{
+    //    g_sCAN.pucBufferTx[iIdx] = iIdx + 0x1;
+    //}
 
     //
     // Set the total number of bytes expected.
@@ -554,9 +530,12 @@ CAN(void)
     // Initialized the LED toggle count.
     //
     g_ulLEDCount = 0;
+
     //
     // Loop forever.
     //
+
+      
 
     while(1)
     {
@@ -567,7 +546,6 @@ CAN(void)
                 //
                 // Wait for all bytes to go out.
                 //
-
                 if(g_sCAN.ulBytesTransmitted == CAN_FIFO_SIZE)
                 {
                     //
@@ -585,10 +563,26 @@ CAN(void)
                 //
                 if(g_sCAN.ulBytesRemaining == 0)
                 {
+                    //
+                    // Change the CAN FIFO data.
+                    //
                     for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
                     {
-                      oLED_Message(0, 0, "Received: ", g_sCAN.pucBufferRx[iIdx]);
+                      //
+                      // Increment the data to change it.
+                      //
+                      g_sCAN.pucBufferRx[iIdx] += 0x2;
+                      
                     }
+                    //
+                    // Initialize the transmit count to zero.
+                    //
+                    g_sCAN.ulBytesTransmitted = 0;
+                    CANTransmitFIFO(g_sCAN.pucBufferRx, CAN_FIFO_SIZE);
+                    //
+                    // Switch to wait for Process data state.
+                    //
+                    g_sCAN.eState = CAN_SENDING;
 
                     //
                     // Reset the buffer pointer.
