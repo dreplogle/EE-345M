@@ -423,6 +423,20 @@ ToggleLED(void)
 // This is the main loop for the application.
 //
 //*****************************************************************************
+void CAN_Send(void)
+{
+  for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
+  {
+    g_sCAN.pucBufferTx[iIdx] = iIdx + 0x1;
+  }
+  CANTransmitFIFO(g_sCAN.pucBufferTx, CAN_FIFO_SIZE);
+  g_sCAN.eState = CAN_SENDING;
+}
+void CAN_Receive(void)
+{
+  g_sCAN.eState = CAN_WAIT_RX;
+}
+
 void
 CAN(void)
 {
@@ -515,10 +529,7 @@ CAN(void)
     //
     // Initialize the CAN FIFO buffer.
     //
-    //for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
-    //{
-    //    g_sCAN.pucBufferTx[iIdx] = iIdx + 0x1;
-    //}
+
 
     //
     // Reset the buffer pointer.
@@ -547,25 +558,6 @@ CAN(void)
     {
         switch(g_sCAN.eState)
         {
-            case CAN_IDLE:
-            {
-                //
-                // Switch to sending state.
-                //
-                g_sCAN.eState = CAN_SENDING;
-
-                //
-                // Initialize the transmit count to zero.
-                //
-                g_sCAN.ulBytesTransmitted = 0;
-
-                //
-                // Schedule all of the CAN transmissions.
-                //
-                CANTransmitFIFO(g_sCAN.pucBufferTx, CAN_FIFO_SIZE);
-
-                break;
-            }
             case CAN_SENDING:
             {
                 //
@@ -577,7 +569,7 @@ CAN(void)
                     //
                     // Switch to wait for RX state.
                     //
-                    g_sCAN.eState++;//CAN_WAIT_RX;
+                    g_sCAN.eState = CAN_WAIT_RX;
                 }
 
                 break;
@@ -587,13 +579,12 @@ CAN(void)
                 //
                 // Wait for all new data to be received.
                 //
-                 
                 if(g_sCAN.ulBytesRemaining == 0)
                 {
-                    //
-                    // Switch to wait for Process data state.
-                    //
-                    g_sCAN.eState = CAN_PROCESS;
+                    for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
+                    {
+                      oLED_Message(0, 0, "Received: ", g_sCAN.pucBufferRx[iIdx]);
+                    }
 
                     //
                     // Reset the buffer pointer.
@@ -605,42 +596,6 @@ CAN(void)
                     //
                     g_sCAN.ulBytesRemaining = CAN_FIFO_SIZE;
                 }
-                break;
-            }
-            case CAN_PROCESS:
-            {
-                //
-                // Compare the received data to the data that was sent out.
-                //
-                for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
-                {
-                    //
-                    // Detected an Error Condition.
-                    //
-                    oLED_Message(0, 0, "Received", g_sCAN.pucBufferTx[iIdx]);
-                }
-
-                //
-                // Change the CAN FIFO data.
-                //
-                for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
-                {
-                    //
-                    // Increment the data to change it.
-                    //
-                    g_sCAN.pucBufferTx[iIdx] += 0xB;
-                }
-
-                //
-                // Handle the LED toggle.
-                //
-                ToggleLED();
-
-                //
-                // Return to the idle state.
-                //
-                g_sCAN.eState = CAN_WAIT_RX;
-
                 break;
             }
             default:

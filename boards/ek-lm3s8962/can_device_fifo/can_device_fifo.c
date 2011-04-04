@@ -504,7 +504,7 @@ main(void)
     //
     // Set the initial state to wait for data.
     //
-    g_sCAN.eState = CAN_IDLE;
+    g_sCAN.eState = CAN_WAIT_RX;
 
     //
     // Reset the buffer pointer.
@@ -513,7 +513,7 @@ main(void)
 
     for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
     {
-        g_sCAN.pucBufferTx[iIdx] = iIdx + 0x20;
+        g_sCAN.pucBufferTx[iIdx] = iIdx + 0x1;
     }
 
     //
@@ -534,29 +534,13 @@ main(void)
     //
     // Loop forever.
     //
+
+      
+
     while(1)
     {
         switch(g_sCAN.eState)
         {
-            case CAN_IDLE:
-            {
-                //
-                // Switch to sending state.
-                //
-                g_sCAN.eState = CAN_SENDING;
-
-                //
-                // Initialize the transmit count to zero.
-                //
-                g_sCAN.ulBytesTransmitted = 0;
-
-                //
-                // Schedule all of the CAN transmissions.
-                //
-                CANTransmitFIFO(g_sCAN.pucBufferTx, CAN_FIFO_SIZE);
-
-                break;
-            }
             case CAN_SENDING:
             {
                 //
@@ -567,7 +551,7 @@ main(void)
                     //
                     // Switch to wait for RX state.
                     //
-                    g_sCAN.eState = CAN_IDLE;
+                    g_sCAN.eState = CAN_WAIT_RX;
                 }
 
                 break;
@@ -580,9 +564,20 @@ main(void)
                 if(g_sCAN.ulBytesRemaining == 0)
                 {
                     //
+                    // Change the CAN FIFO data.
+                    //
+                    for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
+                    {
+                      //
+                      // Increment the data to change it.
+                      //
+                      g_sCAN.pucBufferTx[iIdx] += 0x2;
+                    }
+                    CANTransmitFIFO(g_sCAN.pucBufferTx, CAN_FIFO_SIZE);
+                    //
                     // Switch to wait for Process data state.
                     //
-                    g_sCAN.eState = CAN_PROCESS;
+                    g_sCAN.eState = CAN_SENDING;
 
                     //
                     // Reset the buffer pointer.
@@ -594,31 +589,6 @@ main(void)
                     //
                     g_sCAN.ulBytesRemaining = CAN_FIFO_SIZE;
                 }
-                break;
-            }
-            case CAN_PROCESS:
-            {
-                //
-                // Change the CAN FIFO data.
-                //
-                for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
-                {
-                    //
-                    // Increment the data to change it.
-                    //
-                    g_sCAN.pucBufferTx[iIdx] += 0xB;
-                }
-
-                //
-                // Handle the LED toggle.
-                //
-                ToggleLED();
-
-                //
-                // Return to the idle state.
-                //
-                g_sCAN.eState = CAN_WAIT_RX;
-
                 break;
             }
             default:

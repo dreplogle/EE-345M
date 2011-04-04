@@ -96,16 +96,13 @@ extern void Interpreter(void);
 // Called when Select Button pushed
 // background threads execute once and return
 void ButtonPush(void){
-  if(Running==0){
-    Running = 1;  // prevents you from starting two robot threads
-    NumCreated += OS_AddThread(&IdleTask,128,1);  // start a 20 second run
-  }
+  CAN_Send();
 }
 //************DownPush*************
 // Called when Down Button pushed
 // background threads execute once and return
 void DownPush(void){
-
+  CAN_Receive();
 }
 
 //*******************lab 5 main **********
