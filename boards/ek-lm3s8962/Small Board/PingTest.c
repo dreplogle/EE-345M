@@ -40,8 +40,6 @@ int main(void) //Add code to test Ping functions
 	//to set the correct timer 2A prescale
 
 	TimerConfigure(TIMER2_BASE, TIMER_CFG_16_BIT_PAIR | TIMER_CFG_A_PERIODIC | TIMER_CFG_B_PERIODIC);
-
-	TimerPrescaleSet(TIMER2_BASE, TIMER_A, 0);
 	TimerLoadSet(TIMER2_BASE, TIMER_A, PING_PERIOD); 
 	
 	//Set timer to interrupt and set priority
