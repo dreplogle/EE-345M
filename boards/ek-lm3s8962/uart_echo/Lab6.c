@@ -120,7 +120,7 @@ int main(void){        // lab 5 real main
   ADC_Open();
   ADC_Collect(0, 1000, &Producer); // start ADC sampling, channel 0, 1000 Hz 
 
-  Tachometer_Init(2);
+  //Tachometer_Init(2);
 
 //*******attach background tasks***********
   OS_AddButtonTask(&ButtonPush,2);

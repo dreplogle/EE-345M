@@ -502,7 +502,7 @@ Sema4Type oLEDFree;
 //  Written by: Katy Loeffler 1/22/2011
 //*****************************************************************************
 void oLED_Message(int device, int line, char *string, long value){
-  OS_bWait(&oLEDFree);
+  //OS_bWait(&oLEDFree);
 
   if(!device){        // top display
   	if(line < 5){    // check bounds for vertical space
@@ -531,7 +531,7 @@ void oLED_Message(int device, int line, char *string, long value){
   	}
   }  
 
-  OS_bSignal(&oLEDFree);
+  //OS_bSignal(&oLEDFree);
 
 }
 
@@ -861,7 +861,7 @@ RIT128x96x4Init(unsigned long ulFrequency)
 {
    
   unsigned long ulIdx;
-  OS_InitSemaphore(&oLEDFree, 1);
+  ////OS_InitSemaphore(&oLEDFree, 1);
   //
   // Enable the SSI0 and GPIO port blocks as they are needed by this driver.
   //
@@ -1685,9 +1685,9 @@ void RIT128x96x4PlotNext(void){
 // Inputs: none
 // Outputs: none
 void RIT128x96x4ShowPlot(void){
-   OS_bWait(&oLEDFree);
+   //OS_bWait(&oLEDFree);
    RIT128x96x4ImageDraw(PlotImage, 0, 10, 128, 80);
-   OS_bSignal(&oLEDFree);
+   //OS_bSignal(&oLEDFree);
 }
 
 
