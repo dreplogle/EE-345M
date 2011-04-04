@@ -14,11 +14,12 @@
 #define GPIOA_AFSEL_R		(*((volatile unsigned long *)0x40004420)) 
 #define FIVE_USEC 125 //Uses a 40 ns clock period
 #define PIN_6_WRITE 0x40 
+#define PIN_5_WRITE 0x20
 #define MAX_16_BIT_TCNT 0xFFFF
-#define NUMBER_OF_INCS_IN_USEC 1 
+#define NUMBER_OF_INCS_IN_USEC 25 
 #define SPEED_OF_SOUND 34029 //speed of sound in 10 nm/us units
 #define NUMBER_OF_NM_IN_MM 1000000
-#define CCP1_TIMER_PRESCALE 24
+#define CCP1_TIMER_PRESCALE 0
 
 unsigned long Ping_Data_Lost = 0;
 Sema4Type Ping_Fifo_Available;
@@ -117,6 +118,10 @@ void Ping_Init(unsigned long periodicTimer, unsigned long subTimer)
 	GPIODirModeSet(GPIO_PORTA_BASE, GPIO_PIN_6, GPIO_DIR_MODE_OUT);
 	GPIOPadConfigSet(GPIO_PORTA_BASE, GPIO_PIN_6, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
 
+	//Configure PA5 to be an output
+	GPIODirModeSet(GPIO_PORTA_BASE, GPIO_PIN_5, GPIO_DIR_MODE_OUT);
+	GPIOPadConfigSet(GPIO_PORTA_BASE, GPIO_PIN_5, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
+
 	//Set prescale of periodic timers
 	TimerPrescaleSet(periodicTimer, subTimer, PING_TIMER_PRESCALE);
 
@@ -151,10 +156,10 @@ void pingProducer(void)
 
 	//make Timer 0B an input capture timer and interrupt on edges
 	TimerConfigure(TIMER0_BASE, TIMER_CFG_16_BIT_PAIR | TIMER_CFG_B_CAP_TIME);
-	TimerPrescaleSet(TIMER0_BASE, TIMER_B, CCP1_TIMER_PRESCALE);
 	TimerControlEvent(TIMER0_BASE, TIMER_B, TIMER_EVENT_BOTH_EDGES);
 	TimerLoadSet(TIMER0_BASE, TIMER_B, 0xFFFF);
 	TimerIntEnable(TIMER0_BASE, TIMER_CAPB_EVENT);
+	TimerPrescaleSet(TIMER0_BASE, TIMER_B, CCP1_TIMER_PRESCALE);
 
 
 	//Enable capture interrupts and timer 0B
@@ -166,8 +171,8 @@ void pingProducer(void)
 }
 
 static unsigned char fallingEdge = 0;
-static unsigned long risingEdgeTime = 0;
-static unsigned long fallingEdgeTime = 0;
+unsigned short risingEdgeTime = 0;
+unsigned short fallingEdgeTime = 0;
 
 void pingInterruptHandler(void)
 {
@@ -185,6 +190,7 @@ void pingInterruptHandler(void)
 	if (!fallingEdge)
 	{
 		risingEdgeTime = TimerValueGet(TIMER0_BASE, TIMER_B);
+		GPIOPinWrite(GPIO_PORTA_BASE, GPIO_PIN_5, PIN_5_WRITE);
 
 		//Set flag to look for falling edge
 		fallingEdge = 1;
@@ -192,6 +198,7 @@ void pingInterruptHandler(void)
 	else //else get falling edge time, reset falling edge flag, and return pulse width
 	{
 		fallingEdgeTime = TimerValueGet(TIMER0_BASE, TIMER_B);
+		GPIOPinWrite(GPIO_PORTA_BASE, GPIO_PIN_5, 0);
 		fallingEdge = 0;	
 	
 
