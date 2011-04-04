@@ -12,12 +12,13 @@
 
 #define SYSCTL_RCGC2_R     (*((volatile unsigned long *)0x400FE108)) 
 #define GPIOA_AFSEL_R		(*((volatile unsigned long *)0x40004420)) 
-#define FIVE_USEC 250
+#define FIVE_USEC 125 //Uses a 40 ns clock period
 #define PIN_6_WRITE 0x40 
 #define MAX_16_BIT_TCNT 0xFFFF
-#define NUMBER_OF_CYCLES_IN_USEC 50
+#define NUMBER_OF_INCS_IN_USEC 1 
 #define SPEED_OF_SOUND 34029 //speed of sound in 10 nm/us units
 #define NUMBER_OF_NM_IN_MM 1000000
+#define CCP1_TIMER_PRESCALE 24
 
 unsigned long Ping_Data_Lost = 0;
 Sema4Type Ping_Fifo_Available;
@@ -29,7 +30,7 @@ unsigned long DataLost = 0;
 // Ping FIFO
 //
 //*****************************************************************************
-#define PING_BUF_SIZE   16	     /*** Must be a power of 2 (2,4,8,16,32,64,128,256,512,...) ***/
+#define PING_BUF_SIZE   1024	     /*** Must be a power of 2 (2,4,8,16,32,64,128,256,512,...) ***/
 
 #if PING_BUF_SIZE < 2
 #error PING_BUF_SIZE is too small.  It must be larger than 1.
@@ -41,7 +42,7 @@ unsigned long DataLost = 0;
 struct buf_st {
   unsigned int in;                                // Next In Index
   unsigned int out;                               // Next Out Index
-  char buf [PING_BUF_SIZE];                           // Buffer
+  short buf [PING_BUF_SIZE];                           // Buffer
 };
 
 struct buf_st pingbuf = { 0, 0, };
@@ -60,6 +61,7 @@ void Ping_Fifo_Init(void){
 	
 }
 
+unsigned long DebugPingBufLen = 0;
 // ******** Ping_Fifo_Put ************
 // Puts one value to Ping data FIFO
 // Inputs: buffer data entry
@@ -67,7 +69,8 @@ void Ping_Fifo_Init(void){
 int Ping_Fifo_Put(unsigned long data){
 	struct buf_st *p = &pingbuf;
 
-                                                  // If the buffer is full, return an error value
+    
+	// If the buffer is full, return an error value
   	if (PING_BUFLEN >= PING_BUF_SIZE)
     	return (0);
                                                   
@@ -87,6 +90,7 @@ int Ping_Fifo_Put(unsigned long data){
 unsigned long Ping_Fifo_Get(void){ 
   	struct buf_st *p = &pingbuf;
 //	OS_Wait(&Ping_Fifo_Available);
+	DebugPingBufLen = PING_BUFLEN;
 	if (PING_BUFLEN == 0)
 	{
 		return 0;
@@ -96,7 +100,7 @@ unsigned long Ping_Fifo_Get(void){
 
 
 
-#define PING_TIMER_PRESCALE 50
+#define PING_TIMER_PRESCALE 49
 
 void Ping_Init(unsigned long periodicTimer, unsigned long subTimer)
 {
@@ -147,6 +151,7 @@ void pingProducer(void)
 
 	//make Timer 0B an input capture timer and interrupt on edges
 	TimerConfigure(TIMER0_BASE, TIMER_CFG_16_BIT_PAIR | TIMER_CFG_B_CAP_TIME);
+	TimerPrescaleSet(TIMER0_BASE, TIMER_B, CCP1_TIMER_PRESCALE);
 	TimerControlEvent(TIMER0_BASE, TIMER_B, TIMER_EVENT_BOTH_EDGES);
 	TimerLoadSet(TIMER0_BASE, TIMER_B, 0xFFFF);
 	TimerIntEnable(TIMER0_BASE, TIMER_CAPB_EVENT);
@@ -167,19 +172,22 @@ static unsigned long fallingEdgeTime = 0;
 void pingInterruptHandler(void)
 {
 	unsigned long pulseWidth = 0;
+	unsigned char dataPutFlag = 0;
 
 	//Acknowledge interrupt
 	TimerIntClear(TIMER0_BASE, TIMER_CAPB_EVENT);
 
 
-	//Set flag to look for falling edge
-	fallingEdge = 1;
+	
 
 
 	//Get rising edge time if rising edge caused interrupt
 	if (!fallingEdge)
 	{
 		risingEdgeTime = TimerValueGet(TIMER0_BASE, TIMER_B);
+
+		//Set flag to look for falling edge
+		fallingEdge = 1;
 	}
 	else //else get falling edge time, reset falling edge flag, and return pulse width
 	{
@@ -198,8 +206,8 @@ void pingInterruptHandler(void)
 	    {
 	    	pulseWidth =  (long)(risingEdgeTime + (MAX_16_BIT_TCNT-fallingEdgeTime));      
 	    } 
-
-		if(!Ping_Fifo_Put(pulseWidth));
+		dataPutFlag	= Ping_Fifo_Put(pulseWidth);
+		if(dataPutFlag == 0)
 		{
 			Ping_Data_Lost++;
 			DataLost = Ping_Data_Lost;
@@ -210,7 +218,7 @@ void pingInterruptHandler(void)
 unsigned long distance = 0;
 //int CANTransmitFIFO(unsigned char *pucData, unsigned long ulSize);
 unsigned char distanceBuffer[10];
-
+unsigned long DebugPulseWidth = 0;
 void pingConsumer(void)
 {
 	unsigned long pulseWidth;
@@ -220,15 +228,20 @@ void pingConsumer(void)
 	while(1)
 	{
 		pulseWidth = Ping_Fifo_Get();
-		pulseWidthUSec = pulseWidth / NUMBER_OF_CYCLES_IN_USEC;
-		tempDistance = pulseWidthUSec * SPEED_OF_SOUND;
-		tempDistance = tempDistance / NUMBER_OF_NM_IN_MM;
-		tempDistance = tempDistance * 10;
-		distance = tempDistance;
-	
-		//Transmit by CAN
-		sprintf( (char*) &distanceBuffer, "%ul",distance);
-	//	CANTransmitFIFO( (unsigned char*) &distanceBuffer, 3);
+		if (pulseWidth > 0)
+		{
+			DebugPulseWidth = pulseWidth;
+			pulseWidthUSec = pulseWidth / NUMBER_OF_INCS_IN_USEC;
+			tempDistance = pulseWidthUSec * SPEED_OF_SOUND;
+			tempDistance = tempDistance / NUMBER_OF_NM_IN_MM;
+			tempDistance = tempDistance * 10;
+			tempDistance = tempDistance / 2;
+			distance = tempDistance;
+		
+			//Transmit by CAN
+		//	sprintf( (char*) &distanceBuffer, "%ul",distance);
+		//	CANTransmitFIFO( (unsigned char*) &distanceBuffer, 3);
+		}
 	}
 }
 
