@@ -134,10 +134,11 @@ struct IR_STATS{
   short maxdev;
 };
 struct IR_STATS IR_Stats;
-unsigned short stats[IR_SAMPLING_RATE];
+long stats[IR_SAMPLING_RATE];
 
 void IRSensor(void){
-  unsigned short data[3],sampleOut,i;
+  unsigned short i, ADCin;
+  long sampleOut, data[3];
   static unsigned int newest = 0;
   long sum;
   unsigned short max,min;
@@ -146,10 +147,13 @@ void IRSensor(void){
   ADC_Collect(0, IR_SAMPLING_RATE, &GetIR); //ADC sample on channel 0, 20Hz
   
   for(;;){
-    for(i = 0; i<3; i++){	      // Get 3 samples for median filter 
-      while(!RawIR_Fifo_Get(&data[i]));
-    }
-   
+	data[2] = data[1];
+	data[1] = data[0];
+    while(!RawIR_Fifo_Get(&ADCin));
+	data[0] = ((long)ADCin*7836 - 166052)/1024; //((1/cm)*65535) = ((7836*x-166052)/1024
+	data[0] = 65535/data[0];  //cm = 65535/data[0] from last operation
+
+	  
     //3-Element median filter
     if((data[0]<=data[1]&&data[0]>=data[2])||(data[0]<=data[2]&&data[0]>=data[1])) sampleOut = data[0];
     else if((data[1]<=data[0]&&data[1]>=data[2])||(data[1]<=data[2]&&data[1]>=data[0])) sampleOut = data[1];
@@ -172,20 +176,20 @@ void IRSensor(void){
 	min = 0xFFFF;
 	sum = 0;
 	for(i = 0; i < IR_SAMPLING_RATE; i++){
-      sum += (long)stats[i];
+      sum += stats[i];
 	  if(stats[i] < min) min = stats[i];
 	  if(stats[i] > max) max = stats[i];	  
 	}
-    IR_Stats.average = (short)(sum/IR_SAMPLING_RATE);
-	IR_Stats.maxdev = (short)(max - min);
+    IR_Stats.average = (sum/IR_SAMPLING_RATE);
+	IR_Stats.maxdev = (max - min);
 
 	//Standard deviation = sqrt(sum of (each value - average)^2 / number of values)
 	sum = 0;
 	for(i = 0; i < IR_SAMPLING_RATE; i++){
-      sum +=(long)((short)stats[i]-(short)IR_Stats.average)*((short)stats[i]-(short)IR_Stats.average);	  
+      sum +=(stats[i]-IR_Stats.average)*(stats[i]-IR_Stats.average);	  
 	}
 	sum = sum/IR_SAMPLING_RATE;
-	IR_Stats.stdev = (short)sqrt(sum);
+	IR_Stats.stdev = sqrt(sum);
 
 	oLED_Message(0, 0, "IR Avg", IR_Stats.average);
 	oLED_Message(0, 1, "IR StdDev", IR_Stats.stdev);
@@ -206,7 +210,8 @@ int main(void){
 //*******attach background tasks***********
   OS_AddButtonTask(&ButtonPush,2);
   OS_AddDownTask(&DownPush,3);
-  //OS_AddPeriodicThread(disk_timerproc,TIME_1MS,5);
+
+  OS_BumperInit();
 
   NumCreated = 0 ;
 // create initial foreground threads
@@ -215,4 +220,5 @@ int main(void){
  
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes
-} 
+}
+ 
