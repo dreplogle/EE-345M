@@ -94,6 +94,8 @@ __heap_limit
 		EXTERN PendSVHandler
 		EXTERN SwitchIntHandler
 		EXTERN Tachometer_InputCapture
+		EXTERN FifoProducer
+		EXTERN pingProducer
 
 
 ;******************************************************************************
@@ -142,7 +144,7 @@ __Vectors
         DCD     pingInterruptHandler           ; Timer 0B
         DCD     IntDefaultHandler           ; Timer 1A
         DCD     IntDefaultHandler           ; Timer 1B
-        DCD     IntDefaultHandler           ; Timer 2A
+        DCD     pingProducer           ; Timer 2A
         DCD     IntDefaultHandler           ; Timer 2B
         DCD     IntDefaultHandler           ; Comp 0
         DCD     IntDefaultHandler           ; Comp 1

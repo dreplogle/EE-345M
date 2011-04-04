@@ -4,6 +4,10 @@
 #include "inc/hw_timer.h"
 #include "inc/hw_memmap.h"
 #include "drivers/os.h"
+#include "inc/hw_ints.h"
+#include "driverlib/interrupt.h"
+#include "driverlib/sysctl.h"
+
 
 unsigned long NumCreated;
 
@@ -12,17 +16,49 @@ unsigned long NumCreated;
 void Tachometer_InputCapture(void){}//delete this function when you get the real tachometer input
 //capture function
 
-int realmain(void) //Add code to test Ping functions
+int main(void) //Add code to test Ping functions
 {
-	OS_Init();
-	OS_AddPeriodicThread(&pingProducer, PING_PERIOD, 0);
+	unsigned char priority;
 
-	Ping_Init(TIMER3_BASE, TIMER_A); //Must do this after OS_AddPeriodicThread in order
-	//to set the correct timer 3A prescale
+	//Initialize timer 0 so that input capture can be used
+ 	 SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
 
-	OS_AddThread(&pingConsumer, 800, 0);
-	OS_Launch(TIMESLICE);
+	//Initialize timer 1 so that OS_Time can be used
+	// Enable Timer1 module
+ 	 SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER1);
 
+ 	 // Configure Timer1 as a 32-bit periodic timer.
+ 	 TimerConfigure(TIMER1_BASE, TIMER_CFG_32_BIT_PER);
+ 	 TimerLoadSet(TIMER1_BASE, TIMER_A, MAX_TCNT);
+
+	 TimerEnable(TIMER1_BASE, TIMER_A);
+
+	SysCtlClockSet(SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_8MHZ);
+	SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER2);
+
+	Ping_Init(TIMER2_BASE, TIMER_A); //Must do this after OS_AddPeriodicThread in order
+	//to set the correct timer 2A prescale
+
+	TimerConfigure(TIMER2_BASE, TIMER_CFG_16_BIT_PAIR | TIMER_CFG_A_PERIODIC | TIMER_CFG_B_PERIODIC);
+
+	TimerPrescaleSet(TIMER2_BASE, TIMER_A, 0);
+	TimerLoadSet(TIMER2_BASE, TIMER_A, PING_PERIOD); 
+	
+	//Set timer to interrupt and set priority
+	IntEnable(INT_TIMER2A);
+	priority = 0;
+	priority = priority << 5;
+	IntPrioritySet(INT_TIMER2A, priority);
+	TimerIntEnable(TIMER2_BASE, TIMER_TIMA_TIMEOUT); 
+
+	//Enable the timer    
+	TimerEnable(TIMER2_BASE, TIMER_A);	
+
+	
+	while(1)
+	{
+		pingConsumer();
+	}
 }
 
 unsigned long Count1 = 0;
@@ -53,14 +89,14 @@ void Thread3(void)
 }
 
 void Interpreter(void);
-int main(void)
+int OSTestmain(void)
 {
 	OS_Init();
 	OS_Fifo_Init(512);
 	OS_AddThread(&Thread1, 1024, 1);
-	OS_AddThread(&Thread2, 1024, 2);
-	OS_AddThread(&Thread3, 1024, 3);
-	OS_AddThread(&Interpreter, 1024, 4);
+	OS_AddThread(&Thread2, 1024, 1);
+	OS_AddThread(&Thread3, 1024, 1);
+//	OS_AddThread(&Interpreter, 1024, 4);
 	OS_Launch(TIMESLICE);
 
 }
@@ -68,6 +104,7 @@ int main(void)
 unsigned long testFifoData = 0;
 void FifoProducer(void)
 {
+	TimerIntClear(TIMER2_BASE, TIMER_TIMA_TIMEOUT);
 	Ping_Fifo_Put(testFifoData);
 	testFifoData++;
 }
@@ -77,17 +114,37 @@ unsigned long testFifoGet[100];
 unsigned long testFifoGetIndex = 0;
 void FifoConsumer(void)
 {
-	if (testFifoGetIndex < 100)
+	unsigned char data = Ping_Fifo_Get();
+	if ((data != 0) && (testFifoGetIndex < 100))
 	{
-		testFifoGet[testFifoGetIndex] = Ping_Fifo_Get();
+		testFifoGet[testFifoGetIndex] = data;
 		testFifoGetIndex++;
 	}
 }
-int FifoTestMain(void)
+int fifomain(void)
 {
-	OS_Init();
+	unsigned char priority;
 	Ping_Fifo_Init();
-	OS_AddPeriodicThread(&FifoProducer, 10000, 0);
-	OS_AddThread(&FifoConsumer, 800, 1);
-	OS_Launch(TIMESLICE); 
+
+	SysCtlClockSet(SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_8MHZ);
+	SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER2);
+	TimerConfigure(TIMER2_BASE, TIMER_CFG_16_BIT_PAIR | TIMER_CFG_A_PERIODIC | TIMER_CFG_B_PERIODIC);
+
+	TimerPrescaleSet(TIMER2_BASE, TIMER_A, 0);
+	TimerLoadSet(TIMER2_BASE, TIMER_A, 50000); 
+	
+	//Set timer to interrupt and set priority
+	IntEnable(INT_TIMER2A);
+	priority = 0;
+	priority = priority << 5;
+	IntPrioritySet(INT_TIMER2A, priority);
+	TimerIntEnable(TIMER2_BASE, TIMER_TIMA_TIMEOUT); 
+
+	//Enable the timer    
+	TimerEnable(TIMER2_BASE, TIMER_A);
+
+	while(1)
+	{
+		FifoConsumer();
+	}
 }
