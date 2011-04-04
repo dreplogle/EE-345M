@@ -429,6 +429,10 @@ void CAN_Send(void)
   {
     g_sCAN.pucBufferTx[iIdx] = iIdx + 0x1;
   }
+  //
+  // Initialize the transmit count to zero.
+  //
+  g_sCAN.ulBytesTransmitted = 0;
   CANTransmitFIFO(g_sCAN.pucBufferTx, CAN_FIFO_SIZE);
   g_sCAN.eState = CAN_SENDING;
 }

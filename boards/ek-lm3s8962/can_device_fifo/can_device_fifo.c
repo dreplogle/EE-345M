@@ -511,10 +511,10 @@ main(void)
     //
     g_sCAN.MsgObjectRx.pucMsgData = g_sCAN.pucBufferRx;
 
-    for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
-    {
-        g_sCAN.pucBufferTx[iIdx] = iIdx + 0x1;
-    }
+    //for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
+    //{
+    //    g_sCAN.pucBufferTx[iIdx] = iIdx + 0x1;
+    //}
 
     //
     // Set the total number of bytes expected.
@@ -571,9 +571,14 @@ main(void)
                       //
                       // Increment the data to change it.
                       //
-                      g_sCAN.pucBufferTx[iIdx] += 0x2;
+                      g_sCAN.pucBufferRx[iIdx] += 0x2;
+                      
                     }
-                    CANTransmitFIFO(g_sCAN.pucBufferTx, CAN_FIFO_SIZE);
+                    //
+                    // Initialize the transmit count to zero.
+                    //
+                    g_sCAN.ulBytesTransmitted = 0;
+                    CANTransmitFIFO(g_sCAN.pucBufferRx, CAN_FIFO_SIZE);
                     //
                     // Switch to wait for Process data state.
                     //
