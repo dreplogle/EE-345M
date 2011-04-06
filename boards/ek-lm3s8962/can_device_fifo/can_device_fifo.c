@@ -518,9 +518,8 @@ int main(void)
   	Tach_Init(0);
 
     while(1)
-    {
+    {  
 	    Tach_SendData();
-
         switch(g_sCAN.eState)
         {
             case CAN_SENDING:

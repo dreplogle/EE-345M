@@ -131,7 +131,7 @@ __Vectors
         DCD     IntDefaultHandler           ; ADC Sequence 2
         DCD     ADC0Seq3IntHandler          ; ADC Sequence 3
         DCD     IntDefaultHandler           ; Watchdog timer
-        DCD     Tach_InputCapture           ; Timer 0 subtimer A
+        DCD     IntDefaultHandler           ; Timer 0 subtimer A
         DCD     IntDefaultHandler           ; Timer 0 subtimer B
         DCD     IntDefaultHandler           ; Timer 1 subtimer A
         DCD     IntDefaultHandler           ; Timer 1 subtimer B

@@ -218,6 +218,7 @@ int main(void){
   OS_AddDownTask(&DownPush,3);
 
   OS_BumperInit();
+  CAN_Init();
 
   NumCreated = 0 ;
 // create initial foreground threads

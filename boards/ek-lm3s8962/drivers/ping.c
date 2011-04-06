@@ -178,7 +178,7 @@ void pingProducer(void)
 
 	IntMasterDisable();
 	GPIOPinWrite(GPIO_PORTA_BASE, GPIO_PIN_6, PIN_6_WRITE);
-	while ( OS_TimeDifference(endTime, startTime) < FIVE_USEC)
+//	while ( OS_TimeDifference(endTime, startTime) < FIVE_USEC)
 	{
 		endTime = OS_Time();
 	}

@@ -600,10 +600,11 @@ CAN(void)
                 //
                 if(g_sCAN.ulBytesRemaining == 0)
                 {
-                    for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
-                    {
-                      oLED_Message(0, 0, "Received: ", g_sCAN.pucBufferRx[iIdx]);
-                    }
+                    //for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
+                    //{
+                    //  oLED_Message(0, 0, "Received: ", g_sCAN.pucBufferRx[iIdx]);
+                    //}
+				    oLED_Message(0, 0, "Tach: ", g_sCAN.pucBufferRx[0]);
 
                     //
                     // Reset the buffer pointer.

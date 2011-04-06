@@ -211,11 +211,17 @@ void Tach_InputCapture(void){
 // Outputs: none
 unsigned long SeeTach;
 void Tach_SendData(void){
-	unsigned long *data;
-
-	Tach_Fifo_Get(data);
-	SeeTach = *data;
-	*data = 60/((*data << 2)/1000000); //convert to RPM
-	*data = Tach_Filter(*data);
-	//CANTransmitFIFO((unsigned char *)data, 4); 
+	unsigned long data;
+	unsigned char tachArr[64];
+	int i;
+	Tach_Fifo_Get(&data);
+	SeeTach = data;
+//	data = 60/((data << 2)/1000000); //convert to RPM
+//	data = Tach_Filter(data);
+//	for(i = 0; i < 64; i++)
+	{
+//		tachArr[i] = 'c';
+	}
+	tachArr[0] = data;
+	CAN_Send(&tachArr[0]); 
 }
