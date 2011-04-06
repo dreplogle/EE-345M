@@ -1,29 +1,25 @@
 ; <<< Use Configuration Wizard in Context Menu >>>
 ;******************************************************************************
 ;
-; Startup.s - Startup code for Stellaris.
+; startup_rvmdk.S - Startup code for use with Keil's uVision.
 ;
-; Copyright (c) 2006-2008 Luminary Micro, Inc.  All rights reserved.
-; 
+; Copyright (c) 2005-2011 Texas Instruments Incorporated.  All rights reserved.
 ; Software License Agreement
 ; 
-; Luminary Micro, Inc. (LMI) is supplying this software for use solely and
-; exclusively on LMI's microcontroller products.
+; Texas Instruments (TI) is supplying this software for use solely and
+; exclusively on TI's microcontroller products. The software is owned by
+; TI and/or its suppliers, and is protected under applicable copyright
+; laws. You may not combine this software with "viral" open-source
+; software in order to form a larger program.
 ; 
-; The software is owned by LMI and/or its suppliers, and is protected under
-; applicable copyright laws.  All rights are reserved.  You may not combine
-; this software with "viral" open-source software in order to form a larger
-; program.  Any use in violation of the foregoing restrictions may subject
-; the user to criminal sanctions under applicable laws, as well as to civil
-; liability for the breach of the terms and conditions of this license.
+; THIS SOFTWARE IS PROVIDED "AS IS" AND WITH ALL FAULTS.
+; NO WARRANTIES, WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT
+; NOT LIMITED TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+; A PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. TI SHALL NOT, UNDER ANY
+; CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
+; DAMAGES, FOR ANY REASON WHATSOEVER.
 ; 
-; THIS SOFTWARE IS PROVIDED "AS IS".  NO WARRANTIES, WHETHER EXPRESS, IMPLIED
-; OR STATUTORY, INCLUDING, BUT NOT LIMITED TO, IMPLIED WARRANTIES OF
-; MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE APPLY TO THIS SOFTWARE.
-; LMI SHALL NOT, IN ANY CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR
-; CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
-; 
-; This is part of revision 2523 of the Stellaris Peripheral Driver Library.
+; This is part of revision 6852 of the EK-LM3S8962 Firmware Package.
 ;
 ;******************************************************************************
 
@@ -32,7 +28,7 @@
 ; <o> Stack Size (in Bytes) <0x0-0xFFFFFFFF:8>
 ;
 ;******************************************************************************
-Stack   EQU     0x00000100
+Stack   EQU     0x00000100			; Made larger from 0x00000100
 
 ;******************************************************************************
 ;
@@ -77,24 +73,23 @@ __heap_limit
         AREA    RESET, CODE, READONLY
         THUMB
 
-
 ;******************************************************************************
 ;
 ; External declaration for the interrupt handler used by the application.
 ;
 ;******************************************************************************
 		
-		EXTERN UARTIntHandler
-		EXTERN ADC0Seq3IntHandler
-        EXTERN pingInterruptHandler
-		EXTERN Timer3AIntHandler 
-		EXTERN Timer3BIntHandler 
-		EXTERN Timer2IntHandler
-		EXTERN SysTickThSwIntHandler
-		EXTERN PendSVHandler
-		EXTERN SwitchIntHandler
-		EXTERN Tachometer_InputCapture
-
+        EXTERN  UARTIntHandler
+		EXTERN  ADC0Seq3IntHandler
+		EXTERN  Timer3AIntHandler 
+		EXTERN  Timer3BIntHandler 
+		EXTERN  Timer2IntHandler
+		EXTERN  SysTickThSwIntHandler
+		EXTERN  PendSVHandler
+		EXTERN  SwitchIntHandler
+		EXTERN  Tachometer_InputCapture
+		EXTERN  pingInterruptHandler
+		EXTERN  pingProducer
 
 ;******************************************************************************
 ;
@@ -107,55 +102,55 @@ __Vectors
         DCD     Reset_Handler               ; Reset Handler
         DCD     NmiSR                       ; NMI Handler
         DCD     FaultISR                    ; Hard Fault Handler
-        DCD     IntDefaultHandler           ; MPU Fault Handler
-        DCD     IntDefaultHandler           ; Bus Fault Handler
-        DCD     IntDefaultHandler           ; Usage Fault Handler
+        DCD     IntDefaultHandler           ; The MPU fault handler
+        DCD     IntDefaultHandler           ; The bus fault handler
+        DCD     IntDefaultHandler           ; The usage fault handler
         DCD     0                           ; Reserved
         DCD     0                           ; Reserved
         DCD     0                           ; Reserved
         DCD     0                           ; Reserved
-        DCD     IntDefaultHandler           ; SVCall Handler
-        DCD     IntDefaultHandler           ; Debug Monitor Handler
+        DCD     IntDefaultHandler           ; SVCall handler
+        DCD     IntDefaultHandler           ; Debug monitor handler
         DCD     0                           ; Reserved
-        DCD     PendSVHandler           ; PendSV Handler
-        DCD     SysTickThSwIntHandler           ; SysTick Handler
-        DCD     IntDefaultHandler           ; GPIO Port A
-        DCD     Tachometer_InputCapture           ; GPIO Port B
-        DCD     IntDefaultHandler           ; GPIO Port C
+        DCD     PendSVHandler	            ; The PendSV handler
+        DCD     SysTickThSwIntHandler       ; The SysTick handler
+        DCD     IntDefaultHandler                    ; GPIO Port A
+        DCD     Tachometer_InputCapture                    ; GPIO Port B
+        DCD     IntDefaultHandler                    ; GPIO Port C
         DCD     IntDefaultHandler           ; GPIO Port D
         DCD     IntDefaultHandler           ; GPIO Port E
-        DCD     UARTIntHandler           ; UART0
-        DCD     IntDefaultHandler           ; UART1
-        DCD     IntDefaultHandler           ; SSI
-        DCD     IntDefaultHandler           ; I2C
+        DCD     UARTIntHandler              ; UART0 Rx and Tx
+        DCD     IntDefaultHandler           ; UART1 Rx and Tx
+        DCD     IntDefaultHandler           ; SSI0 Rx and Tx
+        DCD     IntDefaultHandler           ; I2C0 Master and Slave
         DCD     IntDefaultHandler           ; PWM Fault
         DCD     IntDefaultHandler           ; PWM Generator 0
         DCD     IntDefaultHandler           ; PWM Generator 1
         DCD     IntDefaultHandler           ; PWM Generator 2
-        DCD     IntDefaultHandler           ; Quadrature Encoder
+        DCD     IntDefaultHandler           ; Quadrature Encoder 0
         DCD     IntDefaultHandler           ; ADC Sequence 0
         DCD     IntDefaultHandler           ; ADC Sequence 1
         DCD     IntDefaultHandler           ; ADC Sequence 2
-        DCD     ADC0Seq3IntHandler           ; ADC Sequence 3
-        DCD     IntDefaultHandler           ; Watchdog
-        DCD     IntDefaultHandler           ; Timer 0A
-        DCD     pingInterruptHandler           ; Timer 0B
-        DCD     IntDefaultHandler           ; Timer 1A
-        DCD     IntDefaultHandler           ; Timer 1B
-        DCD     IntDefaultHandler           ; Timer 2A
-        DCD     IntDefaultHandler           ; Timer 2B
-        DCD     IntDefaultHandler           ; Comp 0
-        DCD     IntDefaultHandler           ; Comp 1
-        DCD     IntDefaultHandler           ; Comp 2
-        DCD     IntDefaultHandler           ; System Control
-        DCD     IntDefaultHandler           ; Flash Control
+        DCD     ADC0Seq3IntHandler          ; ADC Sequence 3
+        DCD     IntDefaultHandler           ; Watchdog timer
+        DCD     IntDefaultHandler           ; Timer 0 subtimer A
+        DCD     pingInterruptHandler           ; Timer 0 subtimer B
+        DCD     IntDefaultHandler           ; Timer 1 subtimer A
+        DCD     IntDefaultHandler           ; Timer 1 subtimer B
+        DCD     pingProducer            ; Timer 2 subtimer A
+        DCD     IntDefaultHandler           ; Timer 2 subtimer B
+        DCD     IntDefaultHandler           ; Analog Comparator 0
+        DCD     IntDefaultHandler           ; Analog Comparator 1
+        DCD     IntDefaultHandler           ; Analog Comparator 2
+        DCD     IntDefaultHandler           ; System Control (PLL, OSC, BO)
+        DCD     IntDefaultHandler           ; FLASH Control
         DCD     IntDefaultHandler           ; GPIO Port F
         DCD     IntDefaultHandler           ; GPIO Port G
         DCD     IntDefaultHandler           ; GPIO Port H
         DCD     IntDefaultHandler           ; UART2 Rx and Tx
         DCD     IntDefaultHandler           ; SSI1 Rx and Tx
-        DCD     Timer3AIntHandler           ; Timer 3 subtimer A
-        DCD     Timer3BIntHandler           ; Timer 3 subtimer B
+		DCD     Timer3AIntHandler            ; Timer 3 subtimer A
+        DCD     Timer3BIntHandler            ; Timer 3 subtimer B
         DCD     IntDefaultHandler           ; I2C1 Master and Slave
         DCD     IntDefaultHandler           ; Quadrature Encoder 1
         DCD     IntDefaultHandler           ; CAN0
@@ -163,10 +158,6 @@ __Vectors
         DCD     IntDefaultHandler           ; CAN2
         DCD     IntDefaultHandler           ; Ethernet
         DCD     IntDefaultHandler           ; Hibernate
-        DCD     IntDefaultHandler           ; USB0
-        DCD     IntDefaultHandler           ; PWM Generator 3
-        DCD     IntDefaultHandler           ; uDMA Software Transfer
-        DCD     IntDefaultHandler           ; uDMA Error
 
 ;******************************************************************************
 ;
@@ -239,7 +230,7 @@ IntDefaultHandler
     IF :DEF: __MICROLIB
         EXPORT  __initial_sp
         EXPORT  __heap_base
-        EXPORT __heap_limit
+        EXPORT  __heap_limit
     ELSE
         IMPORT  __use_two_region_memory
         EXPORT  __user_initial_stackheap

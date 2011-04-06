@@ -123,8 +123,8 @@ unsigned int n, xn;
   for(n = 0; n < 51; n++)
   {
     y = y + ((long)h[n]*(long)x[xn])/256;
-	n++;
-	xn++;
+	//n++;
+	//xn++;	 xn--; ??
 	if(xn == 51)
 	{
 	  xn = 0;

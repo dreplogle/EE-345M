@@ -101,6 +101,7 @@ unsigned long CumLastTime;  // time at previous interrupt
 //
 //*****************************************************************************
 unsigned char g_ucSwitches = 0x1f;
+unsigned char g_ucBumperSwitches = 0xff;
 
 //*****************************************************************************
 //
@@ -110,6 +111,9 @@ unsigned char g_ucSwitches = 0x1f;
 //*****************************************************************************
 static unsigned char g_ucSwitchClockA = 0;
 static unsigned char g_ucSwitchClockB = 0;
+
+static unsigned char g_ucBprSwitchClkA = 0;
+static unsigned char g_ucBprSwitchClkB = 0;
 
 //*****************************************************************************
 //
@@ -206,9 +210,9 @@ OS_Init(void)
 
   OS_DebugProfileInit();
   // Initialize oLED display
-  //RIT128x96x4Init(1000000);
+  RIT128x96x4Init(1000000);
   // Initialize ADC
-  //ADC_Open();
+  ADC_Open();
   // Initialize serial communication
   OSuart_Open();
 
@@ -375,6 +379,7 @@ OS_AddButtonTask(void(*task)(void), unsigned long priority)
   return SUCCESS;
 }
 
+
 //***********************************************************************
 //
 // OS_AddDownTask initializes an interrupt to occur on PE1,
@@ -417,6 +422,32 @@ OS_AddDownTask(void(*task)(void), unsigned long priority)
   //IntEnable(INT_GPIOE); 
   //IntEnable(INT_TIMER2A);
 
+  return SUCCESS;
+}
+
+//***********************************************************************
+//
+// Configure PB0,PB1,PB2,PB3,PC4,PC5,PC6,PC7 as inputs for bumper switches
+//
+// \return SUCCESS if priority is within valid limits, FAIL otherwise.
+//
+//***********************************************************************
+int 
+OS_BumperInit(void)
+{ 
+  SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
+  SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOC);
+  GPIOPinTypeGPIOInput(GPIO_PORTB_BASE, (GPIO_PIN_0 | GPIO_PIN_1 |
+                                         GPIO_PIN_2 | GPIO_PIN_3));
+  GPIOPinTypeGPIOInput(GPIO_PORTC_BASE, (GPIO_PIN_4 | GPIO_PIN_5 |
+                                         GPIO_PIN_6 | GPIO_PIN_7));
+
+  GPIOPadConfigSet(GPIO_PORTB_BASE, (GPIO_PIN_0 | GPIO_PIN_1 |
+                     GPIO_PIN_2 | GPIO_PIN_3), GPIO_STRENGTH_2MA,
+                     GPIO_PIN_TYPE_STD_WPU);
+  GPIOPadConfigSet(GPIO_PORTC_BASE, (GPIO_PIN_4 | GPIO_PIN_5 |
+                     GPIO_PIN_6 | GPIO_PIN_7), GPIO_STRENGTH_2MA,
+                     GPIO_PIN_TYPE_STD_WPU);
   return SUCCESS;
 }
 
@@ -1133,7 +1164,7 @@ Timer2IntHandler(void)
 void
 SysTickThSwIntHandler(void)
 {   
-  unsigned long ulData, ulDelta; 
+  unsigned long ulData, ulDelta, bumperData, bumperDelta; 
   long sr = 0;
   unsigned long timeIoff;
   static char count;
@@ -1144,13 +1175,18 @@ SysTickThSwIntHandler(void)
     //
     ulData = (GPIOPinRead(GPIO_PORTE_BASE, (GPIO_PIN_0 | GPIO_PIN_1 |
                                             GPIO_PIN_2 | GPIO_PIN_3)) |
-              (GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1) << 3));     
+              (GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1) << 3)); 
+	bumperData = (GPIOPinRead(GPIO_PORTB_BASE, (GPIO_PIN_0 | GPIO_PIN_1 |
+                                            GPIO_PIN_2 | GPIO_PIN_3)) |
+              GPIOPinRead(GPIO_PORTC_BASE, (GPIO_PIN_4 | GPIO_PIN_5 |
+                                            GPIO_PIN_6 | GPIO_PIN_7)));    
    
     //
     // Determine the switches that are at a different state than the debounced
     // state.
     //
     ulDelta = ulData ^ g_ucSwitches;
+	bumperDelta = bumperData ^ g_ucBumperSwitches;
 
     //
     // Increment the clocks by one.
@@ -1158,11 +1194,17 @@ SysTickThSwIntHandler(void)
     g_ucSwitchClockA ^= g_ucSwitchClockB;
     g_ucSwitchClockB = ~g_ucSwitchClockB;
 
+	g_ucBprSwitchClkA ^= g_ucBprSwitchClkB;
+	g_ucBprSwitchClkB = ~g_ucBprSwitchClkB;
+
     //
     // Reset the clocks corresponding to switches that have not changed state.
     //
     g_ucSwitchClockA &= ulDelta;
     g_ucSwitchClockB &= ulDelta;
+
+	g_ucBprSwitchClkA &= bumperDelta;
+	g_ucBprSwitchClkB &= bumperDelta;
 
     //
     // Get the new debounced switch state.
@@ -1170,10 +1212,16 @@ SysTickThSwIntHandler(void)
     g_ucSwitches &= g_ucSwitchClockA | g_ucSwitchClockB;
     g_ucSwitches |= (~(g_ucSwitchClockA | g_ucSwitchClockB)) & ulData;
 
+	g_ucBumperSwitches &= g_ucBprSwitchClkA | g_ucBprSwitchClkB;
+	g_ucBumperSwitches |= (~(g_ucBprSwitchClkA | g_ucBprSwitchClkB)) & bumperData;
+
     //
     // Determine the switches that just changed debounced state.
     //
     ulDelta ^= (g_ucSwitchClockA | g_ucSwitchClockB);
+
+	bumperDelta ^= (g_ucBprSwitchClkA | g_ucBprSwitchClkB); 
+
   
   //If the button is still pressed, execute the user task.
   if((ulDelta & 0x10) && !(g_ucSwitches & 0x10) && (ButtonTask != NULL))

@@ -1,4 +1,3 @@
-; <<< Use Configuration Wizard in Context Menu >>>
 ;******************************************************************************
 ;
 ; startup_rvmdk.S - Startup code for use with Keil's uVision.
@@ -78,7 +77,7 @@ __heap_limit
 ; External declaration for the interrupt handler used by the application.
 ;
 ;******************************************************************************
-		
+
         EXTERN  UARTIntHandler
 		EXTERN  ADC0Seq3IntHandler
 		EXTERN  Timer3AIntHandler 
@@ -87,7 +86,8 @@ __heap_limit
 		EXTERN  SysTickThSwIntHandler
 		EXTERN  PendSVHandler
 		EXTERN  SwitchIntHandler
-		EXTERN  Tach_InputCapture
+    EXTERN  CANIntHandler
+	EXTERN  Tach_InputCapture
 
 ;******************************************************************************
 ;
@@ -112,9 +112,9 @@ __Vectors
         DCD     0                           ; Reserved
         DCD     PendSVHandler	            ; The PendSV handler
         DCD     SysTickThSwIntHandler       ; The SysTick handler
-        DCD     IntDefaultHandler                    ; GPIO Port A
-        DCD     IntDefaultHandler                    ; GPIO Port B
-        DCD     IntDefaultHandler                    ; GPIO Port C
+        DCD     IntDefaultHandler           ; GPIO Port A
+        DCD     IntDefaultHandler           ; GPIO Port B
+        DCD     IntDefaultHandler           ; GPIO Port C
         DCD     IntDefaultHandler           ; GPIO Port D
         DCD     IntDefaultHandler           ; GPIO Port E
         DCD     UARTIntHandler              ; UART0 Rx and Tx
@@ -147,11 +147,11 @@ __Vectors
         DCD     IntDefaultHandler           ; GPIO Port H
         DCD     IntDefaultHandler           ; UART2 Rx and Tx
         DCD     IntDefaultHandler           ; SSI1 Rx and Tx
-		DCD     Timer3AIntHandler            ; Timer 3 subtimer A
+		    DCD     Timer3AIntHandler            ; Timer 3 subtimer A
         DCD     Timer3BIntHandler            ; Timer 3 subtimer B
         DCD     IntDefaultHandler           ; I2C1 Master and Slave
         DCD     IntDefaultHandler           ; Quadrature Encoder 1
-        DCD     IntDefaultHandler           ; CAN0
+        DCD     CANIntHandler               ; CAN0
         DCD     IntDefaultHandler           ; CAN1
         DCD     IntDefaultHandler           ; CAN2
         DCD     IntDefaultHandler           ; Ethernet
