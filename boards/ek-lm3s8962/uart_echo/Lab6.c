@@ -40,6 +40,12 @@ unsigned short SoundVFreq = 1;
 unsigned short SoundVTime = 0;
 unsigned short FilterOn = 1;
 
+struct sensors{
+	unsigned long ping;
+	unsigned char tach;
+	long IR;
+}Sensors;
+
 int Running;                // true while robot is running
 
 #define GPIO_PF0  (*((volatile unsigned long *)0x40025004))
@@ -195,10 +201,22 @@ void IRSensor(void){
 	sum = sum/IR_SAMPLING_RATE;
 	IR_Stats.stdev = sqrt(sum);
 
-	oLED_Message(0, 0, "IR Avg", IR_Stats.average);
-	oLED_Message(0, 1, "IR StdDev", IR_Stats.stdev);
-	oLED_Message(0, 2, "IR MaxDev", IR_Stats.maxdev);
+
+	//oLED_Message(0, 0, "IR Avg", IR_Stats.average);
+	//oLED_Message(0, 1, "IR StdDev", IR_Stats.stdev);
+	//oLED_Message(0, 2, "IR MaxDev", IR_Stats.maxdev);
   }
+}
+
+void Display(void){
+	while(1){
+  	oLED_Message(0, 3, "IR: ", Sensors.IR);
+	//SysCtlDelay(SysCtlClockGet()/100);
+	oLED_Message(0, 2, "Tach: ", Sensors.tach);
+	//SysCtlDelay(SysCtlClockGet()/100);
+	oLED_Message(0, 1, "Ping: ", Sensors.ping);
+	//SysCtlDelay(SysCtlClockGet()/100);
+	}
 }
 
 //*******************lab 6 main **********
@@ -222,10 +240,11 @@ int main(void){
 
   NumCreated = 0 ;
 // create initial foreground threads
-  NumCreated += OS_AddThread(&IRSensor,128,7);  // runs when nothing useful to do
-  NumCreated += OS_AddThread(&Interpreter,128,2);
+  NumCreated += OS_AddThread(&IRSensor,128,2);  // runs when nothing useful to do
+//  NumCreated += OS_AddThread(&Interpreter,128,2);
   NumCreated += OS_AddThread(&CAN,128,2); 
-  NumCreated += OS_AddThread(&IdleTask,128,7);  // runs when nothing useful to do
+//  NumCreated += OS_AddThread(&IdleTask,128,2);  // runs when nothing useful to do
+//  NumCreated += OS_AddThread(&Display,128,2);
  
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes

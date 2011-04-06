@@ -861,7 +861,7 @@ RIT128x96x4Init(unsigned long ulFrequency)
 {
    
   unsigned long ulIdx;
-  ////OS_InitSemaphore(&oLEDFree, 1);
+  //OS_InitSemaphore(&oLEDFree, 1);
   //
   // Enable the SSI0 and GPIO port blocks as they are needed by this driver.
   //

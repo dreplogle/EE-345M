@@ -8,6 +8,8 @@
 #include "sysctl.h"
 #include "interrupt.h"
 #include "hw_ints.h"
+#include "string.h"
+#include "driverlib/can.h"
 #include <stdio.h>
 
 #define SYSCTL_RCGC2_R     (*((volatile unsigned long *)0x400FE108)) 
@@ -107,12 +109,12 @@ unsigned long Ping_Fifo_Get(void){
 
 unsigned long OS_Time(void)
 {
-  return TimerValueGet(TIMER1_BASE, TIMER_A);
+  return TimerValueGet(TIMER1_BASE, TIMER_B);
 }
 
 unsigned long distance = 0;
 //int CANTransmitFIFO(unsigned char *pucData, unsigned long ulSize);
-unsigned char distanceBuffer[10];
+unsigned char distanceBuffer[CAN_FIFO_SIZE];
 unsigned long DebugPulseWidth = 0;
 void pingConsumer(void)  //make this an interrupt
 {
@@ -132,7 +134,10 @@ void pingConsumer(void)  //make this an interrupt
 			distance = tempDistance;
 		
 			//Transmit by CAN
-		//	sprintf( (char*) &distanceBuffer, "%ul",distance);
+			distanceBuffer[0] = 'p';
+			//memcpy(&distanceBuffer[1], &distance, 4);
+			sprintf((char *)&distanceBuffer[1], "%ul",distance);
+			CAN_Send(distanceBuffer);
 		//	CANTransmitFIFO( (unsigned char*) &distanceBuffer, 3);
 		}
 		if (pulseWidth >= 65536)//Error, thinks rising edge is falling edge and vice versa
@@ -178,7 +183,7 @@ void pingProducer(void)
 
 	IntMasterDisable();
 	GPIOPinWrite(GPIO_PORTA_BASE, GPIO_PIN_6, PIN_6_WRITE);
-//	while ( OS_TimeDifference(endTime, startTime) < FIVE_USEC)
+	while ( OS_TimeDifference(endTime, startTime) < FIVE_USEC)
 	{
 		endTime = OS_Time();
 	}
@@ -290,11 +295,11 @@ void Ping_Init(unsigned long periodicTimer, unsigned long subTimer)
 	 // Enable Timer1 module
  	 SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER1);
 
- 	 // Configure Timer1 as a 32-bit periodic timer.
- 	 TimerConfigure(TIMER1_BASE, TIMER_CFG_32_BIT_PER);
- 	 TimerLoadSet(TIMER1_BASE, TIMER_A, MAX_TCNT);
+ 	 // Configure Timer1 as a 16-bit periodic timer.
+ 	 TimerConfigure(TIMER1_BASE, TIMER_CFG_B_PERIODIC);
+ 	 TimerLoadSet(TIMER1_BASE, TIMER_B, MAX_TCNT);
 
-	 TimerEnable(TIMER1_BASE, TIMER_A);
+	 TimerEnable(TIMER1_BASE, TIMER_B);
 
 	SysCtlClockSet(SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_8MHZ);
 	SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER2);

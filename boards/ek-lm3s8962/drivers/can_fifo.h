@@ -37,7 +37,7 @@
 //
 // Size of the FIFOs allocated to the CAN controller.
 //
-#define CAN_FIFO_SIZE           (8 * 8)
+#define CAN_FIFO_SIZE           (8 * 2)
 
 
 
