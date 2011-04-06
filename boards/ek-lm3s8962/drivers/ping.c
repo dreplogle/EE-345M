@@ -10,7 +10,7 @@
 #include "hw_ints.h"
 #include "string.h"
 #include "driverlib/can.h"
-#include <stdio.h>
+#include <string.h>
 
 #define SYSCTL_RCGC2_R     (*((volatile unsigned long *)0x400FE108)) 
 #define GPIOA_AFSEL_R		(*((volatile unsigned long *)0x40004420)) 
@@ -135,8 +135,8 @@ void pingConsumer(void)  //make this an interrupt
 		
 			//Transmit by CAN
 			distanceBuffer[0] = 'p';
-			//memcpy(&distanceBuffer[1], &distance, 4);
-			sprintf((char *)&distanceBuffer[1], "%ul",distance);
+			memcpy(&distanceBuffer[1], &distance, 4);
+			//sprintf((char *)&distanceBuffer[1], "%ul",distance);
 			CAN_Send(distanceBuffer);
 		//	CANTransmitFIFO( (unsigned char*) &distanceBuffer, 3);
 		}

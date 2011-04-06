@@ -23,7 +23,7 @@
 //
 //*****************************************************************************
 
-#include "inc/hw_ints.h"
+#include "inc/hw_ints.h"											 
 #include "inc/hw_memmap.h"
 #include "inc/hw_sysctl.h"
 #include "inc/hw_can.h"
@@ -148,30 +148,31 @@ int iIdx;
 void
 CANIntHandler(void)
 {
+
     unsigned long ulStatus;
 	IntMasterDisable();
 
-    //
     // Find the cause of the interrupt, if it is a status interrupt then just
     // acknowledge the interrupt by reading the status register.
-    //
     ulStatus = CANIntStatus(CAN0_BASE, CAN_INT_STS_CAUSE);
 
-    //
-    // The first eight message objects make up the Transmit message FIFO.
-    //
+//    // The first eight message objects make up the Transmit message FIFO.
     if(ulStatus <= 8)
     {
-        //
-        // Increment the number of bytes transmitted.
-        //
-        g_sCAN.ulBytesTransmitted += 8;
+//        // Increment the number of bytes transmitted.
+//        g_sCAN.ulBytesTransmitted += 8;
     }
-    //
+
     // The second eight message objects make up the Receive message FIFO.
-    //
     else if((ulStatus > 8) && (ulStatus <= 16))
     {
+
+    	if(g_sCAN.MsgObjectRx.pucMsgData >= g_sCAN.pucBufferRx + CAN_FIFO_SIZE){
+		//
+    	// Reset the buffer pointer.
+    	//
+   		g_sCAN.MsgObjectRx.pucMsgData = g_sCAN.pucBufferRx;
+		}
         //
         // Read the data out and acknowledge that it was read.
         //
@@ -181,6 +182,7 @@ CANIntHandler(void)
         // Advance the read pointer.
         //
         g_sCAN.MsgObjectRx.pucMsgData += 8;
+	
 
         //
         // Decrement the expected bytes remaining.
@@ -200,8 +202,11 @@ CANIntHandler(void)
     // Acknowledge the CAN controller interrupt has been handled.
     //
     CANIntClear(CAN0_BASE, ulStatus);
+
 	IntMasterEnable();
+
 }
+
 
 //*****************************************************************************
 //
@@ -432,10 +437,8 @@ ToggleLED(void)
 
 void CAN_Init()
 {
-  //
     // If running on Rev A2 silicon, turn the LDO voltage up to 2.75V.  This is
     // a workaround to allow the PLL to operate reliably.
-    //
     if(REVISION_IS_A2)
     {
         SysCtlLDOSet(SYSCTL_LDO_2_75V);
@@ -443,16 +446,10 @@ void CAN_Init()
 
     OS_InitSemaphore(&CANSema, 1);
 
-    //
     // Set the clocking to run directly from the PLL at 50MHz.
-    //
-    SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN |
-                   SYSCTL_XTAL_8MHZ);
+    //SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN |
+    //               SYSCTL_XTAL_8MHZ);
 
-    //
-    // Initialize the OLED display.
-    //
-    RIT128x96x4Init(1000000);
 
     //
     // Configure CAN 0 Pins.
@@ -493,11 +490,6 @@ void CAN_Init()
     // Take the CAN0 device out of INIT state.
     //
     CANEnable(CAN0_BASE);
-
-    //
-    // Hello!
-    //
-    //RIT128x96x4StringDraw("CAN FIFO Loopback", 14, 24, 15);
 
     //
     // Enable interrupts from CAN controller.
@@ -543,9 +535,6 @@ void CAN_Init()
     // Initialized the LED toggle count.
     //
     g_ulLEDCount = 0;
-    //
-    // Loop forever.
-    //
 
 }
   
@@ -575,30 +564,27 @@ void CAN_Receive(void)
   g_sCAN.eState = CAN_WAIT_RX;
 }
 
+unsigned long pingIn;
 void
 CAN(void)
 {
     char string[10];
-	unsigned long pingIn;
+
     
     //CAN_Init();
 
     while(1)
     {
 	COUNTER += 1;
+	CANIntEnable(CAN0_BASE, CAN_INT_MASTER | CAN_INT_ERROR);
         switch(g_sCAN.eState)
         {
             case CAN_SENDING:
             {
-                //
                 // Wait for all bytes to go out.
-                //
-
                 if(g_sCAN.ulBytesTransmitted == CAN_FIFO_SIZE)
                 {
-                    //
                     // Switch to wait for RX state.
-                    //
                     g_sCAN.eState = CAN_WAIT_RX;
                 }
 
@@ -606,23 +592,15 @@ CAN(void)
             }
             case CAN_WAIT_RX:
             {
-                //
                 // Wait for all new data to be received.
-                //
-                if(g_sCAN.ulBytesRemaining == 0)
+                //if(g_sCAN.ulBytesRemaining == 0)
                 {
-                    //for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
-                    //{
-                    //  oLED_Message(0, 0, "Received: ", g_sCAN.pucBufferRx[iIdx]);
-                    //}
 					if(g_sCAN.pucBufferRx[0] == 't'){
-				    //oLED_Message(0, 0, "Tach: ", g_sCAN.pucBufferRx[1]);
 					Sensors.tach = g_sCAN.pucBufferRx[1];
 					}
 					if(g_sCAN.pucBufferRx[0] == 'p'){
-					//memcpy(&pingIn, &g_sCAN.pucBufferRx[1], 4); 
-				    //oLED_Message(0, 1, "Ping: ", pingIn);
-					Sensors.ping = (unsigned long)g_sCAN.pucBufferRx[1];
+					memcpy(&pingIn, &g_sCAN.pucBufferRx[1], 4); 
+					Sensors.ping = pingIn;
 					}
 
                     //

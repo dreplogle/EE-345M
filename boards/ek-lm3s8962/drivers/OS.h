@@ -10,7 +10,7 @@
 #define BLOCKED 1
 #define UNBLOCKED 0
 #define MAX_NUM_OS_THREADS 5
-#define STACK_SIZE 2048  			//Stack size in bytes
+#define STACK_SIZE 2048 			//Stack size in bytes
 #define MAX_THREAD_SW_PER_MS 1000
 #define MIN_THREAD_SW_PER_MS 1
 #define MAX_OS_FIFOSIZE 128 		// can be any size
@@ -23,7 +23,7 @@
 #define FOREGROUND_THREAD_START 0x03
 
 #define TIME_1MS 50000		  		// #clock cycles per ms in 50MHz mode
-#define TIMESLICE TIME_1MS  		//Thread switching period in ms
+#define TIMESLICE TIME_1MS*2  		//Thread switching period in ms
 #define PERIOD TIME_1MS/2       	// 2kHz sampling period in system time units
 // 10-sec finite time experiment duration 
 #define RUNLENGTH 10000   // display results and quit when NumSamples==RUNLENGTH

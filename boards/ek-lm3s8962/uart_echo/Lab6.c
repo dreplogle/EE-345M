@@ -200,7 +200,7 @@ void IRSensor(void){
 	}
 	sum = sum/IR_SAMPLING_RATE;
 	IR_Stats.stdev = sqrt(sum);
-
+	Sensors.IR = IR_Stats.average;
 
 	//oLED_Message(0, 0, "IR Avg", IR_Stats.average);
 	//oLED_Message(0, 1, "IR StdDev", IR_Stats.stdev);
@@ -240,11 +240,12 @@ int main(void){
 
   NumCreated = 0 ;
 // create initial foreground threads
-  NumCreated += OS_AddThread(&IRSensor,128,2);  // runs when nothing useful to do
-//  NumCreated += OS_AddThread(&Interpreter,128,2);
   NumCreated += OS_AddThread(&CAN,128,2); 
+  NumCreated += OS_AddThread(&IRSensor,128,2);  // runs when nothing useful to do
+  NumCreated += OS_AddThread(&Interpreter,128,2);
+
 //  NumCreated += OS_AddThread(&IdleTask,128,2);  // runs when nothing useful to do
-//  NumCreated += OS_AddThread(&Display,128,2);
+  NumCreated += OS_AddThread(&Display,128,2);
  
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes

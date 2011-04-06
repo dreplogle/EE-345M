@@ -37,6 +37,7 @@
 #include "drivers/OS.h"
 #include "drivers/rit128x96x4.h"
 #include "string.h"
+#include "driverlib/can.h"
 
 //***********************************************************************
 //
@@ -84,6 +85,51 @@ unsigned long RunTimeProfile[NUM_EVENTS][2]; //Collect data for 100 events   Run
 int EventIndex;
 unsigned long CumLastTime;  // time at previous interrupt 
 
+extern struct
+{
+    //
+    // This holds the information for the data receive message object that is
+    // used to receive data for each CAN controller.
+    //
+    tCANMsgObject MsgObjectRx;
+
+    //
+    // This holds the information for the data send message object that is used
+    // to send data for each CAN controller.
+    //
+    tCANMsgObject MsgObjectTx;
+
+    //
+    // Receive buffer.
+    //
+    unsigned char pucBufferRx[CAN_FIFO_SIZE];
+
+    //
+    // Transmit buffer.
+    //
+    unsigned char pucBufferTx[CAN_FIFO_SIZE];
+
+    //
+    // Bytes remaining to be received.
+    //
+    unsigned long ulBytesRemaining;
+
+    //
+    // Bytes transmitted.
+    //
+    unsigned long ulBytesTransmitted;
+
+    //
+    // The current state of the CAN controller.
+    //
+    enum
+    {
+        CAN_IDLE,
+        CAN_SENDING,
+        CAN_WAIT_RX,
+        CAN_PROCESS,
+    } eState;
+} g_sCAN;
 
 
 
@@ -1169,7 +1215,12 @@ SysTickThSwIntHandler(void)
   unsigned long timeIoff;
   static char count;
   OS_ENTERCRITICAL();
-
+  CANIntDisable(CAN0_BASE, CAN_INT_MASTER | CAN_INT_ERROR);
+//  if(g_sCAN.ulBytesRemaining !=0 && OS_Id() == 1)
+//  {
+//   OS_EXITCRITICAL();
+//   return;
+//   }
     //
     // Read the state of the push buttons.
     //
@@ -1264,14 +1315,9 @@ SysTickThSwIntHandler(void)
   //TimerIntClear(TIMER2_BASE, TIMER_TIMA_TIMEOUT);
   //GPIOPinIntEnable(GPIO_PORTF_BASE, GPIO_PIN_1);
 
+  TriggerPendSV();
+
   OS_EXITCRITICAL();  
- 
-  if(!count)
-  {
-    TriggerPendSV();
-	  count = 10;
-  }
-  count--;
 }
 
 //***********************************************************************
