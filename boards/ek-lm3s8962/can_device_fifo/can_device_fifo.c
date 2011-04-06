@@ -35,6 +35,7 @@
 #include "driverlib/interrupt.h"
 #include "driverlib/sysctl.h"
 #include "driverlib/systick.h"
+#include "driverlib/timer.h"
 
 //*****************************************************************************
 //
@@ -427,7 +428,8 @@ ToggleLED(void)
 int
 main(void)
 {
-    //
+    Ping_Init(TIMER2_BASE, TIMER_A); //Must do this after OS_AddPeriodicThread in order
+	//
     // If running on Rev A2 silicon, turn the LDO voltage up to 2.75V.  This is
     // a workaround to allow the PLL to operate reliably.
     //

@@ -112,14 +112,14 @@ __Vectors
         DCD     IntDefaultHandler           ; SVCall handler
         DCD     IntDefaultHandler           ; Debug monitor handler
         DCD     0                           ; Reserved
-        DCD     PendSVHandler	            ; The PendSV handler
-        DCD     SysTickThSwIntHandler       ; The SysTick handler
+        DCD     IntDefaultHandler	            ; The PendSV handler
+        DCD     IntDefaultHandler       ; The SysTick handler
         DCD     IntDefaultHandler                    ; GPIO Port A
-        DCD     Tachometer_InputCapture                    ; GPIO Port B
+        DCD     IntDefaultHandler                    ; GPIO Port B
         DCD     IntDefaultHandler                    ; GPIO Port C
         DCD     IntDefaultHandler           ; GPIO Port D
         DCD     IntDefaultHandler           ; GPIO Port E
-        DCD     UARTIntHandler              ; UART0 Rx and Tx
+        DCD     IntDefaultHandler              ; UART0 Rx and Tx
         DCD     IntDefaultHandler           ; UART1 Rx and Tx
         DCD     IntDefaultHandler           ; SSI0 Rx and Tx
         DCD     IntDefaultHandler           ; I2C0 Master and Slave
@@ -131,7 +131,7 @@ __Vectors
         DCD     IntDefaultHandler           ; ADC Sequence 0
         DCD     IntDefaultHandler           ; ADC Sequence 1
         DCD     IntDefaultHandler           ; ADC Sequence 2
-        DCD     ADC0Seq3IntHandler          ; ADC Sequence 3
+        DCD     IntDefaultHandler          ; ADC Sequence 3
         DCD     IntDefaultHandler           ; Watchdog timer
         DCD     IntDefaultHandler           ; Timer 0 subtimer A
         DCD     pingInterruptHandler           ; Timer 0 subtimer B
@@ -149,8 +149,8 @@ __Vectors
         DCD     IntDefaultHandler           ; GPIO Port H
         DCD     IntDefaultHandler           ; UART2 Rx and Tx
         DCD     IntDefaultHandler           ; SSI1 Rx and Tx
-		DCD     Timer3AIntHandler            ; Timer 3 subtimer A
-        DCD     Timer3BIntHandler            ; Timer 3 subtimer B
+		DCD     IntDefaultHandler            ; Timer 3 subtimer A
+        DCD     IntDefaultHandler            ; Timer 3 subtimer B
         DCD     IntDefaultHandler           ; I2C1 Master and Slave
         DCD     IntDefaultHandler           ; Quadrature Encoder 1
         DCD     IntDefaultHandler           ; CAN0

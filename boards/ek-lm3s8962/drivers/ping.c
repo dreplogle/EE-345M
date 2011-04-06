@@ -21,6 +21,7 @@
 #define NUMBER_OF_NM_IN_MM 1000000
 #define CCP1_TIMER_PRESCALE 0
 #define MAX_DISTANCE 446
+#define PING_PERIOD 50000 //This is in units of 2000 ns increments
 
 unsigned long Ping_Data_Lost = 0;
 Sema4Type Ping_Fifo_Available;
@@ -39,6 +40,10 @@ unsigned long DataLost = 0;
 #elif ((PING_BUF_SIZE & (PING_BUF_SIZE-1)) != 0)
 #error PING_BUF_SIZE must be a power of 2.
 #endif
+
+static unsigned char fallingEdge = 0;
+unsigned short risingEdgeTime = 0;
+unsigned short fallingEdgeTime = 0;
 
 
 struct buf_st {
@@ -100,40 +105,71 @@ unsigned long Ping_Fifo_Get(void){
   	return (p->buf [(p->out++) & (PING_BUF_SIZE - 1)]);
 }
 
-
-
-#define PING_TIMER_PRESCALE 49
-
-void Ping_Init(unsigned long periodicTimer, unsigned long subTimer)
+unsigned long OS_Time(void)
 {
-	unsigned long delay;
-
-	//Initialize Ping FIFO
-	Ping_Fifo_Init();
-
-	//Enable Port A
-	SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
-	delay = SYSCTL_RCGC2_R;    // allow time to finish  
-
-	//Configure PA6 to be an output
-	GPIODirModeSet(GPIO_PORTA_BASE, GPIO_PIN_6, GPIO_DIR_MODE_OUT);
-	GPIOPadConfigSet(GPIO_PORTA_BASE, GPIO_PIN_6, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
-
-	//Configure PA5 to be an output
-	GPIODirModeSet(GPIO_PORTA_BASE, GPIO_PIN_5, GPIO_DIR_MODE_OUT);
-	GPIOPadConfigSet(GPIO_PORTA_BASE, GPIO_PIN_5, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
-
-	//Set prescale of periodic timers
-	TimerPrescaleSet(periodicTimer, subTimer, PING_TIMER_PRESCALE);
-
-
+  return TimerValueGet(TIMER1_BASE, TIMER_A);
 }
 
+unsigned long distance = 0;
+//int CANTransmitFIFO(unsigned char *pucData, unsigned long ulSize);
+unsigned char distanceBuffer[10];
+unsigned long DebugPulseWidth = 0;
+void pingConsumer(void)  //make this an interrupt
+{
+	unsigned long pulseWidth;
+	unsigned long pulseWidthUSec;
+	unsigned long tempDistance;
+
+		pulseWidth = Ping_Fifo_Get();
+		if (pulseWidth > 0 && pulseWidth < 65535)
+		{
+			DebugPulseWidth = pulseWidth;
+			pulseWidthUSec = pulseWidth / NUMBER_OF_INCS_IN_USEC;
+			tempDistance = pulseWidthUSec * SPEED_OF_SOUND;
+			tempDistance = tempDistance / NUMBER_OF_NM_IN_MM;
+			tempDistance = tempDistance * 10;
+			tempDistance = tempDistance / 2;
+			distance = tempDistance;
+		
+			//Transmit by CAN
+		//	sprintf( (char*) &distanceBuffer, "%ul",distance);
+		//	CANTransmitFIFO( (unsigned char*) &distanceBuffer, 3);
+		}
+		if (pulseWidth >= 65536)//Error, thinks rising edge is falling edge and vice versa
+		{
+			distance = MAX_DISTANCE;
+
+			IntMasterDisable();			
+
+			//Disable pending ping interrupts
+		    IntDisable(INT_TIMER0B);
+			TimerIntDisable(TIMER0_BASE, TIMER_CAPB_EVENT);
+
+			//Reset the fifo
+			Ping_Fifo_Init();
+
+			//Get the interrupts to look for a falling edge again
+			fallingEdge = 0;
+
+			//Clear pending ping interrupts 
+			TimerIntClear(TIMER0_BASE, TIMER_CAPB_EVENT);
+
+
+
+			//Clear port A6
+			GPIODirModeSet(GPIO_PORTA_BASE, GPIO_PIN_6, GPIO_DIR_MODE_OUT);
+			GPIOPinWrite(GPIO_PORTA_BASE, GPIO_PIN_6, 0);
+
+			IntMasterEnable();
+		}
+}
 
 void pingProducer(void)
 {
 	unsigned long startTime = OS_Time();
 	unsigned long endTime = OS_Time();
+
+	pingConsumer();
 
 	TimerIntClear(TIMER2_BASE, TIMER_TIMA_TIMEOUT);
 
@@ -170,10 +206,25 @@ void pingProducer(void)
 	NumSamples++;
 
 }
+//***********************************************************************
+//
+// OS_TimeDifference returns the time difference in usec.
+//
+//***********************************************************************
+long OS_TimeDifference(unsigned long time1, unsigned long time2)
+//                                   thisTime          	  LastTime
+{
+  if(time2 >= time1)
+  {
+  	return (long)(time2-time1);
+  }
+  else
+  {
+    return (long)(time2 + (MAX_TCNT-time1));      
+  } 
+}
 
-static unsigned char fallingEdge = 0;
-unsigned short risingEdgeTime = 0;
-unsigned short fallingEdgeTime = 0;
+
 
 void pingInterruptHandler(void)
 {
@@ -223,62 +274,60 @@ void pingInterruptHandler(void)
 	}
 }
 
-unsigned long distance = 0;
-//int CANTransmitFIFO(unsigned char *pucData, unsigned long ulSize);
-unsigned char distanceBuffer[10];
-unsigned long DebugPulseWidth = 0;
-void pingConsumer(void)
+
+#define PING_TIMER_PRESCALE 49
+
+void Ping_Init(unsigned long periodicTimer, unsigned long subTimer)
 {
-	unsigned long pulseWidth;
-	unsigned long pulseWidthUSec;
-	unsigned long tempDistance;
+	unsigned long delay;
+	unsigned char priority;
 
-	while(1)
-	{
-		pulseWidth = Ping_Fifo_Get();
-		if (pulseWidth > 0 && pulseWidth < 65535)
-		{
-			DebugPulseWidth = pulseWidth;
-			pulseWidthUSec = pulseWidth / NUMBER_OF_INCS_IN_USEC;
-			tempDistance = pulseWidthUSec * SPEED_OF_SOUND;
-			tempDistance = tempDistance / NUMBER_OF_NM_IN_MM;
-			tempDistance = tempDistance * 10;
-			tempDistance = tempDistance / 2;
-			distance = tempDistance;
+	 //Initialize timer 0 so that input capture can be used
+ 	 SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
+
+	 //Initialize timer 1 so that OS_Time can be used
+	 // Enable Timer1 module
+ 	 SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER1);
+
+ 	 // Configure Timer1 as a 32-bit periodic timer.
+ 	 TimerConfigure(TIMER1_BASE, TIMER_CFG_32_BIT_PER);
+ 	 TimerLoadSet(TIMER1_BASE, TIMER_A, MAX_TCNT);
+
+	 TimerEnable(TIMER1_BASE, TIMER_A);
+
+	SysCtlClockSet(SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_8MHZ);
+	SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER2);
+	//Initialize Ping FIFO
+	Ping_Fifo_Init();
+
+	//Enable Port A
+	SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+	delay = SYSCTL_RCGC2_R;    // allow time to finish  
+
+	//Configure PA6 to be an output
+	GPIODirModeSet(GPIO_PORTA_BASE, GPIO_PIN_6, GPIO_DIR_MODE_OUT);
+	GPIOPadConfigSet(GPIO_PORTA_BASE, GPIO_PIN_6, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
+
+	//Configure PA5 to be an output
+	GPIODirModeSet(GPIO_PORTA_BASE, GPIO_PIN_5, GPIO_DIR_MODE_OUT);
+	GPIOPadConfigSet(GPIO_PORTA_BASE, GPIO_PIN_5, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
+
+	//Set prescale of periodic timers
+	TimerPrescaleSet(periodicTimer, subTimer, PING_TIMER_PRESCALE);
+	TimerConfigure(TIMER2_BASE, TIMER_CFG_16_BIT_PAIR | TIMER_CFG_A_PERIODIC | TIMER_CFG_B_PERIODIC);
+	TimerLoadSet(TIMER2_BASE, TIMER_A, PING_PERIOD); 
+	
+	//Set timer to interrupt and set priority
+	IntEnable(INT_TIMER2A);
+	priority = 0;
+	priority = priority << 5;
+	IntPrioritySet(INT_TIMER2A, priority);
+	TimerIntEnable(TIMER2_BASE, TIMER_TIMA_TIMEOUT); 
+
+	//Enable the timer    
+	TimerEnable(TIMER2_BASE, TIMER_A);	
+
 		
-			//Transmit by CAN
-		//	sprintf( (char*) &distanceBuffer, "%ul",distance);
-		//	CANTransmitFIFO( (unsigned char*) &distanceBuffer, 3);
-		}
-		if (pulseWidth >= 65536)//Error, thinks rising edge is falling edge and vice versa
-		{
-			distance = MAX_DISTANCE;
-
-			IntMasterDisable();			
-
-			//Disable pending ping interrupts
-		    IntDisable(INT_TIMER0B);
-			TimerIntDisable(TIMER0_BASE, TIMER_CAPB_EVENT);
-
-			//Reset the fifo
-			Ping_Fifo_Init();
-
-			//Get the interrupts to look for a falling edge again
-			fallingEdge = 0;
-
-			//Clear pending ping interrupts 
-			TimerIntClear(TIMER0_BASE, TIMER_CAPB_EVENT);
 
 
-
-			//Clear port A6
-			GPIODirModeSet(GPIO_PORTA_BASE, GPIO_PIN_6, GPIO_DIR_MODE_OUT);
-			GPIOPinWrite(GPIO_PORTA_BASE, GPIO_PIN_6, 0);
-
-			IntMasterEnable();
-		}
-	}
 }
-
-
-
