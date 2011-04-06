@@ -75,6 +75,12 @@
 //
 #define CAN_BITRATE             250000
 
+enum Device
+{
+  Ping, Tach, 
+  IR1, IR2, IR3
+};
+
 //
 // This structure holds all of the state information for the CAN transfers.
 //
