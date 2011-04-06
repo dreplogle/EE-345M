@@ -20,11 +20,13 @@
 #include "drivers/OS.h"
 #include "drivers/OSuart.h"
 #include "drivers/rit128x96x4.h"
-#include "lm3s8962.h"
+#include "lm3s2110.h"
+#include "drivers/tachometer.h"
+#include "drivers/ping.h"
 
 unsigned long NumCreated;   // number of foreground threads created
-unsigned long NumSamples;   // incremented every sample
-unsigned long DataLost;     // data sent by Producer, but not received by Consumer
+//unsigned long NumSamples;   // incremented every sample
+//unsigned long DataLost;     // data sent by Producer, but not received by Consumer
 unsigned long PIDWork;      // current number of PID calculations finished
 unsigned long FilterWork;   // number of digital filter calculations finished
 
@@ -44,91 +46,44 @@ int Running;                // true while robot is running
 #define GPIO_PF2  (*((volatile unsigned long *)0x40025010))
 #define GPIO_PF3  (*((volatile unsigned long *)0x40025020))
 #define GPIO_PG1  (*((volatile unsigned long *)0x40026008))
-// PF1/IDX1 is user input select switch
-// PE1/PWM5 is user input down switch 
-// PF0/PWM0 is debugging output on Systick
-// PF2/LED1 is debugging output 
-// PF3/LED0 is debugging output 
-// PG1/PWM1 is debugging output
-
-
-//******** Producer *************** 
-// The Producer in this lab will be called from your ADC ISR
-// A timer runs at 1 kHz, started by your ADC_Collect
-// The timer triggers the ADC, creating the 1 kHz sampling
-// Your ADC ISR runs when ADC data is ready
-// Your ADC ISR calls this function with a 10-bit sample 
-// sends data to the Robot, runs periodically at 1 kHz
-// inputs:  none
-// outputs: none
-void Producer(unsigned short data){  
-  if(Running){
-    if(OS_Fifo_Put(data)){     // send to Robot
-      NumSamples++;
-    } else{ 
-      DataLost++;
-    } 
-  }
-}
- 
-//******** IdleTask  *************** 
-// foreground thread, runs when no other work needed
-// never blocks, never sleeps, never dies
-// inputs:  none
-// outputs: none
-unsigned long Idlecount=0;
-void IdleTask(void){
-  while(1) { 
-    Idlecount++;        // debugging 
-  }
-}
-
-
-//******** Interpreter **************
-// your intepreter from Lab 4 
-// foreground thread, accepts input from serial port, outputs to serial port
-// inputs:  none
-// outputs: none
-extern void Interpreter(void); 
-
-//************ButtonPush*************
-// Called when Select Button pushed
-// background threads execute once and return
-void ButtonPush(void){
-  if(Running==0){
-    Running = 1;  // prevents you from starting two robot threads
-    NumCreated += OS_AddThread(&IdleTask,128,1);  // start a 20 second run
-  }
-}
-//************DownPush*************
-// Called when Down Button pushed
-// background threads execute once and return
-void DownPush(void){
-
-}
 
 //*******************lab 5 main **********
-int main(void){        // lab 5 real main
-  OS_Init();           // initialize, disable interrupts
-  Running = 0;         // robot not running
-  DataLost = 0;        // lost data between producer and consumer
-  NumSamples = 0;
+//int main(void){        // lab 5 real main
+//  OS_Init();           // initialize, disable interrupts
+////  Running = 0;         // robot not running
+////  DataLost = 0;        // lost data between producer and consumer
+////  NumSamples = 0;
+//
+////********initialize communication channels
+////  OS_Fifo_Init(512);    // ***note*** 4 is not big enough*****
+////  ADC_Open();
+////  ADC_Collect(0, 1000, &Producer); // start ADC sampling, channel 0, 1000 Hz 
+//
+////*******attach background tasks***********
+////  OS_AddButtonTask(&ButtonPush,2);
+////  OS_AddDownTask(&DownPush,3);
+//  //OS_AddPeriodicThread(disk_timerproc,TIME_1MS,5);
+//
+//  NumCreated = 0 ;
+//// create initial foreground threads
+//  NumCreated += OS_AddThread(&Interpreter,128,2); 
+//  NumCreated += OS_AddThread(&IdleTask,128,7);  // runs when nothing useful to do
+// 
+//  OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
+//  return 0;             // this never executes
+//}
 
-//********initialize communication channels
-  OS_Fifo_Init(512);    // ***note*** 4 is not big enough*****
-  ADC_Open();
-  ADC_Collect(0, 1000, &Producer); // start ADC sampling, channel 0, 1000 Hz 
+void SmallBoardInit(){	  
+	IntMasterDisable();
+	// Set the clocking to run from PLL at 50 MHz 
+	SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_8MHZ);
+	Tach_Init(2);
+	IntMasterEnable();
+	}
 
-//*******attach background tasks***********
-  OS_AddButtonTask(&ButtonPush,2);
-  OS_AddDownTask(&DownPush,3);
-  //OS_AddPeriodicThread(disk_timerproc,TIME_1MS,5);
-
-  NumCreated = 0 ;
-// create initial foreground threads
-  NumCreated += OS_AddThread(&Interpreter,128,2); 
-  NumCreated += OS_AddThread(&IdleTask,128,7);  // runs when nothing useful to do
- 
-  OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
-  return 0;             // this never executes
+int main(void){
+	SmallBoardInit();
+	while(1){
+		Tach_SendData();
+	}
 } 

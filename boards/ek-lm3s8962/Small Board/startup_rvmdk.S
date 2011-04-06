@@ -87,7 +87,7 @@ __heap_limit
 		EXTERN  SysTickThSwIntHandler
 		EXTERN  PendSVHandler
 		EXTERN  SwitchIntHandler
-		EXTERN  Tachometer_InputCapture
+		EXTERN  Tach_InputCapture
 		EXTERN  pingInterruptHandler
 		EXTERN  pingProducer
 
@@ -115,7 +115,7 @@ __Vectors
         DCD     PendSVHandler	            ; The PendSV handler
         DCD     SysTickThSwIntHandler       ; The SysTick handler
         DCD     IntDefaultHandler                    ; GPIO Port A
-        DCD     Tachometer_InputCapture                    ; GPIO Port B
+        DCD     IntDefaultHandler                    ; GPIO Port B
         DCD     IntDefaultHandler                    ; GPIO Port C
         DCD     IntDefaultHandler           ; GPIO Port D
         DCD     IntDefaultHandler           ; GPIO Port E
@@ -133,7 +133,7 @@ __Vectors
         DCD     IntDefaultHandler           ; ADC Sequence 2
         DCD     ADC0Seq3IntHandler          ; ADC Sequence 3
         DCD     IntDefaultHandler           ; Watchdog timer
-        DCD     IntDefaultHandler           ; Timer 0 subtimer A
+        DCD     Tach_InputCapture           ; Timer 0 subtimer A
         DCD     pingInterruptHandler           ; Timer 0 subtimer B
         DCD     IntDefaultHandler           ; Timer 1 subtimer A
         DCD     IntDefaultHandler           ; Timer 1 subtimer B
