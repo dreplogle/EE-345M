@@ -37,8 +37,15 @@
 #include "drivers/rit128x96x4.h"
 #include "drivers/can_fifo.h"
 #include "drivers/OS.h"
+#include <string.h>
 
+extern struct sensors{
+	unsigned long ping;
+	unsigned char tach;
+	long IR;
+}Sensors;
 
+unsigned long COUNTER;
 //*****************************************************************************
 //
 //! \addtogroup example_list
@@ -142,6 +149,7 @@ void
 CANIntHandler(void)
 {
     unsigned long ulStatus;
+	IntMasterDisable();
 
     //
     // Find the cause of the interrupt, if it is a status interrupt then just
@@ -192,6 +200,7 @@ CANIntHandler(void)
     // Acknowledge the CAN controller interrupt has been handled.
     //
     CANIntClear(CAN0_BASE, ulStatus);
+	IntMasterEnable();
 }
 
 //*****************************************************************************
@@ -488,7 +497,7 @@ void CAN_Init()
     //
     // Hello!
     //
-    RIT128x96x4StringDraw("CAN FIFO Loopback", 14, 24, 15);
+    //RIT128x96x4StringDraw("CAN FIFO Loopback", 14, 24, 15);
 
     //
     // Enable interrupts from CAN controller.
@@ -570,11 +579,13 @@ void
 CAN(void)
 {
     char string[10];
+	unsigned long pingIn;
     
-    CAN_Init();
+    //CAN_Init();
 
     while(1)
     {
+	COUNTER += 1;
         switch(g_sCAN.eState)
         {
             case CAN_SENDING:
@@ -604,7 +615,15 @@ CAN(void)
                     //{
                     //  oLED_Message(0, 0, "Received: ", g_sCAN.pucBufferRx[iIdx]);
                     //}
-				    oLED_Message(0, 0, "Tach: ", g_sCAN.pucBufferRx[0]);
+					if(g_sCAN.pucBufferRx[0] == 't'){
+				    //oLED_Message(0, 0, "Tach: ", g_sCAN.pucBufferRx[1]);
+					Sensors.tach = g_sCAN.pucBufferRx[1];
+					}
+					if(g_sCAN.pucBufferRx[0] == 'p'){
+					//memcpy(&pingIn, &g_sCAN.pucBufferRx[1], 4); 
+				    //oLED_Message(0, 1, "Ping: ", pingIn);
+					Sensors.ping = (unsigned long)g_sCAN.pucBufferRx[1];
+					}
 
                     //
                     // Reset the buffer pointer.

@@ -212,7 +212,7 @@ void Tach_InputCapture(void){
 unsigned long SeeTach;
 void Tach_SendData(void){
 	unsigned long data;
-	unsigned char tachArr[64];
+	unsigned char tachArr[CAN_FIFO_SIZE];
 	int i;
 	Tach_Fifo_Get(&data);
 	SeeTach = data;
@@ -222,6 +222,7 @@ void Tach_SendData(void){
 	{
 //		tachArr[i] = 'c';
 	}
-	tachArr[0] = data;
+	tachArr[0] = 't';
+	tachArr[1] = data;
 	CAN_Send(&tachArr[0]); 
 }
