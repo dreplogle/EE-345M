@@ -14,36 +14,31 @@
 //
 //*****************************************************************************
 
-#ifndef TACHO
-#define TACHO
+#ifndef TACH
+#define TACH
 
 #define MAX_TACH_FIFOSIZE 128 		// can be any size
 
-// ************* Tachometer_Init ***********
+// *********** Tach_Init ************
 // Initializes tachometer I/O pins and interrupts
 // Inputs: none
 // Outputs: none
-void Tachometer_Init(unsigned long priority);
+void Tach_Init(unsigned long priority);
 
-// ********** Tachometer_InputCapture ***********
+// ********** Tach_InputCapture ***********
 // Input capture exception handler for tachometer.
 //   Interrupts on rising edge. Obtains time since
 //   previous interrupts, sends time to foreground
 //   via FIFO.
 // Inputs: none
 // Outputs: none
-void Tachometer_InputCapture(void);
+void Tach_InputCapture(void);
 
-// ********** Tachometer_FG ***********
-// Foreground thread that passes tachometer data
-// to other computer via CAN.
-//   1) Obtains period from IC FIFO
-//   2) Transforms data into correct units
-//   3) Filters data
-//   4) Sends to other comp via CAN
+// ********** Tach_SendData ***********
+// Analyzes tachometer data, passes to
+//   big board via CAN.
 // Inputs: none
 // Outputs: none
-//
-void Tachometer_FG(void);
+void Tach_SendData(void);
 
 #endif
