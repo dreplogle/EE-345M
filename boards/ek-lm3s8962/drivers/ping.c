@@ -20,6 +20,7 @@
 #define SPEED_OF_SOUND 34029 //speed of sound in 10 nm/us units
 #define NUMBER_OF_NM_IN_MM 1000000
 #define CCP1_TIMER_PRESCALE 0
+#define MAX_DISTANCE 446
 
 unsigned long Ping_Data_Lost = 0;
 Sema4Type Ping_Fifo_Available;
@@ -235,7 +236,7 @@ void pingConsumer(void)
 	while(1)
 	{
 		pulseWidth = Ping_Fifo_Get();
-		if (pulseWidth > 0)
+		if (pulseWidth > 0 && pulseWidth < 65535)
 		{
 			DebugPulseWidth = pulseWidth;
 			pulseWidthUSec = pulseWidth / NUMBER_OF_INCS_IN_USEC;
@@ -248,6 +249,31 @@ void pingConsumer(void)
 			//Transmit by CAN
 		//	sprintf( (char*) &distanceBuffer, "%ul",distance);
 		//	CANTransmitFIFO( (unsigned char*) &distanceBuffer, 3);
+		}
+		if (pulseWidth >= 65536)//Error, thinks rising edge is falling edge and vice versa
+		{
+			distance = MAX_DISTANCE;
+
+			IntMasterDisable();			
+
+			//Disable pending ping interrupts
+		    IntDisable(INT_TIMER0B);
+
+			//Reset the fifo
+			Ping_Fifo_Init();
+
+			//Get the interrupts to look for a falling edge again
+			fallingEdge = 0;
+
+			//Clear pending ping interrupts 
+			TimerIntClear(TIMER0_BASE, TIMER_CAPB_EVENT);
+
+
+			//Clear port A6
+			GPIODirModeSet(GPIO_PORTA_BASE, GPIO_PIN_6, GPIO_DIR_MODE_OUT);
+			GPIOPinWrite(GPIO_PORTA_BASE, GPIO_PIN_6, 0);
+
+			IntMasterEnable();
 		}
 	}
 }
