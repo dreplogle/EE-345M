@@ -22,7 +22,10 @@
 #include "driverlib/gpio.h"
 #include "driverlib/interrupt.h"
 #include "drivers/OS.h"
-#include "drivers/can_fifo.h"
+#include "timer.h"
+#include "inc/hw_timer.h"
+#include "driverlib/sysctl.h"
+//#include "drivers/can_fifo.h"
 
 long SRSave (void);
 void SRRestore(long sr);
@@ -123,6 +126,20 @@ unsigned long Tachometer_Filter(unsigned long data){
 	y[n] = (y[n-1] + x[n])/2;
 	y[n-2] = y[n]; // two copies of filter outputs too
 	return y[n];
+}
+
+static
+long Tach_TimeDifference(unsigned long time1, unsigned long time2)
+//                                   thisTime          	  LastTime
+{
+  if(time2 >= time1)
+  {
+  	return (long)(time2-time1);
+  }
+  else
+  {
+    return (long)(time2 + (0xFFFF-time1));      
+  } 
 } 
 
 // *********** Tachometer_Init ************
@@ -130,19 +147,47 @@ unsigned long Tachometer_Filter(unsigned long data){
 // Inputs: none
 // Outputs: none
 void Tachometer_Init(unsigned long priority){
+
+//	//Configure port pin for digital input
+//	GPIODirModeSet(GPIO_PORTB_BASE, (GPIO_PIN_0 | GPIO_PIN_1), GPIO_DIR_MODE_IN);
+//	GPIOPadConfigSet(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
+//	
+//	//Configure and enable edge interrupts
+//	GPIOIntTypeSet(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1, GPIO_FALLING_EDGE); 
+//	GPIOPinIntEnable(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+//
+//
+//	//Enable port interrupt in NVIC
+//	IntEnable(INT_GPIOB);
+//	IntPrioritySet(INT_GPIOB, priority << 5);
+
 	//Configure port pin for digital input
-	GPIODirModeSet(GPIO_PORTB_BASE, (GPIO_PIN_0 | GPIO_PIN_1), GPIO_DIR_MODE_IN);
-	GPIOPadConfigSet(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
+	GPIODirModeSet(GPIO_PORTB_BASE, (GPIO_PIN_0 | GPIO_PIN_1), GPIO_DIR_MODE_HW);
+	GPIOPadConfigSet(GPIO_PORTB_BASE, (GPIO_PIN_0 | GPIO_PIN_1), GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
 
-	
-	//Configure and enable edge interrupts
-	GPIOIntTypeSet(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1, GPIO_FALLING_EDGE); 
-	GPIOPinIntEnable(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+	//Configure alternate function
+	GPIOPinConfigure(GPIO_PB0_CCP0);
+	//GPIOPinConfigure(GPIO_PB1_CCP2);
 
+	// Configure GPTimerModule to generate triggering events
+  	// at the specified sampling rate.
+  	SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
+
+	TimerDisable(TIMER0_BASE, TIMER_A);
+	//TimerDisable(TIMER1_BASE, TIMER_A);
+
+	HWREG(TIMER0_BASE + TIMER_O_CFG) = 0x04;
+	HWREG(TIMER0_BASE + TIMER_O_TAMR) = 0x07;
+	//TimerConfigure(TIMER0_BASE, TIMER_CFG_A_CAP_TIME); 
+	HWREG(TIMER0_BASE + TIMER_O_CTL) = HWREG(TIMER0_BASE + TIMER_O_CTL) & ~(0x06);
+	HWREG(TIMER0_BASE + TIMER_O_TAILR) = 0xFFFF; 
+	TimerIntEnable(TIMER0_BASE, TIMER_CAPA_EVENT);
+	TimerEnable(TIMER0_BASE, TIMER_A);
 
 	//Enable port interrupt in NVIC
-	IntEnable(INT_GPIOB);
-	IntPrioritySet(INT_GPIOB, priority << 5);
+	IntEnable(INT_TIMER0A);
+	IntPrioritySet(INT_TIMER0A, priority << 5);
+	//
 
 	//Initialize FIFO
 	Tachometer_Fifo_Init(128);
@@ -155,16 +200,18 @@ void Tachometer_Init(unsigned long priority){
 //   via FIFO.
 // Inputs: none
 // Outputs: none
-void Tachometer_InputCapture(void){
+void Tach_InputCapture(void){
 	static unsigned long time1 = 0;
 	unsigned long time2;
 
     // TODO: Get Time Automatically from hardware
-	time2 = OS_Time();
+	time2 = HWREG(TIMER0_BASE + TIMER_O_TAR);
 	if (time1 != 0){
-		Tachometer_Fifo_Put(OS_TimeDifference(time2, time1));
+		Tachometer_Fifo_Put(Tach_TimeDifference(time2, time1));
 	}
 	time1 = time2;
+
+	TimerIntClear(TIMER0_BASE, TIMER_CAPA_EVENT);
 }
 
 
@@ -173,13 +220,13 @@ void Tachometer_InputCapture(void){
 //   passes to other computer via CAN.
 // Inputs: none
 // Outputs: none
-void Tachometer_FG(void){
+void Tach_FG(void){
 	unsigned long *data;
 
     while(1){
 		Tachometer_Fifo_Get(data);
 		*data = 60/((*data << 2)/1000000); //convert to RPM
 		*data = Tachometer_Filter(*data);
-		CANTransmitFIFO((unsigned char *)data, 4);	
+		//CANTransmitFIFO((unsigned char *)data, 4);	
 	} 
 }

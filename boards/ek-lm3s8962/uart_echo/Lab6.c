@@ -20,8 +20,8 @@
 #include "drivers/OS.h"
 #include "drivers/OSuart.h"
 #include "drivers/rit128x96x4.h"
-#include "lm3s8962.h"
-#include "drivers/can_fifo.h"
+#include "lm3s2110.h"
+//#include "drivers/can_fifo.h"
 #include "drivers/tachometer.h"
 
 unsigned long NumCreated;   // number of foreground threads created
@@ -111,29 +111,31 @@ void DownPush(void){
 //*******************lab 5 main **********
 int main(void){        // lab 5 real main
   OS_Init();           // initialize, disable interrupts
-  Running = 0;         // robot not running
-  DataLost = 0;        // lost data between producer and consumer
-  NumSamples = 0;
+  //Running = 0;         // robot not running
+  //DataLost = 0;        // lost data between producer and consumer
+  //NumSamples = 0;
 
 //********initialize communication channels
-  OS_Fifo_Init(512);    // ***note*** 4 is not big enough*****
-  ADC_Open();
-  ADC_Collect(0, 1000, &Producer); // start ADC sampling, channel 0, 1000 Hz 
+  //OS_Fifo_Init(512);    // ***note*** 4 is not big enough*****
+  //ADC_Open();
+  //ADC_Collect(0, 1000, &Producer); // start ADC sampling, channel 0, 1000 Hz 
 
   Tachometer_Init(2);
 
 //*******attach background tasks***********
-  OS_AddButtonTask(&ButtonPush,2);
-  OS_AddDownTask(&DownPush,3);
+  //OS_AddButtonTask(&ButtonPush,2);
+  //OS_AddDownTask(&DownPush,3);
   //OS_AddPeriodicThread(disk_timerproc,TIME_1MS,5);
 
-  NumCreated = 0 ;
+  //NumCreated = 0 ;
 // create initial foreground threads
-  NumCreated += OS_AddThread(&Interpreter,128,2);
-  NumCreated += OS_AddThread(&CAN,128,2); 
-  NumCreated += OS_AddThread(&IdleTask,128,7);  // runs when nothing useful to do
+  //NumCreated += OS_AddThread(&Interpreter,128,2);
+
+  //NumCreated += OS_AddThread(&CAN,128,2); 
+  //NumCreated += OS_AddThread(&IdleTask,128,7);  // runs when nothing useful to do
  
-  OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
+  IntMasterEnable();
+  while (1){}
   return 0;             // this never executes
 }
  

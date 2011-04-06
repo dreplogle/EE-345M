@@ -35,7 +35,7 @@
 #include "driverlib/sysctl.h"
 #include "driverlib/systick.h"
 #include "drivers/rit128x96x4.h"
-#include "drivers/can_fifo.h"
+//#include "drivers/can_fifo.h"
 
 //*****************************************************************************
 //
