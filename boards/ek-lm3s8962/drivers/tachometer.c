@@ -168,9 +168,11 @@ void Tach_Init(unsigned long priority){
 	HWREG(TIMER1_BASE + TIMER_O_CFG) |= 0x04;
 	HWREG(TIMER1_BASE + TIMER_O_TAMR) |= 0x07;
 	//TimerConfigure(TIMER0_BASE, TIMER_CFG_A_CAP_TIME); 
-	HWREG(TIMER1_BASE + TIMER_O_CTL) |= HWREG(TIMER1_BASE + TIMER_O_CTL) & ~(0x06);
+	HWREG(TIMER1_BASE + TIMER_O_CTL) &= ~(0x06);
+	//debugging
+	HWREG(TIMER1_BASE + TIMER_O_CTL) |= 0x02;
 	HWREG(TIMER1_BASE + TIMER_O_TAILR) |= 0xFFFF; 
-	TimerIntEnable(TIMER1_BASE, TIMER_CAPA_EVENT);
+	TimerIntEnable(TIMER1_BASE, (TIMER_CAPA_EVENT | TIMER_TIMA_TIMEOUT));
 	TimerEnable(TIMER1_BASE, TIMER_A);
 
 	//Enable port interrupt in NVIC
@@ -189,18 +191,33 @@ void Tach_Init(unsigned long priority){
 //   via FIFO.
 // Inputs: none
 // Outputs: none
+unsigned long tach_time_count;
 void Tach_InputCapture(void){
 	static unsigned long time1 = 0;
+	static unsigned char first_flag = 0;
 	unsigned long time2;
+	long time_debug;
 
-    // Get time automatically from hardware
-	time2 = HWREG(TIMER1_BASE + TIMER_O_TAR);
-	if (time1 != 0){
-		Tach_Fifo_Put(Tach_TimeDifference(time2, time1));
+	// if timeout
+ 	if (HWREG(TIMER1_BASE + TIMER_O_MIS) & TIMER_TIMA_TIMEOUT){
+		 tach_time_count++;
 	}
-	time1 = time2;
-
-	TimerIntClear(TIMER1_BASE, TIMER_CAPA_EVENT);
+	// if input capture
+	if (HWREG(TIMER1_BASE + TIMER_O_MIS) & TIMER_CAPA_EVENT){
+    // Get time automatically from hardware
+		time2 = HWREG(TIMER1_BASE + TIMER_O_TAR) + tach_time_count * 0xFFFF;
+		tach_time_count = 0;
+		if (!first_flag){
+			first_flag = 1;
+		}
+		else {
+			//time_debug = Tach_TimeDifference(time2, time1);
+			//Tach_Fifo_Put(time_debug);
+			Tach_Fifo_Put(time2);
+		}
+		time1 = time2;
+	}
+	TimerIntClear(TIMER1_BASE, (TIMER_CAPA_EVENT | TIMER_TIMA_TIMEOUT));
 }
 
 
@@ -214,15 +231,16 @@ void Tach_SendData(void){
 	unsigned long data;
 	unsigned char tachArr[CAN_FIFO_SIZE];
 	int i;
-	Tach_Fifo_Get(&data);
-	SeeTach = data;
-//	data = 60/((data << 2)/1000000); //convert to RPM
-//	data = Tach_Filter(data);
+	if(Tach_Fifo_Get(&data)){
+		SeeTach = data;
+		data = 750000000/data; //convert to RPM	-> (60 s)*(10^9ns)/4*(T*20 ns)
+		data = Tach_Filter(data);
 //	for(i = 0; i < 64; i++)
-	{
+//	{
 //		tachArr[i] = 'c';
+//	}
+		tachArr[0] = 't';
+		tachArr[1] = data;
+		CAN_Send(&tachArr[0]);
 	}
-	tachArr[0] = 't';
-	tachArr[1] = data;
-	CAN_Send(&tachArr[0]); 
 }
