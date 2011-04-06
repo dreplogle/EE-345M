@@ -23,8 +23,6 @@
 #include "lm3s2110.h"
 #include "drivers/tachometer.h"
 #include "drivers/ping.h"
-
-unsigned long NumCreated;   // number of foreground threads created
 //unsigned long NumSamples;   // incremented every sample
 //unsigned long DataLost;     // data sent by Producer, but not received by Consumer
 unsigned long PIDWork;      // current number of PID calculations finished

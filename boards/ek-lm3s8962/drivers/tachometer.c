@@ -39,7 +39,7 @@ void SRRestore(long sr);
 typedef unsigned long dataType;
 dataType volatile *Tach_PutPt; // put next
 dataType volatile *Tach_GetPt; // get next
-dataType static Tach_Fifo[MAX_TACH_FIFOSIZE];
+dataType Tach_Fifo[MAX_TACH_FIFOSIZE];
 unsigned long Tach_FifoSize;
 Sema4Type Tach_FifoDataReady;
 
@@ -51,8 +51,6 @@ Sema4Type Tach_FifoDataReady;
 static
 void Tach_Fifo_Init(unsigned int size)
 {
-  long sr = 0;
-
   Tach_PutPt = Tach_GetPt = &Tach_Fifo[0];
   Tach_FifoSize = size;
 }
@@ -152,32 +150,32 @@ void Tach_Init(unsigned long priority){
   	SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
 
 	//Configure port pin for digital input
-	GPIODirModeSet(GPIO_PORTB_BASE, (GPIO_PIN_0 | GPIO_PIN_1), GPIO_DIR_MODE_HW);
-	GPIOPadConfigSet(GPIO_PORTB_BASE, (GPIO_PIN_0 | GPIO_PIN_1), GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
+	GPIODirModeSet(GPIO_PORTB_BASE, (GPIO_PIN_1), GPIO_DIR_MODE_HW);
+	GPIOPadConfigSet(GPIO_PORTB_BASE, (GPIO_PIN_1), GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
 
 	//Configure alternate function
-	GPIOPinConfigure(GPIO_PB0_CCP0);
-	//GPIOPinConfigure(GPIO_PB1_CCP2);
+	//GPIOPinConfigure(GPIO_PB0_CCP0);
+	GPIOPinConfigure(GPIO_PB1_CCP2);
 
 	// Configure GPTimerModule to generate triggering events
   	// at the specified sampling rate.
-  	SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
+  	SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER1);
 
-	TimerDisable(TIMER0_BASE, TIMER_A);
+	TimerDisable(TIMER1_BASE, TIMER_A);
 	//TimerDisable(TIMER1_BASE, TIMER_A);
 
 	// Configure for Subtimer A Input Edge Timing Mode
-	HWREG(TIMER0_BASE + TIMER_O_CFG) = 0x04;
-	HWREG(TIMER0_BASE + TIMER_O_TAMR) = 0x07;
+	HWREG(TIMER1_BASE + TIMER_O_CFG) |= 0x04;
+	HWREG(TIMER1_BASE + TIMER_O_TAMR) |= 0x07;
 	//TimerConfigure(TIMER0_BASE, TIMER_CFG_A_CAP_TIME); 
-	HWREG(TIMER0_BASE + TIMER_O_CTL) = HWREG(TIMER0_BASE + TIMER_O_CTL) & ~(0x06);
-	HWREG(TIMER0_BASE + TIMER_O_TAILR) = 0xFFFF; 
-	TimerIntEnable(TIMER0_BASE, TIMER_CAPA_EVENT);
-	TimerEnable(TIMER0_BASE, TIMER_A);
+	HWREG(TIMER1_BASE + TIMER_O_CTL) |= HWREG(TIMER1_BASE + TIMER_O_CTL) & ~(0x06);
+	HWREG(TIMER1_BASE + TIMER_O_TAILR) |= 0xFFFF; 
+	TimerIntEnable(TIMER1_BASE, TIMER_CAPA_EVENT);
+	TimerEnable(TIMER1_BASE, TIMER_A);
 
 	//Enable port interrupt in NVIC
-	IntEnable(INT_TIMER0A);
-	IntPrioritySet(INT_TIMER0A, priority << 5);
+	IntEnable(INT_TIMER1A);
+	IntPrioritySet(INT_TIMER1A, priority << 5);
 	//
 
 	//Initialize FIFO
@@ -196,13 +194,13 @@ void Tach_InputCapture(void){
 	unsigned long time2;
 
     // Get time automatically from hardware
-	time2 = HWREG(TIMER0_BASE + TIMER_O_TAR);
+	time2 = HWREG(TIMER1_BASE + TIMER_O_TAR);
 	if (time1 != 0){
 		Tach_Fifo_Put(Tach_TimeDifference(time2, time1));
 	}
 	time1 = time2;
 
-	TimerIntClear(TIMER0_BASE, TIMER_CAPA_EVENT);
+	TimerIntClear(TIMER1_BASE, TIMER_CAPA_EVENT);
 }
 
 
@@ -211,10 +209,12 @@ void Tach_InputCapture(void){
 //   big board via CAN.
 // Inputs: none
 // Outputs: none
+unsigned long SeeTach;
 void Tach_SendData(void){
 	unsigned long *data;
 
 	Tach_Fifo_Get(data);
+	SeeTach = *data;
 	*data = 60/((*data << 2)/1000000); //convert to RPM
 	*data = Tach_Filter(*data);
 	//CANTransmitFIFO((unsigned char *)data, 4); 

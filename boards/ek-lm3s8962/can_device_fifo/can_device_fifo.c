@@ -36,6 +36,8 @@
 #include "driverlib/sysctl.h"
 #include "driverlib/systick.h"
 #include "driverlib/timer.h"
+#include "drivers/ping.h"
+#include "drivers/tachometer.h"
 
 //*****************************************************************************
 //
@@ -429,6 +431,8 @@ int
 main(void)
 {
     Ping_Init(TIMER2_BASE, TIMER_A); //Must do this after OS_AddPeriodicThread in order
+	Tach_Init(0);
+
 	//
     // If running on Rev A2 silicon, turn the LDO voltage up to 2.75V.  This is
     // a workaround to allow the PLL to operate reliably.
@@ -541,6 +545,8 @@ main(void)
 
     while(1)
     {
+	    Tach_SendData();
+
         switch(g_sCAN.eState)
         {
             case CAN_SENDING:
