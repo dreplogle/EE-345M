@@ -87,7 +87,7 @@ CANReceiveFIFO(unsigned char *pucData, unsigned long ulSize);
 void
 ToggleLED(void);
 
-void CAN_Send(void);
+void CAN_Send(unsigned char *data);
 void CAN_Receive(void);
 //*****************************************************************************
 //

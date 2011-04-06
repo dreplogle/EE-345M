@@ -35,6 +35,7 @@
 #include "driverlib/interrupt.h"
 #include "driverlib/sysctl.h"
 #include "driverlib/systick.h"
+#include "driverlib/timer.h"
 
 //*****************************************************************************
 //
@@ -419,123 +420,130 @@ ToggleLED(void)
     g_ulLEDCount++;
 }
 
+void IntTimer0AHandler(void)
+{
+    TimerIntClear(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
+}
+
+void IntTimer0BHandler(void)
+{
+    TimerIntClear(TIMER0_BASE, TIMER_TIMB_TIMEOUT);
+}
+
+void CAN_TimerInts_Init(unsigned long period, unsigned long priority)
+{
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
+	  TimerDisable(TIMER0_BASE, TIMER_A);
+    // Set the global timer configuration.
+    HWREG(TIMER0_BASE + 0x00000000) = (TIMER_CFG_16_BIT_PAIR|TIMER_CFG_A_PERIODIC) >> 24;
+    // Set the configuration of the A and B timers.  Note that the B timer
+    // configuration is ignored by the hardware in 32-bit modes.
+    HWREG(TIMER0_BASE + 0x00000004) = (TIMER_CFG_16_BIT_PAIR|TIMER_CFG_A_PERIODIC) & 255;
+    TimerLoadSet(TIMER0_BASE, TIMER_A, period);
+	  TimerIntEnable(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
+    TimerIntClear(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
+    IntEnable(INT_TIMER0A);                                                                                
+    if(priority < 8){
+      IntPrioritySet(INT_TIMER0A,(((unsigned char)priority)<<5)&0xF0);
+    }
+    TimerEnable(TIMER0_BASE, TIMER_A);
+	
+    TimerDisable(TIMER0_BASE, TIMER_B);
+    // Set the global timer configuration.
+    HWREG(TIMER0_BASE + 0x00000000) = (TIMER_CFG_16_BIT_PAIR|TIMER_CFG_B_PERIODIC) >> 24;
+    // Set the configuration of the A and B timers.  Note that the B timer
+    // configuration is ignored by the hardware in 32-bit modes.
+    HWREG(TIMER0_BASE + 0x00000008) = ((TIMER_CFG_16_BIT_PAIR|TIMER_CFG_B_PERIODIC)>> 8) & 255;
+    TimerLoadSet(TIMER0_BASE, TIMER_B, period);
+	  TimerIntEnable(TIMER0_BASE, TIMER_TIMB_TIMEOUT);
+    TimerIntClear(TIMER0_BASE, TIMER_TIMB_TIMEOUT);
+    IntEnable(INT_TIMER0B);                                                                                
+    if(priority < 8){
+      IntPrioritySet(INT_TIMER0B,(((unsigned char)priority)<<5)&0xF0);
+    }
+    TimerEnable(TIMER0_BASE, TIMER_B);
+}
+
+void CAN_Init(void)
+{
+    // If running on Rev A2 silicon, turn the LDO voltage up to 2.75V.  This is
+    // a workaround to allow the PLL to operate reliably.
+    if(REVISION_IS_A2)
+    {
+        SysCtlLDOSet(SYSCTL_LDO_2_75V);
+    }
+    // Set the clocking to run directly from the PLL at 50MHz.
+    SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN |
+                   SYSCTL_XTAL_8MHZ);
+    // Configure CAN 0 Pins.
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
+    GPIOPinTypeCAN(GPIO_PORTD_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+    // Configure LED pin.
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
+    // Configure GPIO Pin used for the LED.
+    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_2);
+    // Turn off the LED.
+    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, 0);
+    // Enable the CAN controller.
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_CAN0);
+    // Reset the state of all the message object and the state of the CAN
+    // module to a known state.
+    CANInit(CAN0_BASE);
+    // Configure the bit rate for the CAN device, the clock rate to the CAN
+    // controller is fixed at 8MHz for this class of device and the bit rate is
+    // set to CAN_BITRATE.
+    CANBitRateSet(CAN0_BASE, 8000000, CAN_BITRATE);
+    // Take the CAN0 device out of INIT state.
+    CANEnable(CAN0_BASE);
+    // Enable interrupts from CAN controller.
+    CANIntEnable(CAN0_BASE, CAN_INT_MASTER | CAN_INT_ERROR);
+    // Enable interrupts for the CAN in the NVIC.
+    IntEnable(INT_CAN0);
+    // Enable processor interrupts.
+    IntMasterEnable();
+    // Set the initial state to wait for data.
+    g_sCAN.eState = CAN_WAIT_RX;
+    // Reset the buffer pointer.
+    g_sCAN.MsgObjectRx.pucMsgData = g_sCAN.pucBufferRx;
+    // Set the total number of bytes expected.
+    g_sCAN.ulBytesRemaining = CAN_FIFO_SIZE;
+    // Configure the receive message FIFO.
+    CANReceiveFIFO(g_sCAN.pucBufferRx, CAN_FIFO_SIZE);
+    // Initialized the LED toggle count.
+    g_ulLEDCount = 0;
+
+    //Starts periodic interrupts for small board processes
+    CAN_TimerInts_Init(100,2);
+}
+
+void CAN_Send(unsigned char *data)
+{
+  int i;  
+
+  for(i = 0; i < CAN_FIFO_SIZE; i++)
+  {
+    g_sCAN.pucBufferTx[i] = *(data+i);
+  }
+  //
+  // Initialize the transmit count to zero.
+  //
+  g_sCAN.ulBytesTransmitted = 0;
+  CANTransmitFIFO(g_sCAN.pucBufferTx, CAN_FIFO_SIZE);
+  g_sCAN.eState = CAN_SENDING;
+}
+void CAN_Receive(void)
+{
+  g_sCAN.eState = CAN_WAIT_RX;
+}
+
 //*****************************************************************************
 //
 // This is the main loop for the application.
 //
 //*****************************************************************************
-int
-main(void)
-{
-    //
-    // If running on Rev A2 silicon, turn the LDO voltage up to 2.75V.  This is
-    // a workaround to allow the PLL to operate reliably.
-    //
-    if(REVISION_IS_A2)
-    {
-        SysCtlLDOSet(SYSCTL_LDO_2_75V);
-    }
-
-    //
-    // Set the clocking to run directly from the PLL at 50MHz.
-    //
-    SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN |
-                   SYSCTL_XTAL_8MHZ);
-
-    //
-    // Configure CAN 0 Pins.
-    //
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
-    GPIOPinTypeCAN(GPIO_PORTD_BASE, GPIO_PIN_0 | GPIO_PIN_1);
-
-    //
-    // Configure LED pin.
-    //
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
-
-    //
-    // Configure GPIO Pin used for the LED.
-    //
-    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_2);
-
-    //
-    // Turn off the LED.
-    //
-    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, 0);
-
-    //
-    // Enable the CAN controller.
-    //
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_CAN0);
-
-    //
-    // Reset the state of all the message object and the state of the CAN
-    // module to a known state.
-    //
-    CANInit(CAN0_BASE);
-
-    //
-    // Configure the bit rate for the CAN device, the clock rate to the CAN
-    // controller is fixed at 8MHz for this class of device and the bit rate is
-    // set to CAN_BITRATE.
-    //
-    CANBitRateSet(CAN0_BASE, 8000000, CAN_BITRATE);
-
-    //
-    // Take the CAN0 device out of INIT state.
-    //
-    CANEnable(CAN0_BASE);
-
-    //
-    // Enable interrupts from CAN controller.
-    //
-    CANIntEnable(CAN0_BASE, CAN_INT_MASTER | CAN_INT_ERROR);
-
-    //
-    // Enable interrupts for the CAN in the NVIC.
-    //
-    IntEnable(INT_CAN0);
-
-    //
-    // Enable processor interrupts.
-    //
-    IntMasterEnable();
-
-    //
-    // Set the initial state to wait for data.
-    //
-    g_sCAN.eState = CAN_WAIT_RX;
-
-    //
-    // Reset the buffer pointer.
-    //
-    g_sCAN.MsgObjectRx.pucMsgData = g_sCAN.pucBufferRx;
-
-    //for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
-    //{
-    //    g_sCAN.pucBufferTx[iIdx] = iIdx + 0x1;
-    //}
-
-    //
-    // Set the total number of bytes expected.
-    //
-    g_sCAN.ulBytesRemaining = CAN_FIFO_SIZE;
-
-    //
-    // Configure the receive message FIFO.
-    //
-    CANReceiveFIFO(g_sCAN.pucBufferRx, CAN_FIFO_SIZE);
-
-    //
-    // Initialized the LED toggle count.
-    //
-    g_ulLEDCount = 0;
-
-    //
-    // Loop forever.
-    //
-
-      
+int main(void)
+{  
+    CAN_Init();
 
     while(1)
     {
@@ -577,8 +585,7 @@ main(void)
                     //
                     // Initialize the transmit count to zero.
                     //
-                    g_sCAN.ulBytesTransmitted = 0;
-                    CANTransmitFIFO(g_sCAN.pucBufferRx, CAN_FIFO_SIZE);
+                    CAN_Send(g_sCAN.pucBufferRx);
                     //
                     // Switch to wait for Process data state.
                     //

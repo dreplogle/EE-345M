@@ -36,6 +36,7 @@
 #include "driverlib/systick.h"
 #include "drivers/rit128x96x4.h"
 #include "drivers/can_fifo.h"
+#include "drivers/OS.h"
 
 //*****************************************************************************
 //
@@ -128,6 +129,7 @@ struct
 // Used by the ToggleLED function to set the toggle rate.
 //
 unsigned long g_ulLEDCount;
+Sema4Type CANSema;
 int iIdx;
 
 //*****************************************************************************
@@ -418,34 +420,9 @@ ToggleLED(void)
     g_ulLEDCount++;
 }
 
-//*****************************************************************************
-//
-// This is the main loop for the application.
-//
-//*****************************************************************************
-void CAN_Send(void)
+void CAN_Init()
 {
-  for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
-  {
-    g_sCAN.pucBufferTx[iIdx] = iIdx + 0x1;
-  }
   //
-  // Initialize the transmit count to zero.
-  //
-  g_sCAN.ulBytesTransmitted = 0;
-  CANTransmitFIFO(g_sCAN.pucBufferTx, CAN_FIFO_SIZE);
-  g_sCAN.eState = CAN_SENDING;
-}
-void CAN_Receive(void)
-{
-  g_sCAN.eState = CAN_WAIT_RX;
-}
-
-void
-CAN(void)
-{
-    char string[10];
-    //
     // If running on Rev A2 silicon, turn the LDO voltage up to 2.75V.  This is
     // a workaround to allow the PLL to operate reliably.
     //
@@ -453,6 +430,8 @@ CAN(void)
     {
         SysCtlLDOSet(SYSCTL_LDO_2_75V);
     }
+
+    OS_InitSemaphore(&CANSema, 1);
 
     //
     // Set the clocking to run directly from the PLL at 50MHz.
@@ -557,6 +536,41 @@ CAN(void)
     //
     // Loop forever.
     //
+
+}
+  
+
+//*****************************************************************************
+//
+// This is the main loop for the application.
+//
+//*****************************************************************************
+void CAN_Send(unsigned char *data)
+{
+  OS_bWait(&CANSema);
+  for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
+  {
+    g_sCAN.pucBufferTx[iIdx] = *(data+iIdx);
+  }
+  //
+  // Initialize the transmit count to zero.
+  //
+  g_sCAN.ulBytesTransmitted = 0;
+  CANTransmitFIFO(g_sCAN.pucBufferTx, CAN_FIFO_SIZE);
+  g_sCAN.eState = CAN_SENDING;
+  OS_bSignal(&CANSema);
+}
+void CAN_Receive(void)
+{
+  g_sCAN.eState = CAN_WAIT_RX;
+}
+
+void
+CAN(void)
+{
+    char string[10];
+    
+    CAN_Init();
 
     while(1)
     {

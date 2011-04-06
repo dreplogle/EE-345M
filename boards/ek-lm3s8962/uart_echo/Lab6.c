@@ -97,7 +97,14 @@ extern void Interpreter(void);
 // Called when Select Button pushed
 // background threads execute once and return
 void ButtonPush(void){
-  CAN_Send();
+  int i;
+  unsigned char data[CAN_FIFO_SIZE];
+  for(i=0; i<CAN_FIFO_SIZE; i++)
+  {
+    data[i] = i;
+  }
+  
+  CAN_Send(data);
 }
 //************DownPush*************
 // Called when Down Button pushed
