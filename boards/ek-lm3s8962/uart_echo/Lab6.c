@@ -42,7 +42,7 @@ unsigned short FilterOn = 1;
 
 struct sensors{
 	unsigned long ping;
-	unsigned char tach;
+	unsigned long tach;
 	long IR;
 }Sensors;
 

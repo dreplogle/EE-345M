@@ -227,20 +227,22 @@ void Tach_InputCapture(void){
 // Inputs: none
 // Outputs: none
 unsigned long SeeTach;
+unsigned long speed;
+//int CANTransmitFIFO(unsigned char *pucData, unsigned long ulSize);
+unsigned char speedBuffer[CAN_FIFO_SIZE];
 void Tach_SendData(void){
 	unsigned long data;
 	unsigned char tachArr[CAN_FIFO_SIZE];
 	int i;
 	if(Tach_Fifo_Get(&data)){
 		SeeTach = data;
-		data = 750000000/data; //convert to RPM	-> (60 s)*(10^9ns)/4*(T*20 ns)
+		data = (375000000/data); //convert to RPM	-> (60 s)*(10^9ns)/4*(T*40 ns)
 		data = Tach_Filter(data);
-//	for(i = 0; i < 64; i++)
-//	{
-//		tachArr[i] = 'c';
-//	}
-		tachArr[0] = 't';
-		tachArr[1] = data;
-		CAN_Send(&tachArr[0]);
+		speedBuffer[0] = 't';
+		memcpy(&speedBuffer[1], &data, 4);
+
+		//tachArr[0] = 't';
+		//tachArr[1] = data;
+		CAN_Send(speedBuffer);
 	}
 }

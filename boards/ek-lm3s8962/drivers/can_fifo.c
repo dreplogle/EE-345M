@@ -41,7 +41,7 @@
 
 extern struct sensors{
 	unsigned long ping;
-	unsigned char tach;
+	unsigned long tach;
 	long IR;
 }Sensors;
 
@@ -565,6 +565,7 @@ void CAN_Receive(void)
 }
 
 unsigned long pingIn;
+unsigned long tachIn;
 void
 CAN(void)
 {
@@ -596,7 +597,8 @@ CAN(void)
                 //if(g_sCAN.ulBytesRemaining == 0)
                 {
 					if(g_sCAN.pucBufferRx[0] == 't'){
-					Sensors.tach = g_sCAN.pucBufferRx[1];
+					memcpy(&tachIn, &g_sCAN.pucBufferRx[1], 4); 
+					Sensors.tach = tachIn;
 					}
 					if(g_sCAN.pucBufferRx[0] == 'p'){
 					memcpy(&pingIn, &g_sCAN.pucBufferRx[1], 4); 
