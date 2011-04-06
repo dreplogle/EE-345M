@@ -22,7 +22,10 @@
 #include "driverlib/gpio.h"
 #include "driverlib/interrupt.h"
 #include "drivers/OS.h"
-#include "drivers/can_fifo.h"
+#include "timer.h"
+#include "inc/hw_timer.h"
+#include "driverlib/sysctl.h"
+//#include "drivers/can_fifo.h"
 
 long SRSave (void);
 void SRRestore(long sr);
@@ -34,29 +37,24 @@ void SRRestore(long sr);
 // OS_Fifo variables, this code segment copied from Valvano, lecture1
 //***********************************************************************
 typedef unsigned long dataType;
-dataType volatile *Tachometer_PutPt; // put next
-dataType volatile *Tachometer_GetPt; // get next
-dataType static Tachometer_Fifo[MAX_TACH_FIFOSIZE];
-unsigned long Tachometer_FifoSize;
-Sema4Type Tachometer_FifoDataReady;
+dataType volatile *Tach_PutPt; // put next
+dataType volatile *Tach_GetPt; // get next
+dataType static Tach_Fifo[MAX_TACH_FIFOSIZE];
+unsigned long Tach_FifoSize;
+Sema4Type Tach_FifoDataReady;
 
 //***********************************************************************
 //
 // OS_Fifo_Init
 //
 //***********************************************************************
-void
-Tachometer_Fifo_Init(unsigned int size)
+static
+void Tach_Fifo_Init(unsigned int size)
 {
   long sr = 0;
-  OS_ENTERCRITICAL();
 
-  Tachometer_PutPt = Tachometer_GetPt = &Tachometer_Fifo[0];
-  Tachometer_FifoSize = size;
-  OS_InitSemaphore(&Tachometer_FifoDataReady,0);
-  
-
-  OS_EXITCRITICAL();  
+  Tach_PutPt = Tach_GetPt = &Tach_Fifo[0];
+  Tach_FifoSize = size;
 }
 
 //***********************************************************************
@@ -64,17 +62,17 @@ Tachometer_Fifo_Init(unsigned int size)
 // OS_Fifo_Get
 //
 //***********************************************************************
+static
 unsigned int
-Tachometer_Fifo_Get(unsigned long * dataPtr)
+Tach_Fifo_Get(unsigned long * dataPtr)
 {
-  if(Tachometer_PutPt == Tachometer_GetPt ){
-    return FAIL;// Empty if Tachometer_PutPt=GetPt
+  if(Tach_PutPt == Tach_GetPt ){
+    return FAIL;// Empty if Tach_PutPt=GetPt
   }
   else{
-  OS_Wait(&Tachometer_FifoDataReady);
-  *dataPtr = *(Tachometer_GetPt++);
-    if(Tachometer_GetPt==&Tachometer_Fifo[Tachometer_FifoSize]){
-      Tachometer_GetPt = &Tachometer_Fifo[0]; // wrap
+    *dataPtr = *(Tach_GetPt++);
+    if(Tach_GetPt==&Tach_Fifo[Tach_FifoSize]){
+      Tach_GetPt = &Tach_Fifo[0]; // wrap
     }
     return SUCCESS;
   }
@@ -86,25 +84,24 @@ Tachometer_Fifo_Get(unsigned long * dataPtr)
 //
 //***********************************************************************
 unsigned int
-Tachometer_Fifo_Put(unsigned long data)
+Tach_Fifo_Put(unsigned long data)
 {
   dataType volatile *nextPutPt;
-  nextPutPt = Tachometer_PutPt+1;
-  if(nextPutPt ==&Tachometer_Fifo[Tachometer_FifoSize]){
-    nextPutPt = &Tachometer_Fifo[0]; // wrap
+  nextPutPt = Tach_PutPt+1;
+  if(nextPutPt ==&Tach_Fifo[Tach_FifoSize]){
+    nextPutPt = &Tach_Fifo[0]; // wrap
   }
-  if(nextPutPt == Tachometer_GetPt){
+  if(nextPutPt == Tach_GetPt){
     return FAIL; // Failed, fifo full
   }
   else{
-    *(Tachometer_PutPt) = data; // Put
-    Tachometer_PutPt = nextPutPt; // Success, update
-	OS_Signal(&Tachometer_FifoDataReady);
+    *(Tach_PutPt) = data; // Put
+    Tach_PutPt = nextPutPt; // Success, update
     return SUCCESS;
   }
 }
 
-// ********** Tachometer_Filter ***********
+// ********** Tach_Filter ***********
 // Peforms IIR filter calculations, stores
 //   filtered data in y buffer
 // (Based on Filter from Lab2.c	by Jonathan Valvano)
@@ -112,7 +109,7 @@ Tachometer_Fifo_Put(unsigned long data)
 // 	 data - data to be filtered
 // Outputs: filtered data
 static
-unsigned long Tachometer_Filter(unsigned long data){
+unsigned long Tach_Filter(unsigned long data){
 	static unsigned long x[4];
 	static unsigned long y[4];
 	static unsigned int n=2;
@@ -123,63 +120,102 @@ unsigned long Tachometer_Filter(unsigned long data){
 	y[n] = (y[n-1] + x[n])/2;
 	y[n-2] = y[n]; // two copies of filter outputs too
 	return y[n];
+}
+
+// *********** Tach_TimeDifference ************
+// Returns time difference (in ___ (units)) between time1 and time2
+// Inputs:
+//   time1 - new time (smaller b/c countdown)
+//   time2 - old time
+// Outputs: none
+static
+long Tach_TimeDifference(unsigned long time1, unsigned long time2)
+//                                   thisTime          	  LastTime
+{
+  if(time2 >= time1)
+  {
+  	return (long)(time2-time1);
+  }
+  else
+  {
+    return (long)(time2 + (0xFFFF-time1));      
+  } 
 } 
 
-// *********** Tachometer_Init ************
+// *********** Tach_Init ************
 // Initializes tachometer I/O pins and interrupts
 // Inputs: none
 // Outputs: none
-void Tachometer_Init(unsigned long priority){
+void Tach_Init(unsigned long priority){
+
+    
+  	SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
+
 	//Configure port pin for digital input
-	GPIODirModeSet(GPIO_PORTB_BASE, (GPIO_PIN_0 | GPIO_PIN_1), GPIO_DIR_MODE_IN);
-	GPIOPadConfigSet(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
+	GPIODirModeSet(GPIO_PORTB_BASE, (GPIO_PIN_0 | GPIO_PIN_1), GPIO_DIR_MODE_HW);
+	GPIOPadConfigSet(GPIO_PORTB_BASE, (GPIO_PIN_0 | GPIO_PIN_1), GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
 
-	
-	//Configure and enable edge interrupts
-	GPIOIntTypeSet(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1, GPIO_FALLING_EDGE); 
-	GPIOPinIntEnable(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+	//Configure alternate function
+	GPIOPinConfigure(GPIO_PB0_CCP0);
+	//GPIOPinConfigure(GPIO_PB1_CCP2);
 
+	// Configure GPTimerModule to generate triggering events
+  	// at the specified sampling rate.
+  	SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
+
+	TimerDisable(TIMER0_BASE, TIMER_A);
+	//TimerDisable(TIMER1_BASE, TIMER_A);
+
+	// Configure for Subtimer A Input Edge Timing Mode
+	HWREG(TIMER0_BASE + TIMER_O_CFG) = 0x04;
+	HWREG(TIMER0_BASE + TIMER_O_TAMR) = 0x07;
+	//TimerConfigure(TIMER0_BASE, TIMER_CFG_A_CAP_TIME); 
+	HWREG(TIMER0_BASE + TIMER_O_CTL) = HWREG(TIMER0_BASE + TIMER_O_CTL) & ~(0x06);
+	HWREG(TIMER0_BASE + TIMER_O_TAILR) = 0xFFFF; 
+	TimerIntEnable(TIMER0_BASE, TIMER_CAPA_EVENT);
+	TimerEnable(TIMER0_BASE, TIMER_A);
 
 	//Enable port interrupt in NVIC
-	IntEnable(INT_GPIOB);
-	IntPrioritySet(INT_GPIOB, priority << 5);
+	IntEnable(INT_TIMER0A);
+	IntPrioritySet(INT_TIMER0A, priority << 5);
+	//
 
 	//Initialize FIFO
-	Tachometer_Fifo_Init(128);
+	Tach_Fifo_Init(128);
 }
 
-// ********** Tachometer_InputCapture ***********
+// ********** Tach_InputCapture ***********
 // Input capture exception handler for tachometer.
 //   Interrupts on rising edge. Obtains time since
 //   previous interrupts, sends time to foreground
 //   via FIFO.
 // Inputs: none
 // Outputs: none
-void Tachometer_InputCapture(void){
+void Tach_InputCapture(void){
 	static unsigned long time1 = 0;
 	unsigned long time2;
 
-    // TODO: Get Time Automatically from hardware
-	time2 = OS_Time();
+    // Get time automatically from hardware
+	time2 = HWREG(TIMER0_BASE + TIMER_O_TAR);
 	if (time1 != 0){
-		Tachometer_Fifo_Put(OS_TimeDifference(time2, time1));
+		Tach_Fifo_Put(Tach_TimeDifference(time2, time1));
 	}
 	time1 = time2;
+
+	TimerIntClear(TIMER0_BASE, TIMER_CAPA_EVENT);
 }
 
 
-// ********** Tachometer_FG ***********
-// Foreground thread that analyzes tachometer data,
-//   passes to other computer via CAN.
+// ********** Tach_SendData ***********
+// Analyzes tachometer data, passes to
+//   big board via CAN.
 // Inputs: none
 // Outputs: none
-void Tachometer_FG(void){
+void Tach_SendData(void){
 	unsigned long *data;
 
-    while(1){
-		Tachometer_Fifo_Get(data);
-		*data = 60/((*data << 2)/1000000); //convert to RPM
-		*data = Tachometer_Filter(*data);
-		CANTransmitFIFO((unsigned char *)data, 4);	
-	} 
+	Tach_Fifo_Get(data);
+	*data = 60/((*data << 2)/1000000); //convert to RPM
+	*data = Tach_Filter(*data);
+	//CANTransmitFIFO((unsigned char *)data, 4); 
 }

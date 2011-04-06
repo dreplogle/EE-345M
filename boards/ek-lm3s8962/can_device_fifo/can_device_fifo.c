@@ -472,6 +472,8 @@ void CAN_TimerInts_Init(unsigned long period, unsigned long priority)
 
 void CAN_Init(void)
 {
+    //Ping_Init(TIMER2_BASE, TIMER_A); //Must do this after OS_AddPeriodicThread in order
+
     // If running on Rev A2 silicon, turn the LDO voltage up to 2.75V.  This is
     // a workaround to allow the PLL to operate reliably.
     if(REVISION_IS_A2)
