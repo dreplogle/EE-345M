@@ -258,6 +258,7 @@ void pingConsumer(void)
 
 			//Disable pending ping interrupts
 		    IntDisable(INT_TIMER0B);
+			TimerIntDisable(TIMER0_BASE, TIMER_CAPB_EVENT);
 
 			//Reset the fifo
 			Ping_Fifo_Init();
@@ -267,6 +268,7 @@ void pingConsumer(void)
 
 			//Clear pending ping interrupts 
 			TimerIntClear(TIMER0_BASE, TIMER_CAPB_EVENT);
+
 
 
 			//Clear port A6
