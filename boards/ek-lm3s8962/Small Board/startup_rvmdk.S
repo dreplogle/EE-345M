@@ -91,6 +91,7 @@ __heap_limit
 		EXTERN  pingInterruptHandler
 		EXTERN  pingProducer
 		EXTERN  CANIntHandler
+		EXTERN  PingTimer1BHandler
 
 ;******************************************************************************
 ;
@@ -137,7 +138,7 @@ __Vectors
         DCD     IntDefaultHandler           ; Timer 0 subtimer A
         DCD     pingInterruptHandler           ; Timer 0 subtimer B
         DCD     Tach_InputCapture           ; Timer 1 subtimer A
-        DCD     IntDefaultHandler           ; Timer 1 subtimer B
+        DCD     PingTimer1BHandler           ; Timer 1 subtimer B
         DCD     pingProducer            ; Timer 2 subtimer A
         DCD     IntDefaultHandler           ; Timer 2 subtimer B
         DCD     IntDefaultHandler           ; Analog Comparator 0
