@@ -25,6 +25,7 @@
 #include "timer.h"
 #include "inc/hw_timer.h"
 #include "driverlib/sysctl.h"
+#include "can_device_fifo/can_device_fifo.h"
 //#include "drivers/can_fifo.h"
 
 long SRSave (void);

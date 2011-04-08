@@ -11,6 +11,7 @@
 #include "string.h"
 #include "driverlib/can.h"
 #include <string.h>
+#include "can_device_fifo/can_device_fifo.h"
 
 #define SYSCTL_RCGC2_R     (*((volatile unsigned long *)0x400FE108)) 
 #define GPIOA_AFSEL_R		(*((volatile unsigned long *)0x40004420)) 
