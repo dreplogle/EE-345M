@@ -86,8 +86,7 @@ __heap_limit
 		EXTERN  SysTickThSwIntHandler
 		EXTERN  PendSVHandler
 		EXTERN  SwitchIntHandler
-    EXTERN  CANIntHandler
-	EXTERN  Tach_InputCapture
+		EXTERN  Comparator0_Handler
 
 ;******************************************************************************
 ;
@@ -137,7 +136,7 @@ __Vectors
         DCD     IntDefaultHandler           ; Timer 1 subtimer B
         DCD     IntDefaultHandler            ; Timer 2 subtimer A
         DCD     IntDefaultHandler           ; Timer 2 subtimer B
-        DCD     IntDefaultHandler           ; Analog Comparator 0
+        DCD     Comparator0_Handler           ; Analog Comparator 0
         DCD     IntDefaultHandler           ; Analog Comparator 1
         DCD     IntDefaultHandler           ; Analog Comparator 2
         DCD     IntDefaultHandler           ; System Control (PLL, OSC, BO)
@@ -151,7 +150,7 @@ __Vectors
         DCD     Timer3BIntHandler            ; Timer 3 subtimer B
         DCD     IntDefaultHandler           ; I2C1 Master and Slave
         DCD     IntDefaultHandler           ; Quadrature Encoder 1
-        DCD     CANIntHandler               ; CAN0
+        DCD     IntDefaultHandler               ; CAN0
         DCD     IntDefaultHandler           ; CAN1
         DCD     IntDefaultHandler           ; CAN2
         DCD     IntDefaultHandler           ; Ethernet

@@ -28,7 +28,7 @@
 #include "drivers/OSuart.h"
 
 unsigned long NumCreated;   // number of foreground threads created
-unsigned long PIDWork;      // current number of PID calculations finished
+
 unsigned long FilterWork;   // number of digital filter calculations finished
 unsigned long NumSamples;   // incremented every sample
 unsigned long DataLost;     // data sent by Producer, but not received by Consumer
@@ -163,7 +163,6 @@ unsigned short input;
 void ButtonWork(void){
 unsigned long myId = OS_Id(); 
   oLED_Message(1,0,"NumCreated =",NumCreated); 
-  oLED_Message(1,1,"PIDWork    =",PIDWork);
   oLED_Message(1,2,"DataLost   =",DataLost);
   oLED_Message(1,3,"0.1u Jitter=",MaxJitterA-MinJitterA);
   OS_Kill();  // done
@@ -260,61 +259,7 @@ unsigned long myId = OS_Id();
   }
   OS_Kill();  // done
 }
-//******** Display *************** 
-// foreground thread, accepts data from consumer
-// displays calculated results on the LCD
-// inputs:  none                            
-// outputs: none
-void Display(void){ 
-unsigned long data,voltage;
-  oLED_Message(0,0,"Run length is",(RUNLENGTH)/1000);   // top half used for Display
-  while(NumSamples < RUNLENGTH) { 
-    oLED_Message(0,1,"Time left is",(RUNLENGTH-NumSamples)/1000);   // top half used for Display
-    
-	OS_Wait(&MailBoxFull);
-	data = OS_MailBox_Recv();
-	OS_Signal(&MailBoxEmpty);
-    
-	voltage = 3000*data/1024;               // calibrate your device so voltage is in mV
-    oLED_Message(0,2,"v(mV) =",voltage);  
-  } 
-  OS_Kill();  // done
-} 
 
-//--------------end of Task 3-----------------------------
-
-//------------------Task 4--------------------------------
-// foreground thread that runs without waiting or sleeping
-// it executes a digital controller 
-//******** PID *************** 
-// foreground thread, runs a PID controller
-// never blocks, never sleeps, never dies
-// inputs:  none
-// outputs: none
-short IntTerm;     // accumulated error, RPM-sec
-short PrevError;   // previous error, RPM
-short Coeff[3];    // PID coefficients
-short PID_stm32(short Error, short *Coeff);
-short Actuator;
-void PID(void){ 
-short err;  // speed error, range -100 to 100 RPM
-unsigned long myId = OS_Id(); 
-  PIDWork = 0;
-  IntTerm = 0;
-  PrevError = 0;
-  Coeff[0] = 384;   // 1.5 = 384/256 proportional coefficient
-  Coeff[1] = 128;   // 0.5 = 128/256 integral coefficient
-  Coeff[2] = 64;    // 0.25 = 64/256 derivative coefficient*
-  while(NumSamples < RUNLENGTH) { 
-    for(err = -1000; err <= 1000; err++){    // made-up data
-      Actuator = PID_stm32(err,Coeff)/256;
-    }
-	GPIO_B2 ^= 0x04; 
-    PIDWork++;        // calculation finished
-  }
-  OS_Kill();          // done
-}
-//--------------end of Task 4-----------------------------
 
 //------------------Task 5--------------------------------
 // UART background ISR performs serial input/output
