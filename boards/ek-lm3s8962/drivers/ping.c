@@ -2,7 +2,6 @@
 #include "hw_memmap.h"
 #include "hw_sysctl.h"
 #include "hw_timer.h"
-#include "os.h"
 #include "timer.h"
 #include "gpio.h"
 #include "sysctl.h"
@@ -13,13 +12,6 @@
 #include <string.h>
 #include "math.h"
 
-
-
-// ******** CAN_Send ************
-// Sends information on the CAN
-// Inputs: "data" is a pointer to the data to be sent
-// Outputs: none
-void CAN_Send(unsigned char *data);
 
 
 
@@ -38,9 +30,52 @@ void CAN_Send(unsigned char *data);
 #define CAN_FIFO_SIZE           (8 * 8)
 
 unsigned long Ping_Data_Lost = 0;
-Sema4Type Ping_Fifo_Available;
+//Sema4Type Ping_Fifo_Available;
 unsigned long NumSamples = 0;
 unsigned long DataLost = 0;
+
+
+
+// ******** CAN_Send ************
+// Sends information on the CAN
+// Inputs: "data" is a pointer to the data to be sent
+// Outputs: none
+void CAN_Send(unsigned char *data);
+
+
+
+unsigned long OS_Time(void)
+{
+  return TimerValueGet(TIMER1_BASE, TIMER_B);
+}
+
+
+
+
+
+
+
+//***********************************************************************
+//
+// OS_TimeDifference returns the time difference in usec.
+// inputs: "time1" is the second time, "time2" is the first time
+// outputs: returns the difference between "time1" and "time2"
+//
+//***********************************************************************
+long OS_TimeDifference(unsigned long time1, unsigned long time2)
+//                                   thisTime          	  LastTime
+{
+  if(time2 >= time1)
+  {
+  	return (long)(time2-time1);
+  }
+  else
+  {
+    return (long)(time2 + (MAX_16_BIT_TCNT-time1));      
+  } 
+}
+
+
 
 //*****************************************************************************
 //
@@ -118,12 +153,6 @@ unsigned long Ping_Fifo_Get(void){
 	}
   	return (p->buf [(p->out++) & (PING_BUF_SIZE - 1)]);
 }
-
-unsigned long OS_Time(void)
-{
-  return TimerValueGet(TIMER1_BASE, TIMER_B);
-}
-
 
 
 
@@ -311,25 +340,7 @@ void PingTimer1BHandler(void)
 
 
 
-//***********************************************************************
-//
-// OS_TimeDifference returns the time difference in usec.
-// inputs: "time1" is the second time, "time2" is the first time
-// outputs: returns the difference between "time1" and "time2"
-//
-//***********************************************************************
-long OS_TimeDifference(unsigned long time1, unsigned long time2)
-//                                   thisTime          	  LastTime
-{
-  if(time2 >= time1)
-  {
-  	return (long)(time2-time1);
-  }
-  else
-  {
-    return (long)(time2 + (MAX_TCNT-time1));      
-  } 
-}
+
 
 
 // ******** pingInterruptHandler ************
@@ -360,7 +371,7 @@ void pingInterruptHandler(void)
 		//make Timer 1B cause a timeout interrupt
 		TimerDisable(TIMER1_BASE, TIMER_B);
 		TimerIntEnable(TIMER1_BASE, TIMER_TIMB_TIMEOUT);
-		TimerLoadSet(TIMER1_BASE, TIMER_B, MAX_TCNT);
+		TimerLoadSet(TIMER1_BASE, TIMER_B, MAX_16_BIT_TCNT);
 
 
 		//Enable timer 1B and its interrupts
@@ -435,7 +446,7 @@ void Ping_Init(unsigned long periodicTimer, unsigned long subTimer)
 
  	 // Configure Timer1 as a 16-bit periodic timer.
  	 TimerConfigure(TIMER1_BASE, TIMER_CFG_B_PERIODIC);
- 	 TimerLoadSet(TIMER1_BASE, TIMER_B, MAX_TCNT);
+ 	 TimerLoadSet(TIMER1_BASE, TIMER_B, MAX_16_BIT_TCNT);
 
 	 TimerEnable(TIMER1_BASE, TIMER_B);
 
