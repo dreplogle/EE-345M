@@ -32,6 +32,7 @@ void SRRestore(long sr);
 
 #define OS_ENTERCRITICAL(){sr = SRSave();}
 #define OS_EXITCRITICAL(){SRRestore(sr);}
+#define CAN_FIFO_SIZE           (8 * 8)
 
 //***********************************************************************
 // OS_Fifo variables, this code segment copied from Valvano, lecture1

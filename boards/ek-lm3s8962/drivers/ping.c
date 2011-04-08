@@ -11,6 +11,17 @@
 #include "string.h"
 #include "driverlib/can.h"
 #include <string.h>
+#include "math.h"
+
+
+
+// ******** CAN_Send ************
+// Sends information on the CAN
+// Inputs: "data" is a pointer to the data to be sent
+// Outputs: none
+void CAN_Send(unsigned char *data);
+
+
 
 #define SYSCTL_RCGC2_R     (*((volatile unsigned long *)0x400FE108)) 
 #define GPIOA_AFSEL_R		(*((volatile unsigned long *)0x40004420)) 
@@ -24,6 +35,7 @@
 #define CCP1_TIMER_PRESCALE 0
 #define MAX_DISTANCE 446
 #define PING_PERIOD 50000 //This is in units of 2000 ns increments
+#define CAN_FIFO_SIZE           (8 * 8)
 
 unsigned long Ping_Data_Lost = 0;
 Sema4Type Ping_Fifo_Available;
@@ -112,15 +124,39 @@ unsigned long OS_Time(void)
   return TimerValueGet(TIMER1_BASE, TIMER_B);
 }
 
+
+
+
+
+
 unsigned long distance = 0;
-//int CANTransmitFIFO(unsigned char *pucData, unsigned long ulSize);
 unsigned char distanceBuffer[CAN_FIFO_SIZE];
 unsigned long DebugPulseWidth = 0;
+#define PING_SAMPLING_RATE 10
+struct PING_STATS{
+  short average;
+  short stdev;
+  short maxdev;
+};
+struct PING_STATS PING_Stats;
+long ping_stats[PING_SAMPLING_RATE];
+int ping_stats_index = 0;
+
+
+
+// ******** pingConsumer ************
+// Gets pulse width data from the Ping fifo
+// and converts it into distance
+// Inputs: none
+// Outputs: none
 void pingConsumer(void)  //make this an interrupt
 {
 	unsigned long pulseWidth;
 	unsigned long pulseWidthUSec;
 	unsigned long tempDistance;
+	long sum;
+ 	unsigned short max,min;
+	int i;
 
 		pulseWidth = Ping_Fifo_Get();
 		if (pulseWidth > 0 && pulseWidth < 65535)
@@ -133,12 +169,47 @@ void pingConsumer(void)  //make this an interrupt
 			tempDistance = tempDistance / 2;
 			distance = tempDistance;
 		
+
+
 			//Transmit by CAN
 			distanceBuffer[0] = 'p';
 			memcpy(&distanceBuffer[1], &distance, 4);
-			//sprintf((char *)&distanceBuffer[1], "%ul",distance);
 			CAN_Send(distanceBuffer);
-		//	CANTransmitFIFO( (unsigned char*) &distanceBuffer, 3);
+
+
+
+			//Take measurements
+			if (ping_stats_index < PING_SAMPLING_RATE)
+			{
+				ping_stats[ping_stats_index] = distance;
+				ping_stats_index++;
+			}
+			else
+			{
+				ping_stats_index = 0;
+
+				//Average = sum of all values/number of values
+				//Maximum deviation = max value - min value
+				max = ping_stats[0];
+				min = ping_stats[0];
+				sum = 0;
+				for(i = 0; i < PING_SAMPLING_RATE; i++){
+			      sum += ping_stats[i];
+				  if(ping_stats[i] <= min) min = ping_stats[i];
+				  if(ping_stats[i] > max) max = ping_stats[i];	  
+				}
+			    PING_Stats.average = (sum/PING_SAMPLING_RATE);
+				PING_Stats.maxdev = (max - min);
+			
+				//Standard deviation = sqrt(sum of (each value - average)^2 / number of values)
+				sum = 0;
+				for(i = 0; i < PING_SAMPLING_RATE; i++){
+			      sum +=(ping_stats[i]-PING_Stats.average)*(ping_stats[i]-PING_Stats.average);	  
+				}
+				sum = sum/PING_SAMPLING_RATE;
+				PING_Stats.stdev = sqrt(sum);
+			}
+
 		}
 		if (pulseWidth >= 65536)//Error, thinks rising edge is falling edge and vice versa
 		{
@@ -169,6 +240,13 @@ void pingConsumer(void)  //make this an interrupt
 		}
 }
 
+
+
+// ******** pingProducer ************
+// Starts a Ping distance measurement
+// by the Ping sensor
+// Inputs: none
+// Outputs: none
 void pingProducer(void)
 {
 	unsigned long startTime = OS_Time();
@@ -212,9 +290,16 @@ void pingProducer(void)
 	NumSamples++;
 
 }
+
+
+
+
+
 //***********************************************************************
 //
 // OS_TimeDifference returns the time difference in usec.
+// inputs: "time1" is the second time, "time2" is the first time
+// outputs: returns the difference between "time1" and "time2"
 //
 //***********************************************************************
 long OS_TimeDifference(unsigned long time1, unsigned long time2)
@@ -231,7 +316,12 @@ long OS_TimeDifference(unsigned long time1, unsigned long time2)
 }
 
 
-
+// ******** pingInterruptHandler ************
+// Called by input capture interrupts created by
+// the Ping sensor. Puts pulse width of the Ping
+// sensor pulse in the Ping fifo.
+// Inputs: none
+// Outputs: none
 void pingInterruptHandler(void)
 {
 	unsigned long pulseWidth = 0;
@@ -283,6 +373,15 @@ void pingInterruptHandler(void)
 
 #define PING_TIMER_PRESCALE 49
 
+
+
+// ******** Ping_Init ************
+// Initializes all timers and ports that
+// are related to the Ping sensor.
+// Inputs: "periodicTimer" is the timer used for the periodic interrupt
+// that calls pingProducer. "subTimer" is the sub-timer used for the periodic
+// interrupt that calls pingProducer.
+// Outputs: none
 void Ping_Init(unsigned long periodicTimer, unsigned long subTimer)
 {
 	unsigned long delay;
@@ -337,3 +436,4 @@ void Ping_Init(unsigned long periodicTimer, unsigned long subTimer)
 
 
 }
+
