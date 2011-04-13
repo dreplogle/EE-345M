@@ -447,11 +447,6 @@
               <FilePath>..\drivers\can_fifo.c</FilePath>
             </File>
             <File>
-              <FileName>tachometer.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\drivers\tachometer.c</FilePath>
-            </File>
-            <File>
               <FileName>can.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\..\driverlib\can.c</FilePath>
