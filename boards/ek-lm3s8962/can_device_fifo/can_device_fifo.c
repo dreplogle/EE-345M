@@ -38,6 +38,8 @@
 #include "driverlib/timer.h"
 #include "drivers/ping.h"
 #include "drivers/tachometer.h"
+#include "can_device_fifo/can_device_fifo.h"
+
 
 //*****************************************************************************
 //
@@ -51,31 +53,6 @@
 //! back in it's receive FIFO back out it's transmit FIFO.
 //
 //*****************************************************************************
-
-//
-// Size of the FIFOs allocated to the CAN controller.
-//
-#define CAN_FIFO_SIZE           (8 * 8)
-
-//
-// Message object used by the transmit message FIFO.
-//
-#define TRANSMIT_MESSAGE_ID     11
-
-//
-// Message object used by the receive message FIFO.
-//
-#define RECEIVE_MESSAGE_ID      8
-
-//
-// The number of FIFO transfers that cause a toggle of the LED.
-//
-#define TOGGLE_RATE             100
-
-//
-// The CAN bit rate.
-//
-#define CAN_BITRATE             250000
 
 enum Device
 {

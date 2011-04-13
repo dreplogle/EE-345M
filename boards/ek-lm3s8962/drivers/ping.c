@@ -2,7 +2,6 @@
 #include "hw_memmap.h"
 #include "hw_sysctl.h"
 #include "hw_timer.h"
-#include "os.h"
 #include "timer.h"
 #include "gpio.h"
 #include "sysctl.h"
@@ -11,6 +10,10 @@
 #include "string.h"
 #include "driverlib/can.h"
 #include <string.h>
+#include "math.h"
+
+
+
 
 #define SYSCTL_RCGC2_R     (*((volatile unsigned long *)0x400FE108)) 
 #define GPIOA_AFSEL_R		(*((volatile unsigned long *)0x40004420)) 
@@ -22,20 +25,64 @@
 #define SPEED_OF_SOUND 34029 //speed of sound in 10 nm/us units
 #define NUMBER_OF_NM_IN_MM 1000000
 #define CCP1_TIMER_PRESCALE 0
-#define MAX_DISTANCE 446
+#define MAX_DISTANCE 3000
 #define PING_PERIOD 50000 //This is in units of 2000 ns increments
+#define CAN_FIFO_SIZE           (8 * 8)
 
 unsigned long Ping_Data_Lost = 0;
-Sema4Type Ping_Fifo_Available;
+//Sema4Type Ping_Fifo_Available;
 unsigned long NumSamples = 0;
 unsigned long DataLost = 0;
+
+
+
+// ******** CAN_Send ************
+// Sends information on the CAN
+// Inputs: "data" is a pointer to the data to be sent
+// Outputs: none
+void CAN_Send(unsigned char *data);
+
+
+
+unsigned long OS_Time(void)
+{
+  return TimerValueGet(TIMER1_BASE, TIMER_B);
+}
+
+
+
+
+
+
+
+//***********************************************************************
+//
+// OS_TimeDifference returns the time difference in usec.
+// inputs: "time1" is the second time, "time2" is the first time
+// outputs: returns the difference between "time1" and "time2"
+//
+//***********************************************************************
+long OS_TimeDifference(unsigned long time1, unsigned long time2)
+//                                   thisTime          	  LastTime
+{
+  if(time2 >= time1)
+  {
+  	return (long)(time2-time1);
+  }
+  else
+  {
+    return (long)(time2 + (MAX_16_BIT_TCNT-time1));      
+  } 
+}
+
+
 
 //*****************************************************************************
 //
 // Ping FIFO
 //
 //*****************************************************************************
-#define PING_BUF_SIZE   1024	     /*** Must be a power of 2 (2,4,8,16,32,64,128,256,512,...) ***/
+#define PING_BUF_SIZE   16	     /*** Must be a power of 2 (2,4,8,16,32,64,128,256,512,...) ***/
 
 #if PING_BUF_SIZE < 2
 #error PING_BUF_SIZE is too small.  It must be larger than 1.
@@ -51,7 +98,7 @@ unsigned short fallingEdgeTime = 0;
 struct buf_st {
   unsigned int in;                                // Next In Index
   unsigned int out;                               // Next Out Index
-  short buf [PING_BUF_SIZE];                           // Buffer
+  unsigned long buf [PING_BUF_SIZE];                           // Buffer
 };
 
 struct buf_st pingbuf = { 0, 0, };
@@ -107,23 +154,41 @@ unsigned long Ping_Fifo_Get(void){
   	return (p->buf [(p->out++) & (PING_BUF_SIZE - 1)]);
 }
 
-unsigned long OS_Time(void)
-{
-  return TimerValueGet(TIMER1_BASE, TIMER_B);
-}
+
+
+
 
 unsigned long distance = 0;
-//int CANTransmitFIFO(unsigned char *pucData, unsigned long ulSize);
 unsigned char distanceBuffer[CAN_FIFO_SIZE];
 unsigned long DebugPulseWidth = 0;
+#define PING_SAMPLING_RATE 10
+struct PING_STATS{
+  short average;
+  short stdev;
+  short maxdev;
+};
+struct PING_STATS PING_Stats;
+long ping_stats[PING_SAMPLING_RATE];
+int ping_stats_index = 0;
+
+
+
+// ******** pingConsumer ************
+// Gets pulse width data from the Ping fifo
+// and converts it into distance
+// Inputs: none
+// Outputs: none
 void pingConsumer(void)  //make this an interrupt
 {
 	unsigned long pulseWidth;
 	unsigned long pulseWidthUSec;
 	unsigned long tempDistance;
+	long sum;
+ 	unsigned short max,min;
+	int i;
 
 		pulseWidth = Ping_Fifo_Get();
-		if (pulseWidth > 0 && pulseWidth < 65535)
+		if (pulseWidth > 0 && pulseWidth < 19000000)
 		{
 			DebugPulseWidth = pulseWidth;
 			pulseWidthUSec = pulseWidth / NUMBER_OF_INCS_IN_USEC;
@@ -133,14 +198,49 @@ void pingConsumer(void)  //make this an interrupt
 			tempDistance = tempDistance / 2;
 			distance = tempDistance;
 		
+
+
 			//Transmit by CAN
 			distanceBuffer[0] = 'p';
 			memcpy(&distanceBuffer[1], &distance, 4);
-			//sprintf((char *)&distanceBuffer[1], "%ul",distance);
 			CAN_Send(distanceBuffer);
-		//	CANTransmitFIFO( (unsigned char*) &distanceBuffer, 3);
+
+
+
+			//Take measurements
+			if (ping_stats_index < PING_SAMPLING_RATE)
+			{
+				ping_stats[ping_stats_index] = distance;
+				ping_stats_index++;
+			}
+			else
+			{
+				ping_stats_index = 0;
+
+				//Average = sum of all values/number of values
+				//Maximum deviation = max value - min value
+				max = ping_stats[0];
+				min = ping_stats[0];
+				sum = 0;
+				for(i = 0; i < PING_SAMPLING_RATE; i++){
+			      sum += ping_stats[i];
+				  if(ping_stats[i] <= min) min = ping_stats[i];
+				  if(ping_stats[i] > max) max = ping_stats[i];	  
+				}
+			    PING_Stats.average = (sum/PING_SAMPLING_RATE);
+				PING_Stats.maxdev = (max - min);
+			
+				//Standard deviation = sqrt(sum of (each value - average)^2 / number of values)
+				sum = 0;
+				for(i = 0; i < PING_SAMPLING_RATE; i++){
+			      sum +=(ping_stats[i]-PING_Stats.average)*(ping_stats[i]-PING_Stats.average);	  
+				}
+				sum = sum/PING_SAMPLING_RATE;
+				PING_Stats.stdev = sqrt(sum);
+			}
+
 		}
-		if (pulseWidth >= 65536)//Error, thinks rising edge is falling edge and vice versa
+		if (pulseWidth >= 19000000)//Error, thinks rising edge is falling edge and vice versa
 		{
 			distance = MAX_DISTANCE;
 
@@ -169,6 +269,18 @@ void pingConsumer(void)  //make this an interrupt
 		}
 }
 
+
+
+
+
+
+unsigned long NumOfWrapArounds = 0;
+
+// ******** pingProducer ************
+// Starts a Ping distance measurement
+// by the Ping sensor
+// Inputs: none
+// Outputs: none
 void pingProducer(void)
 {
 	unsigned long startTime = OS_Time();
@@ -199,6 +311,7 @@ void pingProducer(void)
 	//make Timer 0B an input capture timer and interrupt on edges
 	TimerConfigure(TIMER0_BASE, TIMER_CFG_16_BIT_PAIR | TIMER_CFG_B_CAP_TIME);
 
+
 // configure for capture mode
 	TimerControlEvent(TIMER0_BASE, TIMER_B, TIMER_EVENT_BOTH_EDGES);
 	TimerLoadSet(TIMER0_BASE, TIMER_B, 0xFFFF);
@@ -209,29 +322,33 @@ void pingProducer(void)
 	IntEnable(INT_TIMER0B);
 	TimerEnable(TIMER0_BASE, TIMER_B);
 
+	fallingEdge = 0;
+
+
 	NumSamples++;
 
 }
-//***********************************************************************
-//
-// OS_TimeDifference returns the time difference in usec.
-//
-//***********************************************************************
-long OS_TimeDifference(unsigned long time1, unsigned long time2)
-//                                   thisTime          	  LastTime
+
+
+
+
+void PingTimer1BHandler(void)
 {
-  if(time2 >= time1)
-  {
-  	return (long)(time2-time1);
-  }
-  else
-  {
-    return (long)(time2 + (MAX_TCNT-time1));      
-  } 
+	 TimerIntClear(TIMER1_BASE,  TIMER_TIMB_TIMEOUT);
+	 NumOfWrapArounds++;
 }
 
 
 
+
+
+
+// ******** pingInterruptHandler ************
+// Called by input capture interrupts created by
+// the Ping sensor. Puts pulse width of the Ping
+// sensor pulse in the Ping fifo.
+// Inputs: none
+// Outputs: none
 void pingInterruptHandler(void)
 {
 	unsigned long pulseWidth = 0;
@@ -248,16 +365,26 @@ void pingInterruptHandler(void)
 	if (!fallingEdge)
 	{
 		risingEdgeTime = TimerValueGet(TIMER0_BASE, TIMER_B);
-		GPIOPinWrite(GPIO_PORTA_BASE, GPIO_PIN_5, PIN_5_WRITE);
+		GPIOPinWrite(GPIO_PORTA_BASE, GPIO_PIN_5, PIN_5_WRITE);	
 
-		//Set flag to look for falling edge
-		fallingEdge = 1;
+
+		//make Timer 1B cause a timeout interrupt
+		TimerDisable(TIMER1_BASE, TIMER_B);
+		TimerIntEnable(TIMER1_BASE, TIMER_TIMB_TIMEOUT);
+		TimerLoadSet(TIMER1_BASE, TIMER_B, MAX_16_BIT_TCNT);
+
+
+		//Enable timer 1B and its interrupts
+		IntEnable(INT_TIMER1B);
+		TimerEnable(TIMER1_BASE, TIMER_B);
+
+		//Clear wrap-arounds
+		NumOfWrapArounds = 0;
 	}
 	else //else get falling edge time, reset falling edge flag, and return pulse width
 	{
 		fallingEdgeTime = TimerValueGet(TIMER0_BASE, TIMER_B);
 		GPIOPinWrite(GPIO_PORTA_BASE, GPIO_PIN_5, 0);
-		fallingEdge = 0;	
 	
 
 		//Give the time difference (aka pulse width) to the consumer through a FIFO
@@ -270,19 +397,41 @@ void pingInterruptHandler(void)
 	    else
 	    {
 	    	pulseWidth =  (long)(risingEdgeTime + (MAX_16_BIT_TCNT-fallingEdgeTime));      
-	    } 
+	    }
+		
+
+		pulseWidth = pulseWidth + (NumOfWrapArounds * MAX_16_BIT_TCNT);
+		
+		 
 		dataPutFlag	= Ping_Fifo_Put(pulseWidth);
 		if(dataPutFlag == 0)
 		{
 			Ping_Data_Lost++;
 			DataLost = Ping_Data_Lost;
 		}
+
+		//Disable timer 0B
+		TimerDisable(TIMER0_BASE, TIMER_B);
+
 	}
+
+
+	//Set flag to look for opposite edge
+	fallingEdge ^= 0x1;
 }
 
 
 #define PING_TIMER_PRESCALE 49
 
+
+
+// ******** Ping_Init ************
+// Initializes all timers and ports that
+// are related to the Ping sensor.
+// Inputs: "periodicTimer" is the timer used for the periodic interrupt
+// that calls pingProducer. "subTimer" is the sub-timer used for the periodic
+// interrupt that calls pingProducer.
+// Outputs: none
 void Ping_Init(unsigned long periodicTimer, unsigned long subTimer)
 {
 	unsigned long delay;
@@ -297,7 +446,7 @@ void Ping_Init(unsigned long periodicTimer, unsigned long subTimer)
 
  	 // Configure Timer1 as a 16-bit periodic timer.
  	 TimerConfigure(TIMER1_BASE, TIMER_CFG_B_PERIODIC);
- 	 TimerLoadSet(TIMER1_BASE, TIMER_B, MAX_TCNT);
+ 	 TimerLoadSet(TIMER1_BASE, TIMER_B, MAX_16_BIT_TCNT);
 
 	 TimerEnable(TIMER1_BASE, TIMER_B);
 
@@ -337,3 +486,4 @@ void Ping_Init(unsigned long periodicTimer, unsigned long subTimer)
 
 
 }
+

@@ -15,7 +15,7 @@
 #define MIN_THREAD_SW_PER_MS 1
 #define MAX_OS_FIFOSIZE 128 		// can be any size
 #define CLOCK_PERIOD 20  			// clock period in ns
-#define MAX_TCNT 0x0EE6B280			// @50Mhz, this is 5 seconds
+#define MAX_TCNT  0x0EE6B280			// @50Mhz, this is 5 seconds
 #define JITTERSIZE 64
 #define NUM_EVENTS 100
 #define PER_THREAD_START 0x04

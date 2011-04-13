@@ -25,6 +25,8 @@
 #include "timer.h"
 #include "inc/hw_timer.h"
 #include "driverlib/sysctl.h"
+#include "can_device_fifo/can_device_fifo.h"
+#include "math.h"
 //#include "drivers/can_fifo.h"
 
 long SRSave (void);
@@ -32,9 +34,10 @@ void SRRestore(long sr);
 
 #define OS_ENTERCRITICAL(){sr = SRSave();}
 #define OS_EXITCRITICAL(){SRRestore(sr);}
+#define CAN_FIFO_SIZE           (8 * 8)
 
 //***********************************************************************
-// OS_Fifo variables, this code segment copied from Valvano, lecture1
+// Tach_Fifo variables, this code segment copied from Valvano, lecture1
 //***********************************************************************
 typedef unsigned long dataType;
 dataType volatile *Tach_PutPt; // put next
@@ -43,9 +46,12 @@ dataType Tach_Fifo[MAX_TACH_FIFOSIZE];
 unsigned long Tach_FifoSize;
 Sema4Type Tach_FifoDataReady;
 
+unsigned long Tach_NumSamples;
+unsigned long Tach_DataLost;
+
 //***********************************************************************
 //
-// OS_Fifo_Init
+// Tach_Fifo_Init
 //
 //***********************************************************************
 static
@@ -57,7 +63,7 @@ void Tach_Fifo_Init(unsigned int size)
 
 //***********************************************************************
 //
-// OS_Fifo_Get
+// Tach_Fifo_Get
 //
 //***********************************************************************
 static
@@ -78,7 +84,7 @@ Tach_Fifo_Get(unsigned long * dataPtr)
 
 //***********************************************************************
 //
-// OS_Fifo_Put
+// Tach_Fifo_Put
 //
 //***********************************************************************
 unsigned int
@@ -191,31 +197,33 @@ void Tach_Init(unsigned long priority){
 //   via FIFO.
 // Inputs: none
 // Outputs: none
-unsigned long tach_time_count;
+unsigned long tach_timeout_count;
 void Tach_InputCapture(void){
-	static unsigned long time1 = 0;
 	static unsigned char first_flag = 0;
-	unsigned long time2;
+	unsigned long period;
 	long time_debug;
 
 	// if timeout
  	if (HWREG(TIMER1_BASE + TIMER_O_MIS) & TIMER_TIMA_TIMEOUT){
-		 tach_time_count++;
+		 tach_timeout_count++;
 	}
 	// if input capture
 	if (HWREG(TIMER1_BASE + TIMER_O_MIS) & TIMER_CAPA_EVENT){
     // Get time automatically from hardware
-		time2 = HWREG(TIMER1_BASE + TIMER_O_TAR) + tach_time_count * 0xFFFF;
-		tach_time_count = 0;
+		period = (0xFFFF - HWREG(TIMER1_BASE + TIMER_O_TAR))  // time remaining from countdown
+				  + (tach_timeout_count * 0xFFFF);			  // number of timeouts
+		tach_timeout_count = 0;
 		if (!first_flag){
 			first_flag = 1;
 		}
 		else {
 			//time_debug = Tach_TimeDifference(time2, time1);
 			//Tach_Fifo_Put(time_debug);
-			Tach_Fifo_Put(time2);
+			if(Tach_Fifo_Put(period))
+				Tach_NumSamples++;
+			else
+				Tach_DataLost++;
 		}
-		time1 = time2;
 	}
 	TimerIntClear(TIMER1_BASE, (TIMER_CAPA_EVENT | TIMER_TIMA_TIMEOUT));
 }
@@ -226,18 +234,63 @@ void Tach_InputCapture(void){
 //   big board via CAN.
 // Inputs: none
 // Outputs: none
+#define TACH_STATS_SIZE 350
 unsigned long SeeTach;
 unsigned long speed;
 //int CANTransmitFIFO(unsigned char *pucData, unsigned long ulSize);
 unsigned char speedBuffer[CAN_FIFO_SIZE];
+unsigned long stats[TACH_STATS_SIZE];
+struct TACH_STATS{
+  short average;
+  short stdev;
+  short maxdev;
+};
+struct TACH_STATS Tach_Stats;
 void Tach_SendData(void){
 	unsigned long data;
 	unsigned char tachArr[CAN_FIFO_SIZE];
-	int i;
+	unsigned short i;
+	static unsigned int num_samples = 0;
+	static unsigned int total_time = 0;
+	static unsigned char stat_done = 0;
+	long sum;
+	unsigned long max,min;
 	if(Tach_Fifo_Get(&data)){
-		SeeTach = data;
+		total_time += data;
 		data = (375000000/data); //convert to RPM	-> (60 s)*(10^9ns)/4*(T*40 ns)
+		SeeTach = data;
 		data = Tach_Filter(data);
+	
+		if(!stat_done){
+			if((num_samples < TACH_STATS_SIZE) && (total_time < 250000000)){	 //250mil * 4ns = 10 s
+				stats[num_samples] = data;
+				num_samples++;
+			}
+			else {
+				//Average = sum of all values/number of values
+				//Maximum deviation = max value - min value
+				max = 0;
+				min = 0xFFFFFFFF;
+				sum = 0;
+				for(i = 1; i < num_samples; i++){	 //first sample is junk
+			      sum += (long)stats[i];
+				  if(stats[i] < min) min = stats[i];
+				  if(stats[i] > max) max = stats[i];	  
+				}
+			    Tach_Stats.average = (short)(sum/(num_samples - 1));
+				Tach_Stats.maxdev = (short)(max - min);
+			
+				//Standard deviation = sqrt(sum of (each value - average)^2 / number of values)
+				sum = 0;
+				for(i = 1; i < num_samples; i++){
+			      sum +=(long)((short)stats[i]-(short)Tach_Stats.average)*((short)stats[i]-(short)Tach_Stats.average);	  
+				}
+				sum = sum/(num_samples - 1);
+				Tach_Stats.stdev = (short)sqrt(sum);
+				stat_done = 1;
+			}
+		}
+
 		speedBuffer[0] = 't';
 		memcpy(&speedBuffer[1], &data, 4);
 
