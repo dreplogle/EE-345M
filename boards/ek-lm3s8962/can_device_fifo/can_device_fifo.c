@@ -503,7 +503,7 @@ int main(void)
 
     while(1)
     {  
-	      Tach_SendData();
+	      Tach_SendData(0);
         switch(g_sCAN.eState)
         {
             case CAN_SENDING:
