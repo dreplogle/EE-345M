@@ -308,19 +308,38 @@ void pingProducer(void)
 	GPIOA_AFSEL_R |= PIN_6_WRITE;
 
 
-	//make Timer 0B an input capture timer and interrupt on edges
-	TimerConfigure(TIMER0_BASE, TIMER_CFG_16_BIT_PAIR | TIMER_CFG_B_CAP_TIME);
+/*********************************************************/
+/*                    Dan's Edit						 */
+/*********************************************************/
+ 
+	TimerDisable(TIMER0_BASE, TIMER_B);	
+	HWREG(TIMER0_BASE + TIMER_O_CFG) = 0x04;
+	HWREG(TIMER0_BASE + TIMER_O_TBMR) = 0x07;
+	HWREG(TIMER0_BASE + TIMER_O_CTL) |= 0x0C00; //0x0C?
+	HWREG(TIMER0_BASE + TIMER_O_TBILR) |= 0xFFFF;
 
-
-// configure for capture mode
-	TimerControlEvent(TIMER0_BASE, TIMER_B, TIMER_EVENT_BOTH_EDGES);
-	TimerLoadSet(TIMER0_BASE, TIMER_B, 0xFFFF);
 	TimerIntEnable(TIMER0_BASE, TIMER_CAPB_EVENT);
-	TimerPrescaleSet(TIMER0_BASE, TIMER_B, CCP1_TIMER_PRESCALE);
-
-	//Enable capture interrupts and timer 0B
-	IntEnable(INT_TIMER0B);
+	//TimerPrescaleSet(TIMER0_BASE, TIMER_B, CCP1_TIMER_PRESCALE);
 	TimerEnable(TIMER0_BASE, TIMER_B);
+	IntEnable(INT_TIMER0B);
+
+/*********************************************************/
+/*                   Aravind's Original				 	 */
+/*********************************************************/
+
+//	//make Timer 0B an input capture timer and interrupt on edges
+//	TimerConfigure(TIMER0_BASE, TIMER_CFG_16_BIT_PAIR | TIMER_CFG_B_CAP_TIME);
+//
+//
+//// configure for capture mode
+//	TimerControlEvent(TIMER0_BASE, TIMER_B, TIMER_EVENT_BOTH_EDGES);
+//	TimerLoadSet(TIMER0_BASE, TIMER_B, 0xFFFF);
+//	TimerIntEnable(TIMER0_BASE, TIMER_CAPB_EVENT);
+//	TimerPrescaleSet(TIMER0_BASE, TIMER_B, CCP1_TIMER_PRESCALE);
+//
+//	//Enable capture interrupts and timer 0B
+//	IntEnable(INT_TIMER0B);
+//	TimerEnable(TIMER0_BASE, TIMER_B);
 
 	fallingEdge = 0;
 
