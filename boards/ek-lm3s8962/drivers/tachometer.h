@@ -32,13 +32,14 @@ void Tach_Init(unsigned long priority);
 //   via FIFO.
 // Inputs: none
 // Outputs: none
-void Tach_InputCapture(void);
+void Tach_InputCapture0A(void);
+void Tach_InputCapture0B(void);
 
 // ********** Tach_SendData ***********
 // Analyzes tachometer data, passes to
 //   big board via CAN.
 // Inputs: none
 // Outputs: none
-void Tach_SendData(void);
+void Tach_SendData(unsigned char tach_id);
 
 #endif

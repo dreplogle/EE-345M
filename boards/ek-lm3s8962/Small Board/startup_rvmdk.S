@@ -87,7 +87,8 @@ __heap_limit
 		EXTERN  SysTickThSwIntHandler
 		EXTERN  PendSVHandler
 		EXTERN  SwitchIntHandler
-		EXTERN  Tach_InputCapture
+		EXTERN  Tach_InputCapture0A
+		EXTERN 	Tach_InputCapture1A
 		EXTERN  pingInterruptHandler
 		EXTERN  pingProducer
 		EXTERN  CANIntHandler
@@ -135,9 +136,9 @@ __Vectors
         DCD     IntDefaultHandler           ; ADC Sequence 2
         DCD     IntDefaultHandler          ; ADC Sequence 3
         DCD     IntDefaultHandler           ; Watchdog timer
-        DCD     IntDefaultHandler           ; Timer 0 subtimer A
+        DCD     Tach_InputCapture0A           ; Timer 0 subtimer A
         DCD     pingInterruptHandler           ; Timer 0 subtimer B
-        DCD     Tach_InputCapture           ; Timer 1 subtimer A
+        DCD     Tach_InputCapture1A           ; Timer 1 subtimer A
         DCD     PingTimer1BHandler           ; Timer 1 subtimer B
         DCD     pingProducer            ; Timer 2 subtimer A
         DCD     IntDefaultHandler           ; Timer 2 subtimer B

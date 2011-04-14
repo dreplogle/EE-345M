@@ -489,14 +489,15 @@ void CAN_Receive(void)
 //
 //*****************************************************************************
 int main(void)
-{  
-    CAN_Init();
+{   
+	CAN_Init();
     Ping_Init(TIMER2_BASE, TIMER_A); //Must do this after OS_AddPeriodicThread in order
   	Tach_Init(0);
 
     while(1)
     {  
-	    Tach_SendData();
+	    Tach_SendData(0);
+		Tach_SendData(1);
         switch(g_sCAN.eState)
         {
             case CAN_SENDING:
