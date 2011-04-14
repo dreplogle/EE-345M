@@ -1,11 +1,12 @@
 //*****************************************************************************
 //
-// Lab5.c - user programs, File system, stream data onto disk
+// Lab7.c - user programs, File system, stream data onto disk
 // Jonathan Valvano, March 16, 2011, EE345M
 //     You may implement Lab 5 without the oLED display
 //*****************************************************************************
 // PF1/IDX1 is user input select switch
-// PE1/PWM5 is user input down switch 
+// PE1/PWM5 is user input down switch
+ 
 #include <stdio.h>
 #include <string.h>
 #include "inc/hw_memmap.h"

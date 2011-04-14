@@ -45,6 +45,7 @@ extern struct sensors{
 	long IR;
 }Sensors;
 
+
 unsigned long COUNTER;
 //*****************************************************************************
 //
@@ -150,17 +151,17 @@ CANIntHandler(void)
 {
 
     unsigned long ulStatus;
-	IntMasterDisable();
+	  IntMasterDisable();
 
     // Find the cause of the interrupt, if it is a status interrupt then just
     // acknowledge the interrupt by reading the status register.
     ulStatus = CANIntStatus(CAN0_BASE, CAN_INT_STS_CAUSE);
 
-//    // The first eight message objects make up the Transmit message FIFO.
+    // The first eight message objects make up the Transmit message FIFO.
     if(ulStatus <= 8)
     {
-//        // Increment the number of bytes transmitted.
-//        g_sCAN.ulBytesTransmitted += 8;
+        // Increment the number of bytes transmitted.
+        g_sCAN.ulBytesTransmitted += 8;
     }
 
     // The second eight message objects make up the Receive message FIFO.
@@ -594,16 +595,16 @@ CAN(void)
             case CAN_WAIT_RX:
             {
                 // Wait for all new data to be received.
-                //if(g_sCAN.ulBytesRemaining == 0)
+                if(g_sCAN.ulBytesRemaining == 0)
                 {
-					if(g_sCAN.pucBufferRx[0] == 't'){
-					memcpy(&tachIn, &g_sCAN.pucBufferRx[1], 4); 
-					Sensors.tach = tachIn;
-					}
-					if(g_sCAN.pucBufferRx[0] == 'p'){
-					memcpy(&pingIn, &g_sCAN.pucBufferRx[1], 4); 
-					Sensors.ping = pingIn;
-					}
+					        if(g_sCAN.pucBufferRx[0] == 't'){
+					          memcpy(&tachIn, &g_sCAN.pucBufferRx[1], 4); 
+					          Sensors.tach = tachIn;
+					        }
+        					if(g_sCAN.pucBufferRx[0] == 'p'){
+        					  memcpy(&pingIn, &g_sCAN.pucBufferRx[1], 4); 
+        					  Sensors.ping = pingIn;
+        					}
 
                     //
                     // Reset the buffer pointer.

@@ -38,6 +38,7 @@
 #include "driverlib/timer.h"
 #include "drivers/ping.h"
 #include "drivers/tachometer.h"
+#include "drivers/motor.h"
 #include "can_device_fifo/can_device_fifo.h"
 
 
@@ -59,7 +60,17 @@ enum Device
   Ping, Tach, 
   IR1, IR2, IR3
 };
-
+enum Motor
+{
+   FORWARD,
+   BACKWARD,
+   LEFT,
+   RIGHT,
+   HARD_LEFT,
+   HARD_RIGHT,
+   BACK_LEFT,
+   BACK_RIGHT
+};
 //
 // This structure holds all of the state information for the CAN transfers.
 //
@@ -411,10 +422,6 @@ ToggleLED(void)
 
 void CAN_Init(void)
 {
-  
-
-
-
     // If running on Rev A2 silicon, turn the LDO voltage up to 2.75V.  This is
     // a workaround to allow the PLL to operate reliably.
     if(REVISION_IS_A2)
@@ -496,7 +503,7 @@ int main(void)
 
     while(1)
     {  
-	    Tach_SendData();
+	      Tach_SendData();
         switch(g_sCAN.eState)
         {
             case CAN_SENDING:
@@ -521,17 +528,36 @@ int main(void)
                 //
                 if(g_sCAN.ulBytesRemaining == 0)
                 {
-                    //
-                    // Change the CAN FIFO data.
-                    //
-                    for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
+                    switch(g_sCAN.pucBufferRx[1])
                     {
-                      //
-                      // Increment the data to change it.
-                      //
-                      g_sCAN.pucBufferRx[iIdx] += 0x2;
-                      
+                      case FORWARD: 
+                        MotorForward();
+                        break;
+                      case BACKWARD:
+                        MotorBackward();
+                        break;
+                      case LEFT:
+                        MotorTurnLeft();
+                        break;
+                      case RIGHT:
+                        MotorTurnRight();
+                        break;
+                      case HARD_LEFT:
+                        MotorTurnHardLeft();
+                        break;
+                      case HARD_RIGHT:
+                        MotorTurnHardRight();
+                        break;
+                      case BACK_LEFT:
+                        MotorTurnBackLeft();
+                        break;
+                      case BACK_RIGHT:
+                        MotorTurnBackRight();
+                        break;
+                      default:
+                        break;
                     }
+                    
                     //
                     // Initialize the transmit count to zero.
                     //

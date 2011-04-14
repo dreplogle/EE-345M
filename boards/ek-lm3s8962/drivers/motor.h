@@ -9,14 +9,14 @@
 // Motor should be pulling both wheels back at half speed
 //
 //*****************************************************************************
-void MotorBack(void);
+void MotorBackward(void);
 
 //*****************************************************************************
 //
 // Motor should be pushing both wheels at full speed ahead
 //
 //*****************************************************************************
-void MotorStraight(void);
+void MotorForward(void);
 
 //*****************************************************************************
 //
