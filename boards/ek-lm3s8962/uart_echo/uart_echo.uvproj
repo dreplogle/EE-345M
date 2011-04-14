@@ -437,11 +437,6 @@
               <FilePath>..\..\..\driverlib\ssi.c</FilePath>
             </File>
             <File>
-              <FileName>Lab6.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Lab6.c</FilePath>
-            </File>
-            <File>
               <FileName>can_fifo.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\drivers\can_fifo.c</FilePath>
@@ -450,6 +445,11 @@
               <FileName>can.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\..\driverlib\can.c</FilePath>
+            </File>
+            <File>
+              <FileName>Lab7.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Lab7.c</FilePath>
             </File>
           </Files>
         </Group>
