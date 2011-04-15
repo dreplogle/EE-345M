@@ -59,3 +59,22 @@ void MotorTurnBackLeft(void);
 //
 //*****************************************************************************
 void MotorTurnBackRight(void);
+
+
+
+void MotorInit(void);
+
+void LeftMotorConfigure(unsigned short period, unsigned short duty);
+
+void RightMotorConfigure(unsigned short period, unsigned short duty);
+
+void setMotorDirection(unsigned char motor, unsigned char direction);
+
+void LeftMotorStart(void);
+
+void RightMotorStart(void);
+
+void LeftMotorStop(void);
+
+void RightMotorStop(void);
+
