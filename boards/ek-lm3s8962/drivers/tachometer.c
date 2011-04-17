@@ -319,7 +319,7 @@ void Tach_SendData(unsigned char tach_id){
 
 	if(Tach_Fifo_Get(tach_id, &data)){
 		total_time += data;
-		data = (375000000/data); //convert to RPM	-> (60 s)*(10^9ns)/4*(T*40 ns)
+		data = (3750000000/data); //convert to 0.1 RPM	-> (60 s)(10^9ns)/4*(T*40 ns) * (10 .1RPM)
 		SeeTach = data;
 		data = Tach_Filter(data);
 		Motor_PID(tach_id, data);

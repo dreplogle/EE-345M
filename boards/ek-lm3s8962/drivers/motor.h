@@ -6,6 +6,22 @@
 #ifndef _MOTOR
 #define _MOTOR
 
+#define PWM_ENABLE_PWM1EN 0x2
+#define MOTOR_FORWARD 0
+#define MOTOR_BACKWARD 1
+#define LEFT_MOTOR 0
+#define RIGHT_MOTOR 1
+#define PIN_0_WRITE 0x1
+#define PIN_1_WRITE 0x2
+
+#define HALF_SPEED 60
+#define FULL_SPEED 120
+#define MAX_POWER 250
+#define MAX_DUTY_CYCLE 8000
+
+#define Kp 400 // proportional constant
+#define Ki 50 // integral constant
+
 //The following code is copied from Professor Valvano's lecture 18 Program 6.15
 #define PWM_ENABLE_R (*((volatile unsigned long *)0x40028008))
 #define PWM_ENABLE_PWM0EN 0x00000001 // PWM0 Output Enable
@@ -31,19 +47,7 @@
 #define SYSCTL_RCGC0_PWM 0x00100000 // PWM Clock Gating Control
 #define SYSCTL_RCGC2_R (*((volatile unsigned long *)0x400FE108))
 
-#define PWM_ENABLE_PWM1EN 0x2
-#define MOTOR_FORWARD 0
-#define MOTOR_BACKWARD 1
-#define LEFT_MOTOR 0
-#define RIGHT_MOTOR 1
-#define PIN_0_WRITE 0x1
-#define PIN_1_WRITE 0x2
 
-#define HALF_SPEED 60
-#define FULL_SPEED 120
-
-#define Kp 400 // proportional constant
-#define Ki 50 // integral constant
 
 // ********** Motor_GoForward ***********
 // Calculates and sets desired duty cycle to

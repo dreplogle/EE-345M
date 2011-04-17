@@ -91,6 +91,7 @@ void motorBackward(unsigned char motor_id, unsigned char duty_cycle){
 // ** Code is based on Professor Valvano's lecture 20
 void Motor_PID(unsigned char motor_id, unsigned long speed){
 	long Error = 0, Up = 0, Ui = 0, U = 0;
+	long duty_cycle = 0;
 	if (Motor_DesiredSpeeds[motor_id]){
 		if (Motor_DesiredSpeeds[motor_id] > 0){
 			Error = Motor_DesiredSpeeds[motor_id]-speed; // 0.1 RPM
@@ -113,15 +114,15 @@ void Motor_PID(unsigned char motor_id, unsigned long speed){
 	else {
 		Ui = U = 0; // Desired is 0
 	}
+
+	duty_cycle = (MAX_DUTY_CYCLE*U)/MAX_POWER;
 	if (Motor_DesiredSpeeds[motor_id] > 0){
-		motorForward(motor_id,(unsigned char)U);
+		motorForward(motor_id,(unsigned char)duty_cycle);
 	}
 	else {
-		motorBackward(motor_id,(unsigned char)U);
+		motorBackward(motor_id,(unsigned char)duty_cycle);
 	}
 }
-
-#include "motor.h"
 
 //*****************************************************************************
 //
