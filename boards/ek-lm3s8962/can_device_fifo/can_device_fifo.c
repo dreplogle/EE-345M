@@ -532,28 +532,28 @@ int main(void)
                     switch(g_sCAN.pucBufferRx[1])
                     {
                       case FORWARD: 
-                        MotorForward();
+                        Motor_GoForward();
                         break;
                       case BACKWARD:
-                        MotorBackward();
+                        Motor_GoBackward();
                         break;
                       case LEFT:
-                        MotorTurnLeft();
+                        Motor_TurnLeft();
                         break;
                       case RIGHT:
-                        MotorTurnRight();
+                        Motor_TurnRight();
                         break;
                       case HARD_LEFT:
-                        MotorTurnHardLeft();
+                        Motor_TurnHardLeft();
                         break;
                       case HARD_RIGHT:
-                        MotorTurnHardRight();
+                        Motor_TurnHardRight();
                         break;
                       case BACK_LEFT:
-                        MotorTurnBackLeft();
+                        Motor_TurnBackLeft();
                         break;
                       case BACK_RIGHT:
-                        MotorTurnBackRight();
+                        Motor_TurnBackRight();
                         break;
                       default:
                         break;

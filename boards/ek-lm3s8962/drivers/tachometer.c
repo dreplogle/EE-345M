@@ -16,6 +16,7 @@
 
 #include <string.h>
 #include "tachometer.h"
+#include "motor.h"
 #include "inc/hw_memmap.h"
 #include "inc/hw_types.h"
 #include "inc/hw_ints.h"
@@ -321,6 +322,7 @@ void Tach_SendData(unsigned char tach_id){
 		data = (375000000/data); //convert to RPM	-> (60 s)*(10^9ns)/4*(T*40 ns)
 		SeeTach = data;
 		data = Tach_Filter(data);
+		Motor_PID(tach_id, data);
 	
 		#ifdef _TACH_STATS
 		if((tach_id == 0) && (!stat_done)){
