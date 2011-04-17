@@ -21,4 +21,7 @@ struct IR_STATS{
   short maxdev;
 };
 
-void IRSensor(void);
+void IRSensor0(void);
+void IRSensor1(void);
+void IRSensor2(void);
+void IRSensor3(void);

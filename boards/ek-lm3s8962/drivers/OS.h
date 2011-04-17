@@ -9,7 +9,7 @@
 #define DEAD 0xFF
 #define BLOCKED 1
 #define UNBLOCKED 0
-#define MAX_NUM_OS_THREADS 5
+#define MAX_NUM_OS_THREADS 10
 #define STACK_SIZE 2048 			//Stack size in bytes
 #define MAX_THREAD_SW_PER_MS 1000
 #define MIN_THREAD_SW_PER_MS 1

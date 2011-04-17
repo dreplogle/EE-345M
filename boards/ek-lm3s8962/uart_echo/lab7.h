@@ -8,7 +8,10 @@
 struct sensors{
 	unsigned long ping;
 	unsigned long tach;
-	long IR;
+	long IR0;
+  long IR1;
+  long IR2;
+  long IR3;
 };
 
 extern struct sensors Sensor;

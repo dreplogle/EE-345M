@@ -133,11 +133,14 @@ void DownPush(void){
 
 void Display(void){
 	while(1){
-  oLED_Message(0, 3, "IR: ", Sensors.IR);
+  oLED_Message(0, 0, "IR0: ", Sensors.IR0);
+	oLED_Message(0, 1, "IR1: ", Sensors.IR1);
+  oLED_Message(0, 2, "IR2: ", Sensors.IR2);
+  oLED_Message(0, 3, "IR3: ", Sensors.IR3);
+  //SysCtlDelay(SysCtlClockGet()/100);
+//	oLED_Message(0, 2, "Tach: ", Sensors.tach);
 	//SysCtlDelay(SysCtlClockGet()/100);
-	oLED_Message(0, 2, "Tach: ", Sensors.tach);
-	//SysCtlDelay(SysCtlClockGet()/100);
-	oLED_Message(0, 1, "Ping: ", Sensors.ping);
+//	oLED_Message(0, 1, "Ping: ", Sensors.ping);
 	//SysCtlDelay(SysCtlClockGet()/100);
 	}
 }
@@ -171,12 +174,12 @@ int main(void){
 
   NumCreated = 0 ;
 // create initial foreground threads
-  NumCreated += OS_AddThread(&CAN,128,2); 
-  NumCreated += OS_AddThread(&IRSensor,128,2);  // runs when nothing useful to do
-//  NumCreated += OS_AddThread(&IRSensor1,128,2);  // runs when nothing useful to do
-//  NumCreated += OS_AddThread(&IRSensor2,128,2);  // runs when nothing useful to do
-//  NumCreated += OS_AddThread(&IRSensor3,128,2);  // runs when nothing useful to do
-  NumCreated += OS_AddThread(&CatBot,128,1);
+//  NumCreated += OS_AddThread(&CAN,128,2); 
+  NumCreated += OS_AddThread(&IRSensor0,128,2);  // runs when nothing useful to do
+  NumCreated += OS_AddThread(&IRSensor1,128,2);  // runs when nothing useful to do
+  NumCreated += OS_AddThread(&IRSensor2,128,2);  // runs when nothing useful to do
+  NumCreated += OS_AddThread(&IRSensor3,128,2);  // runs when nothing useful to do
+  NumCreated += OS_AddThread(&CatBot,128,2);
   NumCreated += OS_AddThread(&Display,128,2);
  
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
