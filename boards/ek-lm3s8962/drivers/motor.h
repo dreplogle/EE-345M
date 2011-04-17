@@ -4,6 +4,9 @@
 //
 //*****************************************************************************
 
+#define MOTOR_HALFSPEED
+#define MOTOR_FULLSPEED	
+
 //*****************************************************************************
 //
 // Motor should be pulling both wheels back at half speed

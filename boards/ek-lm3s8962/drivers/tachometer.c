@@ -205,6 +205,7 @@ void Tach_Init(unsigned long priority){
 //   via FIFO.
 // Inputs: none
 // Outputs: none
+#define TACH_TIMEOUT	100000
 unsigned long tach_0A_timeout_count;
 void Tach_InputCapture0A(void){
 	static unsigned char first_flag = 0;
@@ -213,7 +214,12 @@ void Tach_InputCapture0A(void){
 
 	// if timeout
  	if (HWREG(TIMER0_BASE + TIMER_O_MIS) & TIMER_TIMA_TIMEOUT){
-		 tach_0A_timeout_count++;
+		tach_0A_timeout_count++;
+		 // Stop Detection
+		if (tach_0A_timeout_count >= TACH_TIMEOUT){
+			tach_0A_timeout_count = 0;
+		 	Tach_Fifo_Put(1, 0);
+		}
 	}
 	// if input capture
 	if (HWREG(TIMER0_BASE + TIMER_O_MIS) & TIMER_CAPA_EVENT){
@@ -251,7 +257,12 @@ void Tach_InputCapture1A(void){
 
 	// if timeout
  	if (HWREG(TIMER1_BASE + TIMER_O_MIS) & TIMER_TIMA_TIMEOUT){
-		 tach_1A_timeout_count++;
+		tach_1A_timeout_count++;
+		// Stop Detection
+		if (tach_1A_timeout_count >= TACH_TIMEOUT){
+			tach_1A_timeout_count = 0;
+		 	Tach_Fifo_Put(1, 0);
+		}
 	}
 	// if input capture
 	if (HWREG(TIMER1_BASE + TIMER_O_MIS) & TIMER_CAPA_EVENT){
