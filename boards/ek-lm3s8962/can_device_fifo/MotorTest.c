@@ -10,6 +10,7 @@ void CANIntHandler(void){}
 int main(void)
 {
 	MotorInit();
+	Tach_Init(0);
 	LeftMotorConfigure(10000, 9900);
 	setMotorDirection(0,0);
 	setMotorDirection(0,1);
@@ -22,22 +23,25 @@ int main(void)
 
 	while(1)
 	{
-		SysCtlDelay(SysCtlClockGet()/1);
-		setDutyCycle(0,8000);
-		SysCtlDelay(SysCtlClockGet()/1);
-		setDutyCycle(0,6000);
-		SysCtlDelay(SysCtlClockGet()/1);
-		setDutyCycle(0,4000);
-		SysCtlDelay(SysCtlClockGet()/1);
-		setDutyCycle(0,2000);
-		SysCtlDelay(SysCtlClockGet()/1);
-		setDutyCycle(1,8000);
-		SysCtlDelay(SysCtlClockGet()/1);
-		setDutyCycle(1,6000);
-		SysCtlDelay(SysCtlClockGet()/1);
-		setDutyCycle(1,4000);
-		SysCtlDelay(SysCtlClockGet()/1);
-		setDutyCycle(1,2000);
+		Tach_SendData(0);
+		Tach_SendData(1);
+		
+//		SysCtlDelay(SysCtlClockGet()/1);
+//		setDutyCycle(0,8000);
+//		SysCtlDelay(SysCtlClockGet()/1);
+//		setDutyCycle(0,6000);
+//		SysCtlDelay(SysCtlClockGet()/1);
+//		setDutyCycle(0,4000);
+//		SysCtlDelay(SysCtlClockGet()/1);
+//		setDutyCycle(0,2000);
+//		SysCtlDelay(SysCtlClockGet()/1);
+//		setDutyCycle(1,8000);
+//		SysCtlDelay(SysCtlClockGet()/1);
+//		setDutyCycle(1,6000);
+//		SysCtlDelay(SysCtlClockGet()/1);
+//		setDutyCycle(1,4000);
+//		SysCtlDelay(SysCtlClockGet()/1);
+//		setDutyCycle(1,2000);
 	}
 
 }

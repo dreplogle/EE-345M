@@ -37,7 +37,7 @@ void SRRestore(long sr);
 #define OS_EXITCRITICAL(){SRRestore(sr);}
 #define CAN_FIFO_SIZE           (8 * 8)
 
-//#define _TACH_STATS
+#define _TACH_STATS	1
 
 //***********************************************************************
 // Tach_Fifo variables, this code segment copied from Valvano, lecture1
@@ -281,7 +281,10 @@ void Tach_InputCapture1A(void){
 // Inputs: none
 // Outputs: none
 #define TACH_STATS_SIZE 350
-unsigned long SeeTach;
+unsigned long SeeTach1;
+unsigned long SeeTach2;
+unsigned long SeeTach3;
+unsigned long SeeTach4;
 unsigned long speed;
 //int CANTransmitFIFO(unsigned char *pucData, unsigned long ulSize);
 unsigned char speedBuffer[CAN_FIFO_SIZE];
@@ -307,9 +310,18 @@ void Tach_SendData(unsigned char tach_id){
 
 	if(Tach_Fifo_Get(tach_id, &data)){
 		total_time += data;
-		data = (375000000/data); //convert to RPM	-> (60 s)*(10^9ns)/4*(T*40 ns)
-		SeeTach = data;
-		data = Tach_Filter(data);
+		SeeTach1 = data;
+		data = (187500000/data); //convert to RPM	-> (60 s)*(10^9ns)/4*(T*40 ns)
+		SeeTach2 = data;
+		//data = Tach_Filter(data);
+		//SeeTach3 = data;
+		if (tach_id == 0){
+			SeeTach3 = data;
+		}
+		else {
+			SeeTach4 = data;
+		}
+
 	
 		#ifdef _TACH_STATS
 		if((tach_id == 0) && (!stat_done)){
