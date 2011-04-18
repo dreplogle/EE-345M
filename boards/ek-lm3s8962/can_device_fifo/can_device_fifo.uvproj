@@ -411,6 +411,11 @@
               <FileType>1</FileType>
               <FilePath>..\drivers\motor.c</FilePath>
             </File>
+            <File>
+              <FileName>can_device_fifo.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\can_device_fifo.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

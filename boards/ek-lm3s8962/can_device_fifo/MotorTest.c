@@ -1,4 +1,5 @@
 #include "drivers/motor.h"
+#include "drivers/tachometer.h"
 #include "inc/hw_types.h"
 #include "inc/hw_memmap.h"
 #include "driverlib/sysctl.h"
@@ -9,17 +10,17 @@ void CANIntHandler(void){}
 
 int main(void)
 {
-	MotorInit();
+	Motor_Init();
 	Tach_Init(0);
-	LeftMotorConfigure(10000, 9900);
-	setMotorDirection(0,0);
-	setMotorDirection(0,1);
-	LeftMotorStart();
+	Motor_Configure(0, 10000, 1);
+	//setMotorDirection(0,0);
+	//setMotorDirection(0,1);
+	Motor_Start(0);
 
-	RightMotorConfigure(10000,9900);
-	setMotorDirection(1,0);
-	setMotorDirection(1,1);
-	RightMotorStart();
+	Motor_Configure(1, 10000,1);
+	//setMotorDirection(1,0);
+	//setMotorDirection(1,1);
+	Motor_Start(1);
 
 	while(1)
 	{
