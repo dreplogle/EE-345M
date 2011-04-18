@@ -58,19 +58,11 @@
 enum Device
 {
   Ping, Tach, 
-  IR1, IR2, IR3
+  IR0, IR1, IR2, IR3
 };
-enum Motor
-{
-   FORWARD,
-   BACKWARD,
-   LEFT,
-   RIGHT,
-   HARD_LEFT,
-   HARD_RIGHT,
-   BACK_LEFT,
-   BACK_RIGHT
-};
+#define MAX_SPEED 20
+#define MIN_SPEED 0
+unsigned short SpeedLeft, SpeedRight = MAX_SPEED;
 //
 // This structure holds all of the state information for the CAN transfers.
 //
@@ -503,7 +495,8 @@ int main(void)
 
     while(1)
     {  
-	      Tach_SendData(0);
+	    Tach_SendData(0);
+		Tach_SendData(1);
         switch(g_sCAN.eState)
         {
             case CAN_SENDING:
@@ -528,44 +521,9 @@ int main(void)
                 //
                 if(g_sCAN.ulBytesRemaining == 0)
                 {
-                    switch(g_sCAN.pucBufferRx[1])
-                    {
-                      case FORWARD: 
-                        MotorForward();
-                        break;
-                      case BACKWARD:
-                        MotorBackward();
-                        break;
-                      case LEFT:
-                        MotorTurnLeft();
-                        break;
-                      case RIGHT:
-                        MotorTurnRight();
-                        break;
-                      case HARD_LEFT:
-                        MotorTurnHardLeft();
-                        break;
-                      case HARD_RIGHT:
-                        MotorTurnHardRight();
-                        break;
-                      case BACK_LEFT:
-                        MotorTurnBackLeft();
-                        break;
-                      case BACK_RIGHT:
-                        MotorTurnBackRight();
-                        break;
-                      default:
-                        break;
-                    }
+                    SpeedLeft = g_sCAN.pucBufferRx[0]; 
+                    SpeedRight = g_sCAN.pucBufferRx[1]; 
                     
-                    //
-                    // Initialize the transmit count to zero.
-                    //
-                    CAN_Send(g_sCAN.pucBufferRx);
-                    //
-                    // Switch to wait for Process data state.
-                    //
-                    g_sCAN.eState = CAN_SENDING;
 
                     //
                     // Reset the buffer pointer.

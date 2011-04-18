@@ -81,7 +81,10 @@ static unsigned char g_pucOversampleFactor[3];
 //*****************************************************************************
 AddFifo(ADCData, ADC_MAX_COLLECT_SAMPLES, unsigned long, 1, 0);   
 unsigned int NumADCInterrupts;
-void (*ADCSingleSampleTask)(unsigned short);
+void (*ADCSingleSampleTask0)(unsigned short);
+void (*ADCSingleSampleTask1)(unsigned short);
+void (*ADCSingleSampleTask2)(unsigned short);
+void (*ADCSingleSampleTask3)(unsigned short);
 
 //*****************************************************************************
 //
@@ -1585,9 +1588,130 @@ ADC_In(unsigned int channelNum)
 //
 //*****************************************************************************
 int 
+ADC_Collect_All(unsigned int fs, void (*task0)(unsigned short), void (*task1)(unsigned short), void (*task2)(unsigned short), void (*task3)(unsigned short))  
+{
+  ADCSingleSampleTask0 = task0;
+  ADCSingleSampleTask1 = task1;
+  ADCSingleSampleTask2 = task2;
+  ADCSingleSampleTask3 = task3;
+
+  // Check to see if the number of samples requested can be supported by
+  // the ADC FIFO.
+//  if(numberOfSamples > ADC_MAX_COLLECT_SAMPLES)
+//  {
+//     return FAIL;
+//  }
+//  NumADCInterrupts = numberOfSamples;
+
+  // Enable sample sequence 3 to start a conversion on timer event 
+  // with priority 0.
+  ADCSequenceConfigure(ADC0_BASE, 3, ADC_TRIGGER_TIMER, 2);
+  ADCSequenceConfigure(ADC0_BASE, 2, ADC_TRIGGER_TIMER, 2);
+  ADCSequenceConfigure(ADC0_BASE, 1, ADC_TRIGGER_TIMER, 2);
+  ADCSequenceConfigure(ADC0_BASE, 0, ADC_TRIGGER_TIMER, 2);
+
+  // Configure step 0 on sequence 3.  Sample channel 0, 1, 2, or 3 in
+  // single-ended mode (default) and configure the interrupt flag
+  // (ADC_CTL_IE) to be set when the sample is done.  Tell the ADC logic
+  // that this is the last conversion on sequence 3 (ADC_CTL_END).  
+  	ADCSequenceStepConfigure(ADC0_BASE, 0, 0, ADC_CTL_CH0 | ADC_CTL_IE |
+                        ADC_CTL_END);
+
+  	ADCSequenceStepConfigure(ADC0_BASE, 1, 0, ADC_CTL_CH1 | ADC_CTL_IE |
+                        ADC_CTL_END);
+
+  	ADCSequenceStepConfigure(ADC0_BASE, 2, 0, ADC_CTL_CH2 | ADC_CTL_IE |
+                        ADC_CTL_END);
+
+  	ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH3 | ADC_CTL_IE |
+                        ADC_CTL_END);
+
+
+  // Configure GPTimerModule to generate triggering events
+  // at the specified sampling rate.
+  SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
+  
+  // Configure Timer0 as a 32-bit periodic timer.
+  TimerConfigure(TIMER0_BASE, TIMER_CFG_32_BIT_PER);
+
+  // Set the Timer0 load value.
+  if(fs < 100000 && fs > 0)
+  {
+      TimerLoadSet(TIMER0_BASE, TIMER_BOTH, SysCtlClockGet()/fs);
+  }
+  else
+  {
+  	return FAIL;
+  }
+
+  // Setup the Timer trigger output.
+  TimerControlTrigger(TIMER0_BASE, TIMER_BOTH, true);
+
+  // Enable sample sequencer
+  ADCSequenceEnable(ADC0_BASE, 0);
+  ADCSequenceEnable(ADC0_BASE, 1);
+  ADCSequenceEnable(ADC0_BASE, 2);
+  ADCSequenceEnable(ADC0_BASE, 3);
+
+  // Allow ADC to generate an interrupt signal.
+  ADCIntEnable(ADC0_BASE, 0);
+  ADCIntEnable(ADC0_BASE, 1);
+  ADCIntEnable(ADC0_BASE, 2);
+  ADCIntEnable(ADC0_BASE, 3);
+
+  // Set Priority for the ADC interrupt
+  IntPrioritySet(INT_ADC0SS3, 1);
+
+  // Clear the interrupt status flag.  This is done to make sure the
+  // interrupt flag is cleared before we sample. 
+  ADCIntClear(ADC0_BASE, 0);
+  ADCIntClear(ADC0_BASE, 1);
+  ADCIntClear(ADC0_BASE, 2);
+  ADCIntClear(ADC0_BASE, 3);
+
+  // Enable processor interrupts on ADC Seq3 vector.
+  IntEnable(INT_ADC0SS0);
+  IntEnable(INT_ADC0SS1);
+  IntEnable(INT_ADC0SS2);
+  IntEnable(INT_ADC0SS3);
+
+  // Start Timer0.
+  TimerEnable(TIMER0_BASE, TIMER_BOTH);
+
+  // Spin while waiting for all samples to complete.
+  // NumADCInterrupts is decremented in the ADC ISR.
+//  while(NumADCInterrupts > 0)
+//  {
+//  	SysCtlDelay(SysCtlClockGet()/10);  
+//  }
+
+  //
+  // Copy the ADC data from the ADC fifo, to the passed buffer.
+  //
+//  while(ADCDataFifo_Get(&adcSingleSample)){
+//     buffer[sampleNum] = (unsigned short)adcSingleSample;
+//     sampleNum++;
+//  }
+  return SUCCESS;  
+}
+
+//*****************************************************************************
+//
+//! Retrieves multiple samples from the ADC at the specified sampling rate.
+//!
+//! \param channelNum indicates the ADC channel to sample.
+//! \param fs indicates the sampling frequency in Hz
+//! \param buffer[] is an array where the sampled data will be placed
+//! \param numberOfSamples is the number of samples requested and size of the array
+//!
+//! \return SUCCESS or FAIL code. FAIL is returned if \p channelNum, \p fs,
+//! or \p numberOfSamples is out of acceptable range.
+//
+//*****************************************************************************
+int 
 ADC_Collect(unsigned int channelNum, unsigned int fs, void (*task)(unsigned short))  
 {
-  ADCSingleSampleTask = task;
+  ADCSingleSampleTask3 = task;
 
 
   // Check to see if the number of samples requested can be supported by
@@ -1607,26 +1731,18 @@ ADC_Collect(unsigned int channelNum, unsigned int fs, void (*task)(unsigned shor
   // single-ended mode (default) and configure the interrupt flag
   // (ADC_CTL_IE) to be set when the sample is done.  Tell the ADC logic
   // that this is the last conversion on sequence 3 (ADC_CTL_END).  
-  switch(channelNum){
-  case 0:
   	ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH0 | ADC_CTL_IE |
                         ADC_CTL_END);
-  	break;
-  case 1:
+
   	ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH1 | ADC_CTL_IE |
                         ADC_CTL_END);
-  	break;
-  case 2:
+
   	ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH2 | ADC_CTL_IE |
                         ADC_CTL_END);
-  	break;
-  case 3:
+
   	ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH3 | ADC_CTL_IE |
                         ADC_CTL_END);
-  	break;
-  default: 
-  	return FAIL;
-  }
+
 
   // Configure GPTimerModule to generate triggering events
   // at the specified sampling rate.
@@ -1655,7 +1771,7 @@ ADC_Collect(unsigned int channelNum, unsigned int fs, void (*task)(unsigned shor
   ADCIntEnable(ADC0_BASE, 3);
 
   // Set Priority for the ADC interrupt
-  IntPrioritySet(INT_ADC1SS3, 1);
+  IntPrioritySet(INT_ADC0SS3, 1);
 
   // Clear the interrupt status flag.  This is done to make sure the
   // interrupt flag is cleared before we sample. 
@@ -1686,6 +1802,48 @@ ADC_Collect(unsigned int channelNum, unsigned int fs, void (*task)(unsigned shor
 
 //*****************************************************************************
 //
+// ADC0 Sequence 0 Interrupt Handler
+//
+//*****************************************************************************
+void 
+ADC0Seq0IntHandler(void)
+{ 
+  unsigned long ulADC0_Value[8];
+  ADCSequenceDataGet(ADC0_BASE, 0, ulADC0_Value);
+  ADCSingleSampleTask0(ulADC0_Value[0]);
+  ADCIntClear(ADC0_BASE, 0);
+}
+
+//*****************************************************************************
+//
+// ADC0 Sequence 1 Interrupt Handler
+//
+//*****************************************************************************
+void 
+ADC0Seq1IntHandler(void)
+{ 
+  unsigned long ulADC0_Value[4];
+  ADCSequenceDataGet(ADC0_BASE, 1, ulADC0_Value);
+  ADCSingleSampleTask1(ulADC0_Value[0]);
+  ADCIntClear(ADC0_BASE, 1);
+}
+
+//*****************************************************************************
+//
+// ADC0 Sequence 2 Interrupt Handler
+//
+//*****************************************************************************
+void 
+ADC0Seq2IntHandler(void)
+{ 
+  unsigned long ulADC0_Value[4];
+  ADCSequenceDataGet(ADC0_BASE, 2, ulADC0_Value);
+  ADCSingleSampleTask2(ulADC0_Value[0]);
+  ADCIntClear(ADC0_BASE, 2);
+}
+
+//*****************************************************************************
+//
 // ADC0 Sequence 3 Interrupt Handler
 //
 //*****************************************************************************
@@ -1694,12 +1852,7 @@ ADC0Seq3IntHandler(void)
 { 
   unsigned long ulADC0_Value[1];
   ADCSequenceDataGet(ADC0_BASE, 3, ulADC0_Value);
-  ADCSingleSampleTask(ulADC0_Value[0]);
-
-   	// Stop Timer0.
-//   	TimerDisable(TIMER0_BASE, TIMER_BOTH);
-  	// Disable processor interrupts on ADC Seq3 vector.
-//   	IntDisable(INT_ADC0SS3);
+  ADCSingleSampleTask3(ulADC0_Value[0]);
   ADCIntClear(ADC0_BASE, 3);
 }
 //*****************************************************************************

@@ -16,6 +16,7 @@
 
 #include <string.h>
 #include "tachometer.h"
+#include "motor.h"
 #include "inc/hw_memmap.h"
 #include "inc/hw_types.h"
 #include "inc/hw_ints.h"
@@ -205,6 +206,7 @@ void Tach_Init(unsigned long priority){
 //   via FIFO.
 // Inputs: none
 // Outputs: none
+#define TACH_TIMEOUT	100000
 unsigned long tach_0A_timeout_count;
 void Tach_InputCapture0A(void){
 	static unsigned char first_flag = 0;
@@ -213,7 +215,12 @@ void Tach_InputCapture0A(void){
 
 	// if timeout
  	if (HWREG(TIMER0_BASE + TIMER_O_MIS) & TIMER_TIMA_TIMEOUT){
-		 tach_0A_timeout_count++;
+		tach_0A_timeout_count++;
+		 // Stop Detection
+		if (tach_0A_timeout_count >= TACH_TIMEOUT){
+			tach_0A_timeout_count = 0;
+		 	Tach_Fifo_Put(1, 0);
+		}
 	}
 	// if input capture
 	if (HWREG(TIMER0_BASE + TIMER_O_MIS) & TIMER_CAPA_EVENT){
@@ -251,7 +258,12 @@ void Tach_InputCapture1A(void){
 
 	// if timeout
  	if (HWREG(TIMER1_BASE + TIMER_O_MIS) & TIMER_TIMA_TIMEOUT){
-		 tach_1A_timeout_count++;
+		tach_1A_timeout_count++;
+		// Stop Detection
+		if (tach_1A_timeout_count >= TACH_TIMEOUT){
+			tach_1A_timeout_count = 0;
+		 	Tach_Fifo_Put(1, 0);
+		}
 	}
 	// if input capture
 	if (HWREG(TIMER1_BASE + TIMER_O_MIS) & TIMER_CAPA_EVENT){
@@ -310,6 +322,7 @@ void Tach_SendData(unsigned char tach_id){
 
 	if(Tach_Fifo_Get(tach_id, &data)){
 		total_time += data;
+		data = Tach_Filter(data);
 		SeeTach1 = data;
 		data = (187500000/data); //convert to RPM	-> (60 s)*(10^9ns)/4*(T*40 ns)
 		SeeTach2 = data;
@@ -322,6 +335,7 @@ void Tach_SendData(unsigned char tach_id){
 			SeeTach4 = data;
 		}
 
+		Motor_PID(tach_id, data);
 	
 		#ifdef _TACH_STATS
 		if((tach_id == 0) && (!stat_done)){
