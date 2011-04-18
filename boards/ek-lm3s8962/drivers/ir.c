@@ -136,7 +136,7 @@ void IRSensor0(void){
 	}
 	sum = sum/IR_SAMPLING_RATE;
 	IR_Stats0.stdev = sqrt(sum);
-	Sensors.IR0 = IR_Stats0.average;
+	Sensors.ir_front_left = sampleOut;
 
 	//oLED_Message(0, 0, "IR Avg", IR_Stats0.average);
 	//oLED_Message(0, 1, "IR StdDev", IR_Stats0.stdev);
@@ -206,7 +206,7 @@ void IRSensor1(void){
 	}
 	sum = sum/IR_SAMPLING_RATE;
 	IR_Stats1.stdev = sqrt(sum);
-	Sensors.IR1 = IR_Stats1.average;
+	Sensors.ir_front_right = sampleOut;
 
 	//oLED_Message(0, 0, "IR Avg", IR_Stats1.average);
 	//oLED_Message(0, 1, "IR StdDev", IR_Stats1.stdev);
@@ -276,7 +276,7 @@ void IRSensor2(void){
 	}
 	sum = sum/IR_SAMPLING_RATE;
 	IR_Stats2.stdev = sqrt(sum);
-	Sensors.IR2 = IR_Stats2.average;
+	Sensors.ir_back_left = sampleOut;
 
 	//oLED_Message(0, 0, "IR Avg", IR_Stats2.average);
 	//oLED_Message(0, 1, "IR StdDev", IR_Stats2.stdev);
@@ -346,7 +346,7 @@ void IRSensor3(void){
 	}
 	sum = sum/IR_SAMPLING_RATE;
 	IR_Stats3.stdev = sqrt(sum);
-	Sensors.IR3 = IR_Stats3.average;
+	Sensors.ir_back_right = sampleOut;
 
 	//oLED_Message(0, 0, "IR Avg", IR_Stats3.average);
 	//oLED_Message(0, 1, "IR StdDev", IR_Stats3.stdev);

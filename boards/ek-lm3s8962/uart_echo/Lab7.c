@@ -124,17 +124,32 @@ void DownPush(void){
 
 void Display(void){
 	while(1){
-  oLED_Message(0, 0, "IR0: ", Sensors.IR0);
-	oLED_Message(0, 1, "IR1: ", Sensors.IR1);
-  oLED_Message(0, 2, "IR2: ", Sensors.IR2);
-  oLED_Message(0, 3, "IR3: ", Sensors.IR3);
+  oLED_Message(0, 0, "IR0: ", Sensors.ir_front_left);
+	oLED_Message(0, 1, "IR1: ", Sensors.ir_front_right);
+  oLED_Message(0, 2, "IR2: ", Sensors.ir_back_left);
+  oLED_Message(0, 3, "IR3: ", Sensors.ir_back_right);
 	}
 }
 
 void CatBot(void){
   while(1){
    	//Transmit by CAN
-		motorBuffer[0] = SpeedLeft;
+		if(Sensors.ir_front_left <= 10 || Sensors.ir_back_left <= 10 && Sensors.ir_front_right > 10 && Sensors.ir_back_right > 10)
+    {
+      SpeedLeft--;
+    }
+		if(Sensors.ir_front_right <= 10 || Sensors.ir_back_right <= 10 && Sensors.ir_front_left > 10 && Sensors.ir_back_left > 10)
+    {
+      SpeedRight--;
+    }
+    if(Sensors.ir_front_left > 30 && Sensors.ir_back_left > 30 && Sensors.ir_front_right > 30 && Sensors.ir_back_right > 30 &&
+      Sensors.ir_front_left < 60 && Sensors.ir_back_left < 60 && Sensors.ir_front_right < 60 && Sensors.ir_back_right < 60)
+    {
+      SpeedLeft, SpeedRight = MAX_SPEED;
+    }
+        
+    
+    motorBuffer[0] = SpeedLeft;
     motorBuffer[1] = SpeedRight;
 		CAN_Send(motorBuffer);
   }
