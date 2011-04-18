@@ -14,13 +14,14 @@
 #define PIN_0_WRITE 0x1
 #define PIN_1_WRITE 0x2
 
-#define HALF_SPEED 60
-#define FULL_SPEED 120
+#define HALF_SPEED 1000
+#define FULL_SPEED 2150
 #define MAX_POWER 250
-#define MAX_DUTY_CYCLE 8000
+#define MIN_DUTY_CYCLE 1500
+#define MAX_DUTY_CYCLE 9900
 
-#define Kp 400 // proportional constant
-#define Ki 50 // integral constant
+#define Kp 1500 // proportional constant
+#define Ki 100 // integral constant
 
 //The following code is copied from Professor Valvano's lecture 18 Program 6.15
 #define PWM_ENABLE_R (*((volatile unsigned long *)0x40028008))
@@ -36,8 +37,8 @@
 //#define PWM_X_GENA_ACTLOAD_ZERO 0x00000008 // Set the output signal to 0
 #define GPIOF_DEN_R (*((volatile unsigned long *)0x4002551C))
 
-#define PWM_GENA_VALUE 0x8C
-#define PWM_GENB_VALUE 0x80C
+#define PWM_GENA_VALUE 0xC8
+#define PWM_GENB_VALUE 0xC08
 #define GPIO_PORTF_AFSEL_R (*((volatile unsigned long *)0x40025420))
 #define SYSCTL_RCC_R (*((volatile unsigned long *)0x400FE060))
 #define SYSCTL_RCC_USEPWMDIV 0x00100000 // Enable PWM Clock Divisor

@@ -62,7 +62,7 @@ void setMotorDirection(unsigned char motor, unsigned char direction)
 //   duty_cycle - duty cycle
 // Outputs: none
 static
-void motorForward(unsigned char motor_id, unsigned char duty_cycle){
+void motorForward(unsigned char motor_id, unsigned short duty_cycle){
 	setMotorDirection(motor_id, MOTOR_FORWARD);
 	setDutyCycle(motor_id, duty_cycle);	
 }
@@ -75,7 +75,7 @@ void motorForward(unsigned char motor_id, unsigned char duty_cycle){
 //   duty_cycle - duty cycle
 // Outputs: none
 static
-void motorBackward(unsigned char motor_id, unsigned char duty_cycle){
+void motorBackward(unsigned char motor_id, unsigned short duty_cycle){
 	setMotorDirection(motor_id, MOTOR_BACKWARD);
 	setDutyCycle(motor_id, duty_cycle);
 }
@@ -89,6 +89,9 @@ void motorBackward(unsigned char motor_id, unsigned char duty_cycle){
 //   speed - estimated speed from tachometer(in RPM)
 // Outputs: none
 // ** Code is based on Professor Valvano's lecture 20
+long SeeDuty = 0;
+long SeeError = 0;
+long SeeU = 0;
 void Motor_PID(unsigned char motor_id, unsigned long speed){
 	long Error = 0, Up = 0, Ui = 0, U = 0;
 	long duty_cycle = 0;
@@ -114,13 +117,15 @@ void Motor_PID(unsigned char motor_id, unsigned long speed){
 	else {
 		Ui = U = 0; // Desired is 0
 	}
-
-	duty_cycle = (MAX_DUTY_CYCLE*U)/MAX_POWER;
-	if (Motor_DesiredSpeeds[motor_id] > 0){
-		motorForward(motor_id,(unsigned char)duty_cycle);
+	SeeError = Error;
+	SeeU = U;
+	duty_cycle = (((MAX_DUTY_CYCLE-MIN_DUTY_CYCLE)*U)/MAX_POWER) + MIN_DUTY_CYCLE;
+	SeeDuty = duty_cycle;
+	if (Motor_DesiredSpeeds[motor_id] >= 0){
+		motorForward(motor_id,(unsigned short)duty_cycle);
 	}
 	else {
-		motorBackward(motor_id,(unsigned char)duty_cycle);
+		motorBackward(motor_id,(unsigned short)duty_cycle);
 	}
 }
 

@@ -38,7 +38,7 @@ void SRRestore(long sr);
 #define OS_EXITCRITICAL(){SRRestore(sr);}
 #define CAN_FIFO_SIZE           (8 * 8)
 
-//#define _TACH_STATS
+#define _TACH_STATS	1
 
 //***********************************************************************
 // Tach_Fifo variables, this code segment copied from Valvano, lecture1
@@ -206,7 +206,7 @@ void Tach_Init(unsigned long priority){
 //   via FIFO.
 // Inputs: none
 // Outputs: none
-#define TACH_TIMEOUT	100000
+#define TACH_TIMEOUT	1000
 unsigned long tach_0A_timeout_count;
 void Tach_InputCapture0A(void){
 	static unsigned char first_flag = 0;
@@ -217,10 +217,10 @@ void Tach_InputCapture0A(void){
  	if (HWREG(TIMER0_BASE + TIMER_O_MIS) & TIMER_TIMA_TIMEOUT){
 		tach_0A_timeout_count++;
 		 // Stop Detection
-		if (tach_0A_timeout_count >= TACH_TIMEOUT){
-			tach_0A_timeout_count = 0;
-		 	Tach_Fifo_Put(1, 0);
-		}
+		//if (tach_0A_timeout_count >= TACH_TIMEOUT){
+		//	tach_0A_timeout_count = 0;
+			Tach_Fifo_Put(0, 0);
+		//}
 	}
 	// if input capture
 	if (HWREG(TIMER0_BASE + TIMER_O_MIS) & TIMER_CAPA_EVENT){
@@ -251,6 +251,8 @@ void Tach_InputCapture0A(void){
 // Inputs: none
 // Outputs: none
 unsigned long tach_1A_timeout_count;
+unsigned long SeePeriod;   
+unsigned long SeeRPM;
 void Tach_InputCapture1A(void){
 	static unsigned char first_flag = 0;
 	unsigned long period;
@@ -260,16 +262,18 @@ void Tach_InputCapture1A(void){
  	if (HWREG(TIMER1_BASE + TIMER_O_MIS) & TIMER_TIMA_TIMEOUT){
 		tach_1A_timeout_count++;
 		// Stop Detection
-		if (tach_1A_timeout_count >= TACH_TIMEOUT){
-			tach_1A_timeout_count = 0;
+		//if (tach_1A_timeout_count >= TACH_TIMEOUT){
+		//	tach_1A_timeout_count = 0;
 		 	Tach_Fifo_Put(1, 0);
-		}
+		//}
 	}
 	// if input capture
 	if (HWREG(TIMER1_BASE + TIMER_O_MIS) & TIMER_CAPA_EVENT){
     // Get time automatically from hardware
 		period = (0xFFFF - HWREG(TIMER1_BASE + TIMER_O_TAR))  // time remaining from countdown
 				  + (tach_1A_timeout_count * 0xFFFF);			  // number of timeouts
+		SeePeriod = period;
+		SeeRPM = (375000000/period)*10;
 		tach_1A_timeout_count = 0;
 		if (!first_flag){
 			first_flag = 1;
@@ -293,7 +297,10 @@ void Tach_InputCapture1A(void){
 // Inputs: none
 // Outputs: none
 #define TACH_STATS_SIZE 350
-unsigned long SeeTach;
+unsigned long SeeTach1;
+unsigned long SeeTach2;
+unsigned long SeeTach3;
+unsigned long SeeTach4;
 unsigned long speed;
 //int CANTransmitFIFO(unsigned char *pucData, unsigned long ulSize);
 unsigned char speedBuffer[CAN_FIFO_SIZE];
@@ -319,9 +326,19 @@ void Tach_SendData(unsigned char tach_id){
 
 	if(Tach_Fifo_Get(tach_id, &data)){
 		total_time += data;
-		data = (3750000000/data); //convert to 0.1 RPM	-> (60 s)(10^9ns)/4*(T*40 ns) * (10 .1RPM)
-		SeeTach = data;
 		data = Tach_Filter(data);
+		SeeTach1 = data;
+		data = (375000000/data)*10; //convert to .1 RPM	-> (60 s)*(10^9ns)/4*(T*40 ns) * 10 .1RPM
+		SeeTach2 = data;
+		//data = Tach_Filter(data);
+		//SeeTach3 = data;
+		if (tach_id == 0){
+			SeeTach3 = data;
+		}
+		else {
+			SeeTach4 = data;
+		}
+
 		Motor_PID(tach_id, data);
 	
 		#ifdef _TACH_STATS
