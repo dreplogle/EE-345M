@@ -33,6 +33,8 @@ unsigned long NumSamples;   // incremented every sample
 unsigned long DataLost;     // data sent by Producer, but not received by Consumer
 unsigned long PIDWork;      // current number of PID calculations finished
 unsigned long FilterWork;   // number of digital filter calculations finished
+#define MAX_SPEED 20
+#define MIN_SPEED 0
 
 extern unsigned long JitterHistogramA[];
 extern unsigned long JitterHistogramB[];
@@ -43,18 +45,7 @@ unsigned short SoundVFreq = 1;
 unsigned short SoundVTime = 0;
 unsigned short FilterOn = 1;
 struct sensors Sensors;
-
-enum
-{
-   FORWARD,
-   BACKWARD,
-   LEFT,
-   RIGHT,
-   HARD_LEFT,
-   HARD_RIGHT,
-   BACK_LEFT,
-   BACK_RIGHT
-} Motor;
+unsigned short SpeedLeft, SpeedRight = MAX_SPEED;
 
 unsigned char motorBuffer[CAN_FIFO_SIZE];
 int Running;                // true while robot is running
@@ -137,19 +128,14 @@ void Display(void){
 	oLED_Message(0, 1, "IR1: ", Sensors.IR1);
   oLED_Message(0, 2, "IR2: ", Sensors.IR2);
   oLED_Message(0, 3, "IR3: ", Sensors.IR3);
-  //SysCtlDelay(SysCtlClockGet()/100);
-//	oLED_Message(0, 2, "Tach: ", Sensors.tach);
-	//SysCtlDelay(SysCtlClockGet()/100);
-//	oLED_Message(0, 1, "Ping: ", Sensors.ping);
-	//SysCtlDelay(SysCtlClockGet()/100);
 	}
 }
 
 void CatBot(void){
   while(1){
    	//Transmit by CAN
-		motorBuffer[0] = 'm';
-    motorBuffer[1] = FORWARD;
+		motorBuffer[0] = SpeedLeft;
+    motorBuffer[1] = SpeedRight;
 		CAN_Send(motorBuffer);
   }
 }

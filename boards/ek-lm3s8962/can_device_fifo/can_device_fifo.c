@@ -58,19 +58,11 @@
 enum Device
 {
   Ping, Tach, 
-  IR1, IR2, IR3
+  IR0, IR1, IR2, IR3
 };
-enum Motor
-{
-   FORWARD,
-   BACKWARD,
-   LEFT,
-   RIGHT,
-   HARD_LEFT,
-   HARD_RIGHT,
-   BACK_LEFT,
-   BACK_RIGHT
-};
+#define MAX_SPEED 20
+#define MIN_SPEED 0
+unsigned short SpeedLeft, SpeedRight = MAX_SPEED;
 //
 // This structure holds all of the state information for the CAN transfers.
 //
@@ -529,44 +521,9 @@ int main(void)
                 //
                 if(g_sCAN.ulBytesRemaining == 0)
                 {
-                    switch(g_sCAN.pucBufferRx[1])
-                    {
-                      case FORWARD: 
-                        Motor_GoForward();
-                        break;
-                      case BACKWARD:
-                        Motor_GoBackward();
-                        break;
-                      case LEFT:
-                        Motor_TurnLeft();
-                        break;
-                      case RIGHT:
-                        Motor_TurnRight();
-                        break;
-                      case HARD_LEFT:
-                        Motor_TurnHardLeft();
-                        break;
-                      case HARD_RIGHT:
-                        Motor_TurnHardRight();
-                        break;
-                      case BACK_LEFT:
-                        Motor_TurnBackLeft();
-                        break;
-                      case BACK_RIGHT:
-                        Motor_TurnBackRight();
-                        break;
-                      default:
-                        break;
-                    }
+                    SpeedLeft = g_sCAN.pucBufferRx[0]; 
+                    SpeedRight = g_sCAN.pucBufferRx[1]; 
                     
-                    //
-                    // Initialize the transmit count to zero.
-                    //
-                    CAN_Send(g_sCAN.pucBufferRx);
-                    //
-                    // Switch to wait for Process data state.
-                    //
-                    g_sCAN.eState = CAN_SENDING;
 
                     //
                     // Reset the buffer pointer.
