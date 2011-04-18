@@ -387,11 +387,6 @@
           <GroupName>Source</GroupName>
           <Files>
             <File>
-              <FileName>can_device_fifo.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\can_device_fifo.c</FilePath>
-            </File>
-            <File>
               <FileName>tachometer.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\drivers\tachometer.c</FilePath>
@@ -415,6 +410,11 @@
               <FileName>motor.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\drivers\motor.c</FilePath>
+            </File>
+            <File>
+              <FileName>can_device_fifo.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\can_device_fifo.c</FilePath>
             </File>
           </Files>
         </Group>
