@@ -18,7 +18,7 @@
 #define HALF_SPEED (FULL_SPEED/2)
 #define MAX_POWER 250
 #define MIN_DUTY_CYCLE 0
-#define MAX_DUTY_CYCLE 9999
+#define MAX_DUTY_CYCLE 9000
 
 #define Kp 10 // proportional constant
 #define Ki 100 // integral constant
@@ -125,7 +125,7 @@ void Motor_Init(void);
 // = 6 MHz/2 = 3 MHz (in this example)
 
 //duty = 2000 is very slow, duty = 9900 is very fast
-void Motor_Configure(unsigned char motor_id, unsigned short period, unsigned short duty);
+void Motor_Configure(unsigned char motor_id, unsigned char direction, unsigned short period, unsigned short duty);
 
 void Motor_Start(unsigned char motor_id);
 

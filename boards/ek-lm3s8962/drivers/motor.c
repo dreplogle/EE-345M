@@ -17,15 +17,28 @@ unsigned long SpeedArr[100];
 unsigned long UArr[100];
 unsigned long DutyArr[100];
 int i = 0;
+static unsigned char leftMotorDirection = 0;
+static unsigned char rightMotorDirection = 0;
+
 static
 void setDutyCycle(unsigned char motor, unsigned short duty)
 {
 	if (motor == LEFT_MOTOR)
 	{
+		if (leftMotorDirection == MOTOR_BACKWARD)
+		{
+			duty = MAX_DUTY_CYCLE - duty;
+		}
+
 		PWM_0_CMPA_R = duty - 1; // count value when output rises
 	}
 	else
 	{
+		if (rightMotorDirection == MOTOR_BACKWARD)
+		{
+			duty = MAX_DUTY_CYCLE - duty;
+		}
+
 		PWM_0_CMPB_R = duty - 1; // count value when output rises
 	}
 }
@@ -38,6 +51,7 @@ void setMotorDirection(unsigned char motor, unsigned char direction)
 	if (motor == LEFT_MOTOR)
 	{
 		//These two lines must be done separately, or the shifting won't work properly
+		leftMotorDirection = direction;
 		direction = direction << PIN_0_WRITE;
 		direction = direction >> 1;
 
@@ -46,6 +60,7 @@ void setMotorDirection(unsigned char motor, unsigned char direction)
 	else
 	{
 		//These two lines must be done separately, or the shifting won't work properly
+		rightMotorDirection = direction;
 		DebugDirection = direction;
 		direction = direction << PIN_1_WRITE;
 		DebugDirection = direction;
@@ -280,17 +295,27 @@ void Motor_Init(void)
 // = 6 MHz/2 = 3 MHz (in this example)
 
 //duty = 2000 is very slow, duty = 9900 is very fast
-void Motor_Configure(unsigned char motor_id, unsigned short period, unsigned short duty){
+void Motor_Configure(unsigned char motor_id, unsigned char direction, unsigned short period, unsigned short duty){
+
+	setMotorDirection(motor_id, direction);
+
 	if (motor_id == LEFT_MOTOR)
 	{
 		PWM_0_LOAD_R = period - 1; // cycles needed to count down to 0
-		PWM_0_CMPA_R = duty - 1; // count value when output rises
+		//PWM_0_CMPA_R = duty - 1; // count value when output rises
+		setDutyCycle(motor_id, duty);
+
 		PWM_0_CTL_R |= PWM_X_CTL_ENABLE; // start PWM0
 	}
 	else
 	{
 		PWM_0_LOAD_R = period - 1; // cycles needed to count down to 0
-		PWM_0_CMPB_R = duty - 1; // count value when output rises
+
+
+		//PWM_0_CMPB_R = duty - 1; // count value when output rises
+
+		setDutyCycle(motor_id, duty);
+
 		PWM_0_CTL_R |= PWM_X_CTL_ENABLE; // start PWM0
 	}
 }

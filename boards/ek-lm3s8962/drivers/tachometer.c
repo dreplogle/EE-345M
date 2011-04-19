@@ -340,7 +340,7 @@ void Tach_SendData(unsigned char tach_id){
 			SeeTach4 = data;
 		}
 
-		//Motor_PID(tach_id, data);
+		 Motor_PID(tach_id, data);
 	
 		#ifdef _TACH_STATS
 		if((tach_id == 0) && (!stat_done)){
