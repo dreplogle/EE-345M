@@ -12,29 +12,49 @@
 #include "motor.h"
 
 long Motor_DesiredSpeeds[2] = {0, };
-
+long ErrArr[100];
+long ErrArr2[100];
+unsigned long UArr[100];  
+unsigned long UArr2[100];
+unsigned long DutyArr[100];  
+unsigned long DutyArr2[100];
+int i = 0;
+int i2 = 0;
+static unsigned char leftMotorDirection = 0;
+static unsigned char rightMotorDirection = 0;
 
 static
 void setDutyCycle(unsigned char motor, unsigned short duty)
 {
 	if (motor == LEFT_MOTOR)
 	{
+		if (leftMotorDirection == MOTOR_BACKWARD)
+		{
+			duty = MAX_DUTY_CYCLE - duty;
+		}
+
 		PWM_0_CMPA_R = duty - 1; // count value when output rises
 	}
 	else
 	{
+		if (rightMotorDirection == MOTOR_BACKWARD)
+		{
+			duty = MAX_DUTY_CYCLE - duty;
+		}
+
 		PWM_0_CMPB_R = duty - 1; // count value when output rises
 	}
 }
 
 unsigned char DebugDirection;
 
-static
+
 void setMotorDirection(unsigned char motor, unsigned char direction)
 {
 	if (motor == LEFT_MOTOR)
 	{
 		//These two lines must be done separately, or the shifting won't work properly
+		leftMotorDirection = direction;
 		direction = direction << PIN_0_WRITE;
 		direction = direction >> 1;
 
@@ -43,6 +63,7 @@ void setMotorDirection(unsigned char motor, unsigned char direction)
 	else
 	{
 		//These two lines must be done separately, or the shifting won't work properly
+		rightMotorDirection = direction;
 		DebugDirection = direction;
 		direction = direction << PIN_1_WRITE;
 		DebugDirection = direction;
@@ -74,10 +95,17 @@ void motorForward(unsigned char motor_id, unsigned short duty_cycle){
 //   motor_id - left or right motor
 //   duty_cycle - duty cycle
 // Outputs: none
+unsigned long SeeDuty;
+unsigned long j;
 static
 void motorBackward(unsigned char motor_id, unsigned short duty_cycle){
 	setMotorDirection(motor_id, MOTOR_BACKWARD);
 	setDutyCycle(motor_id, duty_cycle);
+  if (duty_cycle < 2000){
+      j++;
+  }
+  if (motor_id == 0)
+     SeeDuty = duty_cycle;
 }
 
 
@@ -89,12 +117,28 @@ void motorBackward(unsigned char motor_id, unsigned short duty_cycle){
 //   speed - estimated speed from tachometer(in RPM)
 // Outputs: none
 // ** Code is based on Professor Valvano's lecture 20
-long SeeDuty = 0;
+//long SeeDuty = 0;
 long SeeError = 0;
 long SeeU = 0;
+long Ui[2];
+#define KP1 5000 // proportional constant
+#define KI1 500 // integral constant
+#define KP2 3000
+#define KI2 500
 void Motor_PID(unsigned char motor_id, unsigned long speed){
-	long Error = 0, Up = 0, Ui = 0, U = 0;
+	long Error = 0, Up = 0, U = 0;
+    long Kp = 0;
+    long Ki = 0;
 	long duty_cycle = 0;
+    if (motor_id == 0){
+        Kp = KP1;
+        Ki = KI1;
+    }
+    else if (motor_id = 1){
+        Kp = KP2;
+        Ki = KI2;
+    }
+    
 	if (Motor_DesiredSpeeds[motor_id]){
 		if (Motor_DesiredSpeeds[motor_id] > 0){
 			Error = Motor_DesiredSpeeds[motor_id]-speed; // 0.1 RPM
@@ -103,29 +147,48 @@ void Motor_PID(unsigned char motor_id, unsigned long speed){
 			Error = -Motor_DesiredSpeeds[motor_id]-speed; // 0.1 RPM backward
 		}
 		Up = (Kp*Error)/10000;
-		Ui = Ui+(Ki*Error)/10000;
-		if (Ui < 0)
-			Ui = 0; // antireset windup
-		if (Ui > 250)
-			Ui = 250;
-		U = Up+Ui;
-		if (U < 0)
-			U = 0; // minimum power
-		if (U > 250)
-			U = 250; // maximum power
+		Ui[motor_id] = Ui[motor_id]+(Ki*Error)/10000;
+		if (Ui[motor_id] < MIN_DUTY_CYCLE)
+			Ui[motor_id] = MIN_DUTY_CYCLE; // antireset windup
+		if (Ui[motor_id] > MAX_DUTY_CYCLE)
+			Ui[motor_id] = MAX_DUTY_CYCLE;
+		U = Up+Ui[motor_id];
+		if (U < MIN_DUTY_CYCLE)
+			U = MIN_DUTY_CYCLE; // minimum power
+		if (U > MAX_DUTY_CYCLE)
+			U = MAX_DUTY_CYCLE; // maximum power
 	}
 	else {
-		Ui = U = 0; // Desired is 0
+		Ui[motor_id] = U = 0; // Desired is 0
 	}
-	SeeError = Error;
-	SeeU = U;
-	duty_cycle = (((MAX_DUTY_CYCLE-MIN_DUTY_CYCLE)*U)/MAX_POWER) + MIN_DUTY_CYCLE;
-	SeeDuty = duty_cycle;
+    if(motor_id == 0)
+    {
+        ErrArr[i] = Error;
+        UArr[i++] = U;
+    }
+    else if (motor_id == 1){
+        ErrArr2[i2] = Error;
+        UArr2[i2++] = U;
+    }
+//	SeeError = Error;
+//	duty_cycle = (((MAX_DUTY_CYCLE-MIN_DUTY_CYCLE)*U)/MAX_POWER) + MIN_DUTY_CYCLE;
+//  if(motor_id == 1)
+//  {
+//	  DutyArr[i++] = duty_cycle;
+//  }
+//  if(motor_id == 0)
+//  {
+//	  DutyArr2[i2++] = duty_cycle;
+//  }
+    if(i > 100)
+        i = 0;
+    if(i2 > 100)
+        i2 = 0;
 	if (Motor_DesiredSpeeds[motor_id] >= 0){
-		motorForward(motor_id,(unsigned short)duty_cycle);
+		motorForward(motor_id,(unsigned short)U);
 	}
 	else {
-		motorBackward(motor_id,(unsigned short)duty_cycle);
+		motorBackward(motor_id,(unsigned short)U);
 	}
 }
 
@@ -220,6 +283,8 @@ void Motor_TurnBackRight(void)
 void Motor_Init(void)
 {
 	volatile unsigned long delay = 0;
+    Ui[0] = MAX_DUTY_CYCLE;
+    Ui[1] = MAX_DUTY_CYCLE;
 
 	//Initialize PE0 and PE1 to be outputs
 	SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);
@@ -259,17 +324,27 @@ void Motor_Init(void)
 // = 6 MHz/2 = 3 MHz (in this example)
 
 //duty = 2000 is very slow, duty = 9900 is very fast
-void Motor_Configure(unsigned char motor_id, unsigned short period, unsigned short duty){
+void Motor_Configure(unsigned char motor_id, unsigned char direction, unsigned short period, unsigned short duty){
+
+	setMotorDirection(motor_id, direction);
+
 	if (motor_id == LEFT_MOTOR)
 	{
 		PWM_0_LOAD_R = period - 1; // cycles needed to count down to 0
-		PWM_0_CMPA_R = duty - 1; // count value when output rises
+		//PWM_0_CMPA_R = duty - 1; // count value when output rises
+		setDutyCycle(motor_id, duty);
+
 		PWM_0_CTL_R |= PWM_X_CTL_ENABLE; // start PWM0
 	}
 	else
 	{
 		PWM_0_LOAD_R = period - 1; // cycles needed to count down to 0
-		PWM_0_CMPB_R = duty - 1; // count value when output rises
+
+
+		//PWM_0_CMPB_R = duty - 1; // count value when output rises
+
+		setDutyCycle(motor_id, duty);
+
 		PWM_0_CTL_R |= PWM_X_CTL_ENABLE; // start PWM0
 	}
 }

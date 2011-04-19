@@ -14,14 +14,14 @@
 #define PIN_0_WRITE 0x1
 #define PIN_1_WRITE 0x2
 
-#define HALF_SPEED 1000
-#define FULL_SPEED 2150
+#define FULL_SPEED 1900
+#define HALF_SPEED (FULL_SPEED/2)
+#define MAX_SPEED_1 
 #define MAX_POWER 250
-#define MIN_DUTY_CYCLE 1500
-#define MAX_DUTY_CYCLE 9900
+#define MIN_DUTY_CYCLE 0
+#define MAX_DUTY_CYCLE 9000
 
-#define Kp 1500 // proportional constant
-#define Ki 100 // integral constant
+
 
 //The following code is copied from Professor Valvano's lecture 18 Program 6.15
 #define PWM_ENABLE_R (*((volatile unsigned long *)0x40028008))
@@ -125,7 +125,7 @@ void Motor_Init(void);
 // = 6 MHz/2 = 3 MHz (in this example)
 
 //duty = 2000 is very slow, duty = 9900 is very fast
-void Motor_Configure(unsigned char motor_id, unsigned short period, unsigned short duty);
+void Motor_Configure(unsigned char motor_id, unsigned char direction, unsigned short period, unsigned short duty);
 
 void Motor_Start(unsigned char motor_id);
 
