@@ -488,21 +488,30 @@ void CAN_Receive(void)
 //
 //*****************************************************************************
 int main(void)
-{  
+{        
+  unsigned char motdir = 0;
+  unsigned long i = 0;
     CAN_Init();
     Ping_Init(TIMER2_BASE, TIMER_A); //Must do this after OS_AddPeriodicThread in order
   	Tach_Init(0);
 	Motor_Init();
-	Motor_Configure(0, 10000, MIN_DUTY_CYCLE); 
-	Motor_Configure(1, 10000, MIN_DUTY_CYCLE);
+	Motor_Configure(0, 10000, 7000); 
+	Motor_Configure(1, 10000, 7000);
+	Motor_GoBackward();
+  setMotorDirection(0, 1);
+  setMotorDirection(1, 1);
  	Motor_Start(0);
 	Motor_Start(1);
-	Motor_GoForward();
 
     while(1)
     {  
 	    Tach_SendData(0);
-		Tach_SendData(1);
+		  Tach_SendData(1);
+//      for (i = 0; i < 1000000; i++){
+//      }
+//      motdir ^= 0x01;
+//      setMotorDirection(0, motdir); 
+//      setMotorDirection(1, motdir);
         switch(g_sCAN.eState)
         {
             case CAN_SENDING:

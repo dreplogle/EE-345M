@@ -12,14 +12,14 @@ int main(void)
 {
 	Motor_Init();
 	Tach_Init(0);
-	Motor_Configure(0, 10000, 1);
+	Motor_Configure(0, 10000, 4500);
 	//setMotorDirection(0,0);
-	//setMotorDirection(0,1);
+	setMotorDirection(0,1);
 	Motor_Start(0);
 
-	Motor_Configure(1, 10000,1);
+	Motor_Configure(1, 10000,4500);
 	//setMotorDirection(1,0);
-	//setMotorDirection(1,1);
+	setMotorDirection(1,1);
 	Motor_Start(1);
 
 	while(1)

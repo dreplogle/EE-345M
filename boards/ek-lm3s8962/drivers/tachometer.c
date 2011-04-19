@@ -217,10 +217,10 @@ void Tach_InputCapture0A(void){
  	if (HWREG(TIMER0_BASE + TIMER_O_MIS) & TIMER_TIMA_TIMEOUT){
 		tach_0A_timeout_count++;
 		 // Stop Detection
-		//if (tach_0A_timeout_count >= TACH_TIMEOUT){
-		//	tach_0A_timeout_count = 0;
-			Tach_Fifo_Put(0, 0);
-		//}
+		if (tach_0A_timeout_count >= TACH_TIMEOUT){
+			tach_0A_timeout_count = 0;
+			Tach_Fifo_Put(0, 3750000000);
+		}
 	}
 	// if input capture
 	if (HWREG(TIMER0_BASE + TIMER_O_MIS) & TIMER_CAPA_EVENT){
@@ -262,10 +262,10 @@ void Tach_InputCapture1A(void){
  	if (HWREG(TIMER1_BASE + TIMER_O_MIS) & TIMER_TIMA_TIMEOUT){
 		tach_1A_timeout_count++;
 		// Stop Detection
-		//if (tach_1A_timeout_count >= TACH_TIMEOUT){
-		//	tach_1A_timeout_count = 0;
-		 	Tach_Fifo_Put(1, 0);
-		//}
+		if (tach_1A_timeout_count >= TACH_TIMEOUT){
+			tach_1A_timeout_count = 0;
+		 	Tach_Fifo_Put(0, 3750000000);
+		}
 	}
 	// if input capture
 	if (HWREG(TIMER1_BASE + TIMER_O_MIS) & TIMER_CAPA_EVENT){
@@ -329,7 +329,8 @@ void Tach_SendData(unsigned char tach_id){
 		data = Tach_Filter(data);
 		SeeTach1 = data;
 		data = (375000000/data)*10; //convert to .1 RPM	-> (60 s)*(10^9ns)/4*(T*40 ns) * 10 .1RPM
-		SeeTach2 = data;
+		//data = 37500000/data;
+    SeeTach2 = data;
 		//data = Tach_Filter(data);
 		//SeeTach3 = data;
 		if (tach_id == 0){
@@ -339,7 +340,7 @@ void Tach_SendData(unsigned char tach_id){
 			SeeTach4 = data;
 		}
 
-		Motor_PID(tach_id, data);
+		//Motor_PID(tach_id, data);
 	
 		#ifdef _TACH_STATS
 		if((tach_id == 0) && (!stat_done)){

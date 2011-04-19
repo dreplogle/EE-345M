@@ -12,8 +12,11 @@
 #include "motor.h"
 
 long Motor_DesiredSpeeds[2] = {0, };
-
-
+long ErrArr[100];
+unsigned long SpeedArr[100];
+unsigned long UArr[100];
+unsigned long DutyArr[100];
+int i = 0;
 static
 void setDutyCycle(unsigned char motor, unsigned short duty)
 {
@@ -29,7 +32,7 @@ void setDutyCycle(unsigned char motor, unsigned short duty)
 
 unsigned char DebugDirection;
 
-static
+
 void setMotorDirection(unsigned char motor, unsigned char direction)
 {
 	if (motor == LEFT_MOTOR)
@@ -74,10 +77,17 @@ void motorForward(unsigned char motor_id, unsigned short duty_cycle){
 //   motor_id - left or right motor
 //   duty_cycle - duty cycle
 // Outputs: none
+unsigned long SeeDuty;
+unsigned long j;
 static
 void motorBackward(unsigned char motor_id, unsigned short duty_cycle){
 	setMotorDirection(motor_id, MOTOR_BACKWARD);
 	setDutyCycle(motor_id, duty_cycle);
+  if (duty_cycle < 2000){
+      j++;
+  }
+  if (motor_id == 0)
+     SeeDuty = duty_cycle;
 }
 
 
@@ -89,11 +99,12 @@ void motorBackward(unsigned char motor_id, unsigned short duty_cycle){
 //   speed - estimated speed from tachometer(in RPM)
 // Outputs: none
 // ** Code is based on Professor Valvano's lecture 20
-long SeeDuty = 0;
+//long SeeDuty = 0;
 long SeeError = 0;
 long SeeU = 0;
 void Motor_PID(unsigned char motor_id, unsigned long speed){
-	long Error = 0, Up = 0, Ui = 0, U = 0;
+	long Error = 0, Up = 0, U = 0;
+  static long Ui = (MAX_DUTY_CYCLE + MIN_DUTY_CYCLE)/2;
 	long duty_cycle = 0;
 	if (Motor_DesiredSpeeds[motor_id]){
 		if (Motor_DesiredSpeeds[motor_id] > 0){
@@ -117,10 +128,20 @@ void Motor_PID(unsigned char motor_id, unsigned long speed){
 	else {
 		Ui = U = 0; // Desired is 0
 	}
+  if(motor_id == 0)
+  {
+    SpeedArr[i] = speed;
+    ErrArr[i] = Error;
+	  UArr[i] = U;
+  }
 	SeeError = Error;
-	SeeU = U;
 	duty_cycle = (((MAX_DUTY_CYCLE-MIN_DUTY_CYCLE)*U)/MAX_POWER) + MIN_DUTY_CYCLE;
-	SeeDuty = duty_cycle;
+  if(motor_id == 0)
+  {
+	  DutyArr[i++] = duty_cycle;
+  }
+  if(i > 100)
+   i = 0;
 	if (Motor_DesiredSpeeds[motor_id] >= 0){
 		motorForward(motor_id,(unsigned short)duty_cycle);
 	}
