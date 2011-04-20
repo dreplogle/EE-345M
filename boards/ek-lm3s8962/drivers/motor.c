@@ -118,18 +118,19 @@ void motorBackward(unsigned char motor_id, unsigned short duty_cycle){
 // Outputs: none
 // ** Code is based on Professor Valvano's lecture 20
 //long SeeDuty = 0;
+unsigned long SeeSpeed = 0;
 long SeeError = 0;
 long SeeU = 0;
 long Ui[2];
-#define KP1 100 // proportional constant
-#define KI1 0 // integral constant
-#define KP2 100
-#define KI2 0
+#define KP1 0 // proportional constant
+#define KI1 3000 // integral constant
+#define KP2 0
+#define KI2 2000
+long Error = 0, Up = 0, U = 0;
+long Kp = 0;
+long Ki = 0;
+long duty_cycle = 0;
 void Motor_PID(unsigned char motor_id, unsigned long speed){
-	long Error = 0, Up = 0, U = 0;
-    long Kp = 0;
-    long Ki = 0;
-	long duty_cycle = 0;
     if (motor_id == 0){
         Kp = KP1;
         Ki = KI1;
@@ -138,7 +139,7 @@ void Motor_PID(unsigned char motor_id, unsigned long speed){
         Kp = KP2;
         Ki = KI2;
     }
-    
+    SeeSpeed = speed;
 	if (Motor_DesiredSpeeds[motor_id]){
 		if (Motor_DesiredSpeeds[motor_id] > 0){
 			Error = Motor_DesiredSpeeds[motor_id]-speed; // 0.1 RPM
@@ -146,6 +147,9 @@ void Motor_PID(unsigned char motor_id, unsigned long speed){
 		else {
 			Error = -Motor_DesiredSpeeds[motor_id]-speed; // 0.1 RPM backward
 		}
+        if (Error < 0){
+            duty_cycle++;
+        }
 		Up = (Kp*Error)/10000;
 		Ui[motor_id] = Ui[motor_id]+(Ki*Error)/10000;
 		if (Ui[motor_id] < MIN_DUTY_CYCLE)

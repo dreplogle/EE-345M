@@ -519,8 +519,8 @@ int main(void)
     Ping_Init(TIMER2_BASE, TIMER_A); //Must do this after OS_AddPeriodicThread in order
   	Tach_Init(0);
 	Motor_Init();
-	Motor_Configure(0, 0, 10000, 6000); 
-	Motor_Configure(1, 0, 10000, 6000);
+	Motor_Configure(0, 0, 10000, MAX_DUTY_CYCLE/2); 
+	Motor_Configure(1, 0, 10000, MAX_DUTY_CYCLE/2);
 	Motor_Start(0);
 	Motor_Start(1);
 
@@ -561,8 +561,8 @@ int main(void)
                 //
                 if(g_sCAN.ulBytesRemaining == 0)
                 {
-                    SpeedLeft = g_sCAN.pucBufferRx[0]; 
-                    SpeedRight = g_sCAN.pucBufferRx[1]; 
+                    //SpeedLeft = g_sCAN.pucBufferRx[0]; 
+                    //SpeedRight = g_sCAN.pucBufferRx[1]; 
                     
 
                     //

@@ -14,12 +14,12 @@
 #define PIN_0_WRITE 0x1
 #define PIN_1_WRITE 0x2
 
-#define FULL_SPEED 1900
+#define FULL_SPEED 1200
 #define HALF_SPEED (FULL_SPEED/2)
 #define MAX_SPEED_1 
 #define MAX_POWER 250
 #define MIN_DUTY_CYCLE 0
-#define MAX_DUTY_CYCLE 9000
+#define MAX_DUTY_CYCLE 7000
 
 
 
