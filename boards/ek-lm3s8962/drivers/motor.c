@@ -374,3 +374,8 @@ void Motor_Stop(unsigned char motor_id)
 	}
 	
 }
+
+void Motor_SetDesiredSpeed(unsigned char motor_id, unsigned short speed)
+{
+	Motor_DesiredSpeeds[motor_id] = speed;
+}

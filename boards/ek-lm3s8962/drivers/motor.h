@@ -16,7 +16,6 @@
 
 #define FULL_SPEED 1900
 #define HALF_SPEED (FULL_SPEED/2)
-#define MAX_SPEED_1 
 #define MAX_POWER 250
 #define MIN_DUTY_CYCLE 0
 #define MAX_DUTY_CYCLE 9000
@@ -130,5 +129,7 @@ void Motor_Configure(unsigned char motor_id, unsigned char direction, unsigned s
 void Motor_Start(unsigned char motor_id);
 
 void Motor_Stop(unsigned char motor_id);
+
+void Motor_SetDesiredSpeed(unsigned char motor_id, unsigned short speed);
 
 #endif

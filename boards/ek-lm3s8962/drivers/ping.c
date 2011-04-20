@@ -203,7 +203,7 @@ void pingConsumer(void)  //make this an interrupt
 			//Transmit by CAN
 			distanceBuffer[0] = 'p';
 			memcpy(&distanceBuffer[1], &distance, 4);
-			CAN_Send(distanceBuffer);
+//			CAN_Send(distanceBuffer);
 
 
 
