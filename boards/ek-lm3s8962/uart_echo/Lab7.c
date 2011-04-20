@@ -128,29 +128,67 @@ void Display(void){
 	oLED_Message(0, 1, "IR1: ", Sensors.ir_back_left);
   oLED_Message(0, 2, "IR2: ", Sensors.ir_front_right);
   oLED_Message(0, 3, "IR3: ", Sensors.ir_back_right);
+  	 
+	oLED_Message(1, 0, "SpeedLeft: ", SpeedLeft);
+  oLED_Message(1, 1, "SpeedRight: ", SpeedRight);
 	}
 }
 
 void CatBot(void){
+	SpeedLeft = MAX_SPEED;
+	SpeedRight = MAX_SPEED;
   while(1){
+
+		if  (Sensors.ir_front_left > 80) {Sensors.ir_front_left = 80;}
+		if  (Sensors.ir_back_left > 80) {Sensors.ir_back_left = 80;}
+		if  (Sensors.ir_front_left < 10) {Sensors.ir_front_left = 10;}
+		if  (Sensors.ir_back_left < 10) {Sensors.ir_back_left = 10;}
+		
+
+
    	//Transmit by CAN
-		if(Sensors.ir_front_left <= 10 || Sensors.ir_back_left <= 10 && Sensors.ir_front_right > 10 && Sensors.ir_back_right > 10)
+//		if(Sensors.ir_front_left <= 10 || Sensors.ir_back_left <= 10 && Sensors.ir_front_right > 10 && Sensors.ir_back_right > 10)
+//    {
+//      SpeedLeft--;
+//    }
+//		if(Sensors.ir_front_right <= 10 || Sensors.ir_back_right <= 10 && Sensors.ir_front_left > 10 && Sensors.ir_back_left > 10)
+//    {
+//      SpeedRight--;
+//    }
+//    if(Sensors.ir_front_left > 30 && Sensors.ir_back_left > 30 && Sensors.ir_front_right > 30 && Sensors.ir_back_right > 30 &&
+//      Sensors.ir_front_left < 60 && Sensors.ir_back_left < 60 && Sensors.ir_front_right < 60 && Sensors.ir_back_right < 60)
+//    {
+//      SpeedLeft, SpeedRight = MAX_SPEED;
+//    }
+
+
+		if( (Sensors.ir_front_left - Sensors.ir_back_left) >= 30)
     {
       SpeedLeft--;
     }
-		if(Sensors.ir_front_right <= 10 || Sensors.ir_back_right <= 10 && Sensors.ir_front_left > 10 && Sensors.ir_back_left > 10)
+	
+
+		else if( (Sensors.ir_back_left - Sensors.ir_front_left) >= 30)
     {
       SpeedRight--;
     }
-    if(Sensors.ir_front_left > 30 && Sensors.ir_back_left > 30 && Sensors.ir_front_right > 30 && Sensors.ir_back_right > 30 &&
-      Sensors.ir_front_left < 60 && Sensors.ir_back_left < 60 && Sensors.ir_front_right < 60 && Sensors.ir_back_right < 60)
-    {
-      SpeedLeft, SpeedRight = MAX_SPEED;
-    }
-        
+	else
+	{
+		SpeedLeft++;
+		SpeedRight++;
+	}
+
+   if (SpeedLeft >= MAX_SPEED) {SpeedLeft = MAX_SPEED;}  
+	if (SpeedLeft <= MIN_SPEED) {SpeedLeft = MIN_SPEED;}
+	 if (SpeedRight >= MAX_SPEED) {SpeedRight = MAX_SPEED;}  
+	if (SpeedRight <= MIN_SPEED) {SpeedRight = MIN_SPEED;}
+//	SpeedLeft = 20;
+//	SpeedRight = 20;
     
-    motorBuffer[0] = SpeedLeft;
-    motorBuffer[1] = SpeedRight;
+
+    motorBuffer[0] = 'A';
+    motorBuffer[1] = SpeedLeft;
+	motorBuffer[2] = SpeedRight;
 		CAN_Send(motorBuffer);
   }
 }

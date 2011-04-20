@@ -27,7 +27,7 @@
 #define CCP1_TIMER_PRESCALE 0
 #define MAX_DISTANCE 3000
 #define PING_PERIOD 50000 //This is in units of 2000 ns increments
-#define CAN_FIFO_SIZE           (8 * 8)
+#define CAN_FIFO_SIZE           (8 * 3)
 
 unsigned long Ping_Data_Lost = 0;
 //Sema4Type Ping_Fifo_Available;

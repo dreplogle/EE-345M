@@ -121,10 +121,10 @@ void motorBackward(unsigned char motor_id, unsigned short duty_cycle){
 long SeeError = 0;
 long SeeU = 0;
 long Ui[2];
-#define KP1 5000 // proportional constant
-#define KI1 500 // integral constant
-#define KP2 3000
-#define KI2 500
+#define KP1 40 // proportional constant
+#define KI1 1000 // integral constant
+#define KP2 40
+#define KI2 1000
 void Motor_PID(unsigned char motor_id, unsigned long speed){
 	long Error = 0, Up = 0, U = 0;
     long Kp = 0;
@@ -283,8 +283,8 @@ void Motor_TurnBackRight(void)
 void Motor_Init(void)
 {
 	volatile unsigned long delay = 0;
-    Ui[0] = MAX_DUTY_CYCLE;
-    Ui[1] = MAX_DUTY_CYCLE;
+    Ui[0] = MAX_DUTY_CYCLE/2;
+    Ui[1] = MAX_DUTY_CYCLE/2;
 
 	//Initialize PE0 and PE1 to be outputs
 	SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);

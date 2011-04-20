@@ -29,14 +29,14 @@
 #include "driverlib/sysctl.h"
 #include "can_device_fifo/can_device_fifo.h"
 #include "math.h"
-//#include "drivers/can_fifo.h"
+#include "drivers/can_fifo.h"
 
 long SRSave (void);
 void SRRestore(long sr);
 
 #define OS_ENTERCRITICAL(){sr = SRSave();}
 #define OS_EXITCRITICAL(){SRRestore(sr);}
-#define CAN_FIFO_SIZE           (8 * 8)
+#define CAN_FIFO_SIZE           (8 * 3)
 
 #define _TACH_STATS	1
 
@@ -387,6 +387,6 @@ void Tach_SendData(unsigned char tach_id){
 
 		//tachArr[0] = 't';
 		//tachArr[1] = data;
-		CAN_Send(speedBuffer);
+		//CAN_Send(speedBuffer);
 	}
 }

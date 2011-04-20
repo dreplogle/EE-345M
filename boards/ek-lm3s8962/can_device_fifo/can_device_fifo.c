@@ -494,6 +494,25 @@ void CAN_Receive(void)
   g_sCAN.eState = CAN_WAIT_RX;
 }
 
+//testmain1
+int testmain(void){
+
+	Tach_Init(0);
+	Motor_Init();
+	Motor_Configure(0, 0, 10000, 6000); 
+	Motor_Configure(1, 0, 10000, 6000);
+	Motor_Start(0);
+	Motor_Start(1);
+
+	Motor_SetDesiredSpeed(LEFT_MOTOR, 1500);
+	Motor_SetDesiredSpeed(RIGHT_MOTOR, 1500);
+	
+	while(1){
+	Tach_SendData(0);
+	Tach_SendData(1);
+	}
+}
+
 //*****************************************************************************
 //
 // This is the main loop for the application.
@@ -551,8 +570,8 @@ int main(void)
                 {
                     SpeedLeft = g_sCAN.pucBufferRx[0]; 
                     SpeedRight = g_sCAN.pucBufferRx[1]; 
-					Motor_SetDesiredSpeed(LEFT_MOTOR, (SpeedLeft*FULL_SPEED)/20);
-					Motor_SetDesiredSpeed(RIGHT_MOTOR, (SpeedRight*FULL_SPEED)/20);
+					//Motor_SetDesiredSpeed(LEFT_MOTOR, (SpeedLeft*FULL_SPEED)/20);
+					//Motor_SetDesiredSpeed(RIGHT_MOTOR, (SpeedRight*FULL_SPEED)/20);
                     //
                     // Reset the buffer pointer.
                     //
