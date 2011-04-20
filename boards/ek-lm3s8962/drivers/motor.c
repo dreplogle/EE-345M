@@ -121,10 +121,10 @@ void motorBackward(unsigned char motor_id, unsigned short duty_cycle){
 long SeeError = 0;
 long SeeU = 0;
 long Ui[2];
-#define KP1 40 // proportional constant
-#define KI1 1000 // integral constant
-#define KP2 40
-#define KI2 1000
+#define KP1 100 // proportional constant
+#define KI1 0 // integral constant
+#define KP2 100
+#define KI2 0
 void Motor_PID(unsigned char motor_id, unsigned long speed){
 	long Error = 0, Up = 0, U = 0;
     long Kp = 0;
@@ -373,9 +373,4 @@ void Motor_Stop(unsigned char motor_id)
 		PWM_ENABLE_R &= ~(PWM_ENABLE_PWM1EN); // disable PWM1
 	}
 	
-}
-
-void Motor_SetDesiredSpeed(unsigned char motor_id, unsigned short speed)
-{
-	Motor_DesiredSpeeds[motor_id] = speed;
 }

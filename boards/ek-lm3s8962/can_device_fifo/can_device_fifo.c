@@ -136,7 +136,6 @@ __error__(char *pcFilename, unsigned long ulLine)
 // The CAN controller interrupt handler.
 //
 //*****************************************************************************
-unsigned long DebugStatus;
 void
 CANIntHandler(void)
 {
@@ -147,7 +146,6 @@ CANIntHandler(void)
     // acknowledge the interrupt by reading the status register.
     //
     ulStatus = CANIntStatus(CAN0_BASE, CAN_INT_STS_CAUSE);
-	DebugStatus = ulStatus;
 
     //
     // The first eight message objects make up the Transmit message FIFO.
@@ -164,14 +162,6 @@ CANIntHandler(void)
     //
     else if((ulStatus > 8) && (ulStatus <= 16))
     {
-
-		if(g_sCAN.MsgObjectRx.pucMsgData >= g_sCAN.pucBufferRx + CAN_FIFO_SIZE){
-		//
-    	// Reset the buffer pointer.
-    	//
-   		g_sCAN.MsgObjectRx.pucMsgData = g_sCAN.pucBufferRx;
-		}
-
         //
         // Read the data out and acknowledge that it was read.
         //
@@ -367,8 +357,6 @@ CANReceiveFIFO(unsigned char *pucData, unsigned long ulSize)
             //
             g_sCAN.MsgObjectRx.ulMsgLen = ulSize;
 
-			g_sCAN.MsgObjectRx.ulFlags &= ~MSG_OBJ_FIFO;
-
             //
             // This is the last message object in a FIFO so don't set the FIFO
             // to indicate that the FIFO ends with this message object.
@@ -494,24 +482,29 @@ void CAN_Receive(void)
   g_sCAN.eState = CAN_WAIT_RX;
 }
 
-//testmain1
-int testmain(void){
 
-	Tach_Init(0);
-	Motor_Init();
-	Motor_Configure(0, 0, 10000, 6000); 
-	Motor_Configure(1, 0, 10000, 6000);
-	Motor_Start(0);
-	Motor_Start(1);
 
-	Motor_SetDesiredSpeed(LEFT_MOTOR, 1500);
-	Motor_SetDesiredSpeed(RIGHT_MOTOR, 1500);
-	
-	while(1){
-	Tach_SendData(0);
-	Tach_SendData(1);
-	}
-}
+//
+//int main(void){
+//
+//	Tach_Init(0);
+//	Motor_Init();
+//	Motor_Configure(0, 0, 10000, 6000); 
+//	Motor_Configure(1, 0, 10000, 6000);
+//	Motor_Start(0);
+//	Motor_Start(1);
+//
+//	Motor_SetDesiredSpeed(LEFT_MOTOR, 1500);
+//	Motor_SetDesiredSpeed(RIGHT_MOTOR, 1500);
+//	
+//	while(1){
+//	Tach_SendData(0);
+//	Tach_SendData(1);
+//	}
+//}
+//
+//
+
 
 //*****************************************************************************
 //
@@ -531,12 +524,12 @@ int main(void)
 	Motor_Start(0);
 	Motor_Start(1);
 
-//	Motor_GoForward();
+	Motor_GoForward();
 
 
 
     while(1)
-    { 
+    {  
 	    Tach_SendData(0);
 		Tach_SendData(1);
 //      for (i = 0; i < 1000000; i++){
@@ -570,8 +563,8 @@ int main(void)
                 {
                     SpeedLeft = g_sCAN.pucBufferRx[0]; 
                     SpeedRight = g_sCAN.pucBufferRx[1]; 
-					//Motor_SetDesiredSpeed(LEFT_MOTOR, (SpeedLeft*FULL_SPEED)/20);
-					//Motor_SetDesiredSpeed(RIGHT_MOTOR, (SpeedRight*FULL_SPEED)/20);
+                    
+
                     //
                     // Reset the buffer pointer.
                     //
