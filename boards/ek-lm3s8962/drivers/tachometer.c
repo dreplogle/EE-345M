@@ -281,6 +281,9 @@ void Tach_InputCapture1A(void){
 		else {
 			//time_debug = Tach_TimeDifference(time2, time1);
 			//Tach_Fifo_Put(time_debug);
+            if (period == 0){
+                period++;
+            }
 			if(Tach_Fifo_Put(1, period))
 				Tach_NumSamples[1]++;
 			else
@@ -310,11 +313,14 @@ struct TACH_STATS{
   short stdev;
   short maxdev;
 };
+int speed_i = 0;
+int speed2_i = 0;
 struct TACH_STATS Tach_Stats;
+unsigned long SpeedArr[100] = {0, }; 
+unsigned long SpeedArr2[100] = {0, };
 void Tach_SendData(unsigned char tach_id){
 	static unsigned int total_time = 0;
 	unsigned long data;
-	//unsigned char tachArr[CAN_FIFO_SIZE];
 
 	#ifdef _TACH_STATS
 	unsigned short i;
@@ -329,18 +335,19 @@ void Tach_SendData(unsigned char tach_id){
 		data = Tach_Filter(data);
 		SeeTach1 = data;
 		data = (375000000/data)*10; //convert to .1 RPM	-> (60 s)*(10^9ns)/4*(T*40 ns) * 10 .1RPM
-		//data = 37500000/data;
-    SeeTach2 = data;
-		//data = Tach_Filter(data);
-		//SeeTach3 = data;
 		if (tach_id == 0){
-			SeeTach3 = data;
+		    SpeedArr[speed_i++] = data;
+            if (speed_i == 100){
+                speed_i = 0;
+            }
 		}
 		else {
-			SeeTach4 = data;
+		    SpeedArr2[speed2_i++] = data;
+            if (speed2_i == 100){
+                speed2_i = 0;
+            }
 		}
-
-		 Motor_PID(tach_id, data);
+		Motor_PID(tach_id, data);
 	
 		#ifdef _TACH_STATS
 		if((tach_id == 0) && (!stat_done)){

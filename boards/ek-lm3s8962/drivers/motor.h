@@ -14,14 +14,14 @@
 #define PIN_0_WRITE 0x1
 #define PIN_1_WRITE 0x2
 
-#define FULL_SPEED 2000
+#define FULL_SPEED 1900
 #define HALF_SPEED (FULL_SPEED/2)
+#define MAX_SPEED_1 
 #define MAX_POWER 250
 #define MIN_DUTY_CYCLE 0
 #define MAX_DUTY_CYCLE 9000
 
-#define Kp 10 // proportional constant
-#define Ki 100 // integral constant
+
 
 //The following code is copied from Professor Valvano's lecture 18 Program 6.15
 #define PWM_ENABLE_R (*((volatile unsigned long *)0x40028008))

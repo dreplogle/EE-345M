@@ -495,8 +495,8 @@ int main(void)
     Ping_Init(TIMER2_BASE, TIMER_A); //Must do this after OS_AddPeriodicThread in order
   	Tach_Init(0);
 	Motor_Init();
-	Motor_Configure(0, 1, 10000, 3000); 
-	Motor_Configure(1, 1, 10000, 3000);
+	Motor_Configure(0, 0, 10000, 6000); 
+	Motor_Configure(1, 0, 10000, 6000);
 	Motor_Start(0);
 	Motor_Start(1);
 

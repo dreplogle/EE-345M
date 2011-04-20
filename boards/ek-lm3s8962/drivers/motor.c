@@ -13,10 +13,13 @@
 
 long Motor_DesiredSpeeds[2] = {0, };
 long ErrArr[100];
-unsigned long SpeedArr[100];
-unsigned long UArr[100];
-unsigned long DutyArr[100];
+long ErrArr2[100];
+unsigned long UArr[100];  
+unsigned long UArr2[100];
+unsigned long DutyArr[100];  
+unsigned long DutyArr2[100];
 int i = 0;
+int i2 = 0;
 static unsigned char leftMotorDirection = 0;
 static unsigned char rightMotorDirection = 0;
 
@@ -117,10 +120,25 @@ void motorBackward(unsigned char motor_id, unsigned short duty_cycle){
 //long SeeDuty = 0;
 long SeeError = 0;
 long SeeU = 0;
+long Ui[2];
+#define KP1 5000 // proportional constant
+#define KI1 500 // integral constant
+#define KP2 3000
+#define KI2 500
 void Motor_PID(unsigned char motor_id, unsigned long speed){
 	long Error = 0, Up = 0, U = 0;
-  static long Ui = (MAX_DUTY_CYCLE + MIN_DUTY_CYCLE)/2;
+    long Kp = 0;
+    long Ki = 0;
 	long duty_cycle = 0;
+    if (motor_id == 0){
+        Kp = KP1;
+        Ki = KI1;
+    }
+    else if (motor_id = 1){
+        Kp = KP2;
+        Ki = KI2;
+    }
+    
 	if (Motor_DesiredSpeeds[motor_id]){
 		if (Motor_DesiredSpeeds[motor_id] > 0){
 			Error = Motor_DesiredSpeeds[motor_id]-speed; // 0.1 RPM
@@ -129,39 +147,48 @@ void Motor_PID(unsigned char motor_id, unsigned long speed){
 			Error = -Motor_DesiredSpeeds[motor_id]-speed; // 0.1 RPM backward
 		}
 		Up = (Kp*Error)/10000;
-		Ui = Ui+(Ki*Error)/10000;
-		if (Ui < 0)
-			Ui = 0; // antireset windup
-		if (Ui > 250)
-			Ui = 250;
-		U = Up+Ui;
-		if (U < 0)
-			U = 0; // minimum power
-		if (U > 250)
-			U = 250; // maximum power
+		Ui[motor_id] = Ui[motor_id]+(Ki*Error)/10000;
+		if (Ui[motor_id] < MIN_DUTY_CYCLE)
+			Ui[motor_id] = MIN_DUTY_CYCLE; // antireset windup
+		if (Ui[motor_id] > MAX_DUTY_CYCLE)
+			Ui[motor_id] = MAX_DUTY_CYCLE;
+		U = Up+Ui[motor_id];
+		if (U < MIN_DUTY_CYCLE)
+			U = MIN_DUTY_CYCLE; // minimum power
+		if (U > MAX_DUTY_CYCLE)
+			U = MAX_DUTY_CYCLE; // maximum power
 	}
 	else {
-		Ui = U = 0; // Desired is 0
+		Ui[motor_id] = U = 0; // Desired is 0
 	}
-  if(motor_id == 0)
-  {
-    SpeedArr[i] = speed;
-    ErrArr[i] = Error;
-	  UArr[i] = U;
-  }
-	SeeError = Error;
-	duty_cycle = (((MAX_DUTY_CYCLE-MIN_DUTY_CYCLE)*U)/MAX_POWER) + MIN_DUTY_CYCLE;
-  if(motor_id == 0)
-  {
-	  DutyArr[i++] = duty_cycle;
-  }
-  if(i > 100)
-   i = 0;
+    if(motor_id == 0)
+    {
+        ErrArr[i] = Error;
+        UArr[i++] = U;
+    }
+    else if (motor_id == 1){
+        ErrArr2[i2] = Error;
+        UArr2[i2++] = U;
+    }
+//	SeeError = Error;
+//	duty_cycle = (((MAX_DUTY_CYCLE-MIN_DUTY_CYCLE)*U)/MAX_POWER) + MIN_DUTY_CYCLE;
+//  if(motor_id == 1)
+//  {
+//	  DutyArr[i++] = duty_cycle;
+//  }
+//  if(motor_id == 0)
+//  {
+//	  DutyArr2[i2++] = duty_cycle;
+//  }
+    if(i > 100)
+        i = 0;
+    if(i2 > 100)
+        i2 = 0;
 	if (Motor_DesiredSpeeds[motor_id] >= 0){
-		motorForward(motor_id,(unsigned short)duty_cycle);
+		motorForward(motor_id,(unsigned short)U);
 	}
 	else {
-		motorBackward(motor_id,(unsigned short)duty_cycle);
+		motorBackward(motor_id,(unsigned short)U);
 	}
 }
 
@@ -256,6 +283,8 @@ void Motor_TurnBackRight(void)
 void Motor_Init(void)
 {
 	volatile unsigned long delay = 0;
+    Ui[0] = MAX_DUTY_CYCLE;
+    Ui[1] = MAX_DUTY_CYCLE;
 
 	//Initialize PE0 and PE1 to be outputs
 	SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);

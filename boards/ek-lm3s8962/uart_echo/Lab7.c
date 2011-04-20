@@ -125,8 +125,8 @@ void DownPush(void){
 void Display(void){
 	while(1){
   oLED_Message(0, 0, "IR0: ", Sensors.ir_front_left);
-	oLED_Message(0, 1, "IR1: ", Sensors.ir_front_right);
-  oLED_Message(0, 2, "IR2: ", Sensors.ir_back_left);
+	oLED_Message(0, 1, "IR1: ", Sensors.ir_back_left);
+  oLED_Message(0, 2, "IR2: ", Sensors.ir_front_right);
   oLED_Message(0, 3, "IR3: ", Sensors.ir_back_right);
 	}
 }
