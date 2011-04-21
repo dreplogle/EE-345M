@@ -206,7 +206,7 @@ void Tach_Init(unsigned long priority){
 //   via FIFO.
 // Inputs: none
 // Outputs: none
-#define STOP_TIMEOUT	500
+#define STOP_TIMEOUT	1000
 unsigned long tach_0A_timeout_count = 0;
 unsigned long tach_0A_stop_detect = 0;
 unsigned long SeePeriod1 = 0;   
@@ -243,7 +243,7 @@ void Tach_InputCapture0A(void){
 		tach_0A_timeout_count = 0;
 		//time_debug = Tach_TimeDifference(time2, time1);
 		//Tach_Fifo_Put(time_debug);
-		if((SeeRPM1 < (FULL_SPEED + 200)) && Tach_Fifo_Put(0, period))
+		if(Tach_Fifo_Put(0, period))
 			Tach_NumSamples[0]++;
 		else
 			Tach_DataLost[0]++;
@@ -271,7 +271,7 @@ void Tach_InputCapture1A(void){
 		// Stop Detection
 		if (tach_1A_timeout_count >= STOP_TIMEOUT){
 			tach_1A_timeout_count = 0;
-		 	Tach_Fifo_Put(1, 3750000000);
+		 	Tach_Fifo_Put(0, 3750000000);
 		}
 //        tach_1A_stop_detect++;
 //		// Stop Detection
@@ -297,7 +297,7 @@ void Tach_InputCapture1A(void){
             period++;
         }
         
-		if((SeeRPM2 < (FULL_SPEED + 200)) && Tach_Fifo_Put(1, period))
+		if(Tach_Fifo_Put(1, period))
 			Tach_NumSamples[1]++;
 		else
 			Tach_DataLost[1]++;
@@ -345,7 +345,7 @@ void Tach_SendData(unsigned char tach_id){
 
 	if(Tach_Fifo_Get(tach_id, &data)){
         NumReceived[tach_id]++;
-        if (NumReceived[tach_id] > 2){
+        if (NumReceived[tach_id] > 5){
     		total_time += data;
     		//data = Tach_Filter(data);
     		SeeTach1 = data;
@@ -364,10 +364,10 @@ void Tach_SendData(unsigned char tach_id){
                     speed2_i = 0;
                 }
     		}
-            //if (NumReceived[tach_id] > 2){
+            if (NumReceived[tach_id] > 10){
                 if (data < FULL_SPEED+200)
     		        Motor_PID(tach_id, data);
-            //}
+            }
     	
     		#ifdef _TACH_STATS
     		if((tach_id == 0) && (!stat_done)){
