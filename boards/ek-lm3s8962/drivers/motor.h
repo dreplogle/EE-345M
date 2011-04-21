@@ -18,7 +18,7 @@
 #define HALF_SPEED (FULL_SPEED/2)
 #define MAX_SPEED_1 
 #define MAX_POWER 250
-#define MIN_DUTY_CYCLE 0
+#define MIN_DUTY_CYCLE 1500
 #define MAX_DUTY_CYCLE 7000
 
 

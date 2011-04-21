@@ -511,47 +511,27 @@ void CAN_Receive(void)
 // This is the main loop for the application.
 //
 //*****************************************************************************
-unsigned long count;
 int main(void)
 {        
   unsigned char motdir = 0;
   unsigned long i = 0;
-
     CAN_Init();
     Ping_Init(TIMER2_BASE, TIMER_A); //Must do this after OS_AddPeriodicThread in order
   	Tach_Init(0);
 	Motor_Init();
-	Motor_Configure(0, 0, 5000, MAX_DUTY_CYCLE/2); 
-	Motor_Configure(1, 0, 5000, MAX_DUTY_CYCLE/2);
+	Motor_Configure(0, 0, 5000, 0); 
+	Motor_Configure(1, 0, 5000, 0);
 	Motor_Start(0);
 	Motor_Start(1);
 
-	Motor_GoForward();
+	Motor_TurnRight();
 
 
 
     while(1)
     {  
-        //Motor_GoForward();  
-        for(;;){ 
-	        Tach_SendData(0);
-		    Tach_SendData(1);
-        }
-        Motor_GoForward();  
-        for(count = 0; count < 50; count++){ 
-	        Tach_SendData(0);
-		    Tach_SendData(1);
-        }
-        Motor_TurnLeft();
-        for(count = 0; count < 50; count++){ 
-	        Tach_SendData(0);
-		    Tach_SendData(1);
-        }
-        Motor_TurnRight();
-        for(count = 0; count < 50; count++){ 
-	        Tach_SendData(0);
-		    Tach_SendData(1);
-        }
+	    Tach_SendData(0);
+		Tach_SendData(1);
 //      for (i = 0; i < 1000000; i++){
 //      }
 //      motdir ^= 0x01;
