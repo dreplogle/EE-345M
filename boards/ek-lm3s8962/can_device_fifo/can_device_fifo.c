@@ -38,6 +38,9 @@
 #include "driverlib/timer.h"
 #include "drivers/ping.h"
 #include "drivers/tachometer.h"
+#include "drivers/motor.h"
+#include "can_device_fifo/can_device_fifo.h"
+
 
 //*****************************************************************************
 //
@@ -52,37 +55,14 @@
 //
 //*****************************************************************************
 
-//
-// Size of the FIFOs allocated to the CAN controller.
-//
-#define CAN_FIFO_SIZE           (8 * 8)
-
-//
-// Message object used by the transmit message FIFO.
-//
-#define TRANSMIT_MESSAGE_ID     11
-
-//
-// Message object used by the receive message FIFO.
-//
-#define RECEIVE_MESSAGE_ID      8
-
-//
-// The number of FIFO transfers that cause a toggle of the LED.
-//
-#define TOGGLE_RATE             100
-
-//
-// The CAN bit rate.
-//
-#define CAN_BITRATE             250000
-
 enum Device
 {
   Ping, Tach, 
-  IR1, IR2, IR3
+  IR0, IR1, IR2, IR3
 };
-
+#define MAX_SPEED 20
+#define MIN_SPEED 0
+unsigned short SpeedLeft, SpeedRight = MAX_SPEED;
 //
 // This structure holds all of the state information for the CAN transfers.
 //
@@ -434,10 +414,6 @@ ToggleLED(void)
 
 void CAN_Init(void)
 {
-  
-
-
-
     // If running on Rev A2 silicon, turn the LDO voltage up to 2.75V.  This is
     // a workaround to allow the PLL to operate reliably.
     if(REVISION_IS_A2)
@@ -506,20 +482,61 @@ void CAN_Receive(void)
   g_sCAN.eState = CAN_WAIT_RX;
 }
 
+
+
+//
+//int main(void){
+//
+//	Tach_Init(0);
+//	Motor_Init();
+//	Motor_Configure(0, 0, 10000, 6000); 
+//	Motor_Configure(1, 0, 10000, 6000);
+//	Motor_Start(0);
+//	Motor_Start(1);
+//
+//	Motor_SetDesiredSpeed(LEFT_MOTOR, 1500);
+//	Motor_SetDesiredSpeed(RIGHT_MOTOR, 1500);
+//	
+//	while(1){
+//	Tach_SendData(0);
+//	Tach_SendData(1);
+//	}
+//}
+//
+//
+
+
 //*****************************************************************************
 //
 // This is the main loop for the application.
 //
 //*****************************************************************************
 int main(void)
-{  
+{        
+  unsigned char motdir = 0;
+  unsigned long i = 0;
     CAN_Init();
     Ping_Init(TIMER2_BASE, TIMER_A); //Must do this after OS_AddPeriodicThread in order
   	Tach_Init(0);
+	Motor_Init();
+	Motor_Configure(0, 0, 5000, 0); 
+	Motor_Configure(1, 0, 5000, 0);
+	Motor_Start(0);
+	Motor_Start(1);
+
+	Motor_TurnRight();
+
+
 
     while(1)
     {  
-	    Tach_SendData();
+	    Tach_SendData(0);
+		Tach_SendData(1);
+//      for (i = 0; i < 1000000; i++){
+//      }
+//      motdir ^= 0x01;
+//      setMotorDirection(0, motdir); 
+//      setMotorDirection(1, motdir);
         switch(g_sCAN.eState)
         {
             case CAN_SENDING:
@@ -544,25 +561,9 @@ int main(void)
                 //
                 if(g_sCAN.ulBytesRemaining == 0)
                 {
-                    //
-                    // Change the CAN FIFO data.
-                    //
-                    for(iIdx = 0; iIdx < CAN_FIFO_SIZE; iIdx++)
-                    {
-                      //
-                      // Increment the data to change it.
-                      //
-                      g_sCAN.pucBufferRx[iIdx] += 0x2;
-                      
-                    }
-                    //
-                    // Initialize the transmit count to zero.
-                    //
-                    CAN_Send(g_sCAN.pucBufferRx);
-                    //
-                    // Switch to wait for Process data state.
-                    //
-                    g_sCAN.eState = CAN_SENDING;
+                    //SpeedLeft = g_sCAN.pucBufferRx[0]; 
+                    //SpeedRight = g_sCAN.pucBufferRx[1]; 
+                    
 
                     //
                     // Reset the buffer pointer.

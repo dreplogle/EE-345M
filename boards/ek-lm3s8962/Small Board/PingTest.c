@@ -16,6 +16,13 @@ unsigned long NumCreated;
 void Tachometer_InputCapture(void){}//delete this function when you get the real tachometer input
 //capture function
 
+
+
+// ******** Ping ************
+// Initializes Ping sensor by calling Ping_Init.
+// Called by main program.
+// Inputs: none
+// Outputs: none
 int Ping(void) //Add code to test Ping functions
 {
 
@@ -25,6 +32,9 @@ int Ping(void) //Add code to test Ping functions
 
 
 }
+
+
+
 
 unsigned long Count1 = 0;
 void Thread1(void)

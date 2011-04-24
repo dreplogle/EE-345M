@@ -48,6 +48,7 @@
 #define NVIC_PRI12_REG (*((volatile unsigned long *)(0xE000E430)))  //#51 Timer3A Reg:(48-51)
 #define OS_ENTERCRITICAL(){sr = SRSave();}
 #define OS_EXITCRITICAL(){SRRestore(sr);}
+#define CAN_FIFO_SIZE           (8 * 3)
 //***********************************************************************
 // 
 // Global Variables

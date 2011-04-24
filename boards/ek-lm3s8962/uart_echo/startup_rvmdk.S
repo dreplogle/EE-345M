@@ -79,7 +79,10 @@ __heap_limit
 ;******************************************************************************
 
         EXTERN  UARTIntHandler
-		EXTERN  ADC0Seq3IntHandler
+		EXTERN  ADC0Seq0IntHandler
+    EXTERN  ADC0Seq1IntHandler
+    EXTERN  ADC0Seq2IntHandler
+    EXTERN  ADC0Seq3IntHandler
 		EXTERN  Timer3AIntHandler 
 		EXTERN  Timer3BIntHandler 
 		EXTERN  Timer2IntHandler
@@ -125,9 +128,9 @@ __Vectors
         DCD     IntDefaultHandler           ; PWM Generator 1
         DCD     IntDefaultHandler           ; PWM Generator 2
         DCD     IntDefaultHandler           ; Quadrature Encoder 0
-        DCD     IntDefaultHandler           ; ADC Sequence 0
-        DCD     IntDefaultHandler           ; ADC Sequence 1
-        DCD     IntDefaultHandler           ; ADC Sequence 2
+        DCD     ADC0Seq0IntHandler          ; ADC Sequence 0
+        DCD     ADC0Seq1IntHandler          ; ADC Sequence 1
+        DCD     ADC0Seq2IntHandler          ; ADC Sequence 2
         DCD     ADC0Seq3IntHandler          ; ADC Sequence 3
         DCD     IntDefaultHandler           ; Watchdog timer
         DCD     IntDefaultHandler           ; Timer 0 subtimer A

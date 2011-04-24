@@ -25,13 +25,16 @@
 #include "math.h"
 #include "drivers/can_fifo.h"
 #include "drivers/tachometer.h"
-#include "drivers/Analog_Comp.h"
+#include "drivers/ir.h"
+#include "uart_echo/lab7.h"
 
 unsigned long NumCreated;   // number of foreground threads created
 unsigned long NumSamples;   // incremented every sample
 unsigned long DataLost;     // data sent by Producer, but not received by Consumer
 unsigned long PIDWork;      // current number of PID calculations finished
 unsigned long FilterWork;   // number of digital filter calculations finished
+#define MAX_SPEED 20
+#define MIN_SPEED 0
 
 extern unsigned long JitterHistogramA[];
 extern unsigned long JitterHistogramB[];
@@ -41,13 +44,10 @@ extern long MinJitterA;
 unsigned short SoundVFreq = 1;
 unsigned short SoundVTime = 0;
 unsigned short FilterOn = 1;
+struct sensors Sensors;
+unsigned short SpeedLeft, SpeedRight = MAX_SPEED;
 
-struct sensors{
-	unsigned long ping;
-	unsigned long tach;
-	long IR;
-}Sensors;
-
+unsigned char motorBuffer[CAN_FIFO_SIZE];
 int Running;                // true while robot is running
 
 #define GPIO_PF0  (*((volatile unsigned long *)0x40025004))
@@ -55,6 +55,7 @@ int Running;                // true while robot is running
 #define GPIO_PF2  (*((volatile unsigned long *)0x40025010))
 #define GPIO_PF3  (*((volatile unsigned long *)0x40025020))
 #define GPIO_PG1  (*((volatile unsigned long *)0x40026008))
+
 // PF1/IDX1 is user input select switch
 // PE1/PWM5 is user input down switch 
 // PF0/PWM0 is debugging output on Systick
@@ -121,100 +122,39 @@ void DownPush(void){
   CAN_Receive();
 }
 
-//*************GetIR***************
-// Background thread for IR sensor,
-// called when ADC finishes a conversion
-// and generates an interrupt.
-void GetIR(unsigned short data){  
-  if(RawIR_Fifo_Put(data)){     
-    NumSamples++;
-  } else{ 
-    DataLost++;
-  } 
+void Display(void){
+	while(1){
+  oLED_Message(0, 0, "IR0: ", Sensors.ir_front_left);
+	oLED_Message(0, 1, "IR1: ", Sensors.ir_back_left);
+  oLED_Message(0, 2, "IR2: ", Sensors.ir_front_right);
+  oLED_Message(0, 3, "IR3: ", Sensors.ir_back_right);
+	}
 }
 
-//************IR DAQ thread********
-// Samples the ADC0 at 20Hz, recieves
-// data in FIFO, filters data,
-// sends data through CAN. 
-#define IR_SAMPLING_RATE	2000              // in Hz
-AddFifo(RawIR_, 32, unsigned short, 1, 0);   // Raw IR data, ADC samples
-struct IR_STATS{
-  short average;
-  short stdev;
-  short maxdev;
-};
-struct IR_STATS IR_Stats;
-long stats[IR_SAMPLING_RATE];
-
-void IRSensor(void){
-  unsigned short i, ADCin;
-  long sampleOut, data[3];
-  static unsigned int newest = 0;
-  long sum;
-  unsigned short max,min;
-  
-
-  ADC_Collect(0, IR_SAMPLING_RATE, &GetIR); //ADC sample on channel 0, 20Hz
-  
-  for(;;){
-	data[2] = data[1];
-	data[1] = data[0];
-    while(!RawIR_Fifo_Get(&ADCin));
-	data[0] = ((long)ADCin*7836 - 166052)/1024; //((1/cm)*65535) = ((7836*x-166052)/1024
-	data[0] = 65535/data[0];  //cm = 65535/data[0] from last operation
-  
-    //3-Element median filter
-    if((data[0]<=data[1]&&data[0]>=data[2])||(data[0]<=data[2]&&data[0]>=data[1])) sampleOut = data[0];
-    else if((data[1]<=data[0]&&data[1]>=data[2])||(data[1]<=data[2]&&data[1]>=data[0])) sampleOut = data[1];
-    else if((data[2]<=data[1]&&data[2]>=data[0])||(data[2]<=data[0]&&data[2]>=data[1])) sampleOut = data[2];  
-    else sampleOut = 0xFF;       // Median finding error  
-	if(sampleOut > 80)  sampleOut = 80;  //Cap at maximum end of the range 
-	if(sampleOut < 10)  sampleOut = 10;  //Cap at minimum end of range  
-
-	stats[newest] = sampleOut;
-	newest++;
-	if(newest >= IR_SAMPLING_RATE) newest = 0;
-
-	//Average = sum of all values/number of values
-	//Maximum deviation = max value - min value
-	max = 0;
-	min = 0xFFFF;
-	sum = 0;
-	for(i = 0; i < IR_SAMPLING_RATE; i++){
-      sum += stats[i];
-	  if(stats[i] < min) min = stats[i];
-	  if(stats[i] > max) max = stats[i];	  
-	}
-    IR_Stats.average = (sum/IR_SAMPLING_RATE);
-	IR_Stats.maxdev = (max - min);
-
-	//Standard deviation = sqrt(sum of (each value - average)^2 / number of values)
-	sum = 0;
-	for(i = 0; i < IR_SAMPLING_RATE; i++){
-      sum +=(stats[i]-IR_Stats.average)*(stats[i]-IR_Stats.average);	  
-	}
-	sum = sum/IR_SAMPLING_RATE;
-	IR_Stats.stdev = sqrt(sum);
-	Sensors.IR = IR_Stats.average;
-
+void CatBot(void){
+  while(1){
+   	//Transmit by CAN
+		if(Sensors.ir_front_left <= 10 || Sensors.ir_back_left <= 10 && Sensors.ir_front_right > 10 && Sensors.ir_back_right > 10)
+    {
+      SpeedLeft--;
+    }
+		if(Sensors.ir_front_right <= 10 || Sensors.ir_back_right <= 10 && Sensors.ir_front_left > 10 && Sensors.ir_back_left > 10)
+    {
+      SpeedRight--;
+    }
+    if(Sensors.ir_front_left > 30 && Sensors.ir_back_left > 30 && Sensors.ir_front_right > 30 && Sensors.ir_back_right > 30 &&
+      Sensors.ir_front_left < 60 && Sensors.ir_back_left < 60 && Sensors.ir_front_right < 60 && Sensors.ir_back_right < 60)
+    {
+      SpeedLeft, SpeedRight = MAX_SPEED;
+    }
+        
+    
+    motorBuffer[0] = SpeedLeft;
+    motorBuffer[1] = SpeedRight;
+		CAN_Send(motorBuffer);
   }
 }
 
-void Display(void){
-	while(1){
-  	oLED_Message(0, 3, "IR: ", Sensors.IR);
-	//SysCtlDelay(SysCtlClockGet()/100);
-	oLED_Message(0, 2, "Tach: ", Sensors.tach);
-	//SysCtlDelay(SysCtlClockGet()/100);
-	oLED_Message(0, 1, "Ping: ", Sensors.ping);
-	//SysCtlDelay(SysCtlClockGet()/100);
-	
-	oLED_Message(1, 0, "IR Avg", IR_Stats.average);
-	oLED_Message(1, 1, "IR StdDev", IR_Stats.stdev);
-	oLED_Message(1, 2, "IR MaxDev", IR_Stats.maxdev);
-	}
-}
 
 //*******************lab 6 main **********
 int main(void){       
@@ -226,24 +166,22 @@ int main(void){
 //********initialize communication channels
   OS_Fifo_Init(512);    // ***note*** 4 is not big enough*****
 
-  //Tachometer_Init(2);
-
 //*******attach background tasks***********
   OS_AddButtonTask(&ButtonPush,2);
   OS_AddDownTask(&DownPush,3);
 
   OS_BumperInit();
-//  CAN_Init();
-  Comparator_Capture_Init();
+  CAN_Init();
 
   NumCreated = 0 ;
 // create initial foreground threads
 //  NumCreated += OS_AddThread(&CAN,128,2); 
-  NumCreated += OS_AddThread(&IRSensor,128,2);  // runs when nothing useful to do
-  NumCreated += OS_AddThread(&Interpreter,128,2);
-
-//  NumCreated += OS_AddThread(&IdleTask,128,2);  // runs when nothing useful to do
-//  NumCreated += OS_AddThread(&Display,128,2);
+  NumCreated += OS_AddThread(&IRSensor0,128,2);  // runs when nothing useful to do
+  NumCreated += OS_AddThread(&IRSensor1,128,2);  // runs when nothing useful to do
+  NumCreated += OS_AddThread(&IRSensor2,128,2);  // runs when nothing useful to do
+  NumCreated += OS_AddThread(&IRSensor3,128,2);  // runs when nothing useful to do
+  NumCreated += OS_AddThread(&CatBot,128,2);
+  NumCreated += OS_AddThread(&Display,128,2);
  
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes
