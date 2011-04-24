@@ -206,39 +206,47 @@ void Tach_Init(unsigned long priority){
 //   via FIFO.
 // Inputs: none
 // Outputs: none
-#define TACH_TIMEOUT	1000
-unsigned long tach_0A_timeout_count;
+#define STOP_TIMEOUT	500
+unsigned long tach_0A_timeout_count = 0;
+unsigned long tach_0A_stop_detect = 0;
+unsigned long SeePeriod1 = 0;   
+unsigned long SeeRPM1 = 0;
+unsigned long SeePeriod2 = 0;   
+unsigned long SeeRPM2 = 0;
 void Tach_InputCapture0A(void){
-	static unsigned char first_flag = 0;
 	unsigned long period;
 	//long time_debug;
 
 	// if timeout
  	if (HWREG(TIMER0_BASE + TIMER_O_MIS) & TIMER_TIMA_TIMEOUT){
 		tach_0A_timeout_count++;
+        //tach_0A_stop_detect++;
 		 // Stop Detection
-		if (tach_0A_timeout_count >= TACH_TIMEOUT){
+		if (tach_0A_timeout_count >= STOP_TIMEOUT){
 			tach_0A_timeout_count = 0;
 			Tach_Fifo_Put(0, 3750000000);
 		}
+//        tach_0A_stop_detect++;
+//		 // Stop Detection
+//		if (tach_0A_stop_detect >= STOP_TIMEOUT){
+//			tach_0A_stop_detect = 0;
+//			Tach_Fifo_Put(0, 3750000000);
+//		}
 	}
 	// if input capture
 	if (HWREG(TIMER0_BASE + TIMER_O_MIS) & TIMER_CAPA_EVENT){
     // Get time automatically from hardware
 		period = (0xFFFF - HWREG(TIMER0_BASE + TIMER_O_TAR))  // time remaining from countdown
-				  + (tach_0A_timeout_count * 0xFFFF);			  // number of timeouts
+				  + (tach_0A_timeout_count * 0xFFFF);
+		SeePeriod1 = period;
+		SeeRPM1 = (375000000/period)*10;			  // number of timeouts
 		tach_0A_timeout_count = 0;
-		if (!first_flag){
-			first_flag = 1;
-		}
-		else {
-			//time_debug = Tach_TimeDifference(time2, time1);
-			//Tach_Fifo_Put(time_debug);
-			if(Tach_Fifo_Put(0, period))
-				Tach_NumSamples[0]++;
-			else
-				Tach_DataLost[0]++;
-		}
+		//time_debug = Tach_TimeDifference(time2, time1);
+		//Tach_Fifo_Put(time_debug);
+		if((SeeRPM1 < (FULL_SPEED + 200)) && Tach_Fifo_Put(0, period))
+			Tach_NumSamples[0]++;
+		else
+			Tach_DataLost[0]++;
 	}
 	TimerIntClear(TIMER0_BASE, (TIMER_CAPA_EVENT | TIMER_TIMA_TIMEOUT));
 }
@@ -250,45 +258,49 @@ void Tach_InputCapture0A(void){
 //   via FIFO.
 // Inputs: none
 // Outputs: none
-unsigned long tach_1A_timeout_count;
-unsigned long SeePeriod;   
-unsigned long SeeRPM;
+unsigned long tach_1A_timeout_count = 0;
+unsigned long tach_1A_stop_detect = 0;
 void Tach_InputCapture1A(void){
-	static unsigned char first_flag = 0;
 	unsigned long period;
 	//long time_debug;
 
 	// if timeout
  	if (HWREG(TIMER1_BASE + TIMER_O_MIS) & TIMER_TIMA_TIMEOUT){
 		tach_1A_timeout_count++;
+        //tach_1A_stop_detect++;
 		// Stop Detection
-		if (tach_1A_timeout_count >= TACH_TIMEOUT){
+		if (tach_1A_timeout_count >= STOP_TIMEOUT){
 			tach_1A_timeout_count = 0;
-		 	Tach_Fifo_Put(0, 3750000000);
+		 	Tach_Fifo_Put(1, 3750000000);
 		}
+//        tach_1A_stop_detect++;
+//		// Stop Detection
+//		if (tach_1A_stop_detect >= STOP_TIMEOUT){
+//			tach_1A_stop_detect = 0;
+//		 	Tach_Fifo_Put(0, 3750000000);
+//		}
 	}
 	// if input capture
-	if (HWREG(TIMER1_BASE + TIMER_O_MIS) & TIMER_CAPA_EVENT){
+	if ((HWREG(TIMER1_BASE + TIMER_O_MIS) & TIMER_CAPA_EVENT)){
     // Get time automatically from hardware
 		period = (0xFFFF - HWREG(TIMER1_BASE + TIMER_O_TAR))  // time remaining from countdown
 				  + (tach_1A_timeout_count * 0xFFFF);			  // number of timeouts
-		SeePeriod = period;
-		SeeRPM = (375000000/period)*10;
+		SeePeriod2 = period;
+		SeeRPM2 = (375000000/period)*10;
+        if (SeeRPM2 > 2500){
+            period++;
+        }
 		tach_1A_timeout_count = 0;
-		if (!first_flag){
-			first_flag = 1;
-		}
-		else {
-			//time_debug = Tach_TimeDifference(time2, time1);
-			//Tach_Fifo_Put(time_debug);
-            if (period == 0){
-                period++;
-            }
-			if(Tach_Fifo_Put(1, period))
-				Tach_NumSamples[1]++;
-			else
-				Tach_DataLost[1]++;
-		}
+		//time_debug = Tach_TimeDifference(time2, time1);
+		//Tach_Fifo_Put(time_debug);
+        if (period == 0){
+            period++;
+        }
+        
+		if((SeeRPM2 < (FULL_SPEED + 200)) && Tach_Fifo_Put(1, period))
+			Tach_NumSamples[1]++;
+		else
+			Tach_DataLost[1]++;
 	}
 	TimerIntClear(TIMER1_BASE, (TIMER_CAPA_EVENT | TIMER_TIMA_TIMEOUT));
 }
@@ -318,9 +330,10 @@ int speed2_i = 0;
 struct TACH_STATS Tach_Stats;
 unsigned long SpeedArr[100] = {0, }; 
 unsigned long SpeedArr2[100] = {0, };
+unsigned long data = 0;
+unsigned long NumReceived[2] = {0, 0};
 void Tach_SendData(unsigned char tach_id){
 	static unsigned int total_time = 0;
-	unsigned long data;
 
 	#ifdef _TACH_STATS
 	unsigned short i;
@@ -331,62 +344,70 @@ void Tach_SendData(unsigned char tach_id){
 	#endif
 
 	if(Tach_Fifo_Get(tach_id, &data)){
-		total_time += data;
-		data = Tach_Filter(data);
-		SeeTach1 = data;
-		data = (375000000/data)*10; //convert to .1 RPM	-> (60 s)*(10^9ns)/4*(T*40 ns) * 10 .1RPM
-		if (tach_id == 0){
-		    SpeedArr[speed_i++] = data;
-            if (speed_i == 100){
-                speed_i = 0;
-            }
-		}
-		else {
-		    SpeedArr2[speed2_i++] = data;
-            if (speed2_i == 100){
-                speed2_i = 0;
-            }
-		}
-		Motor_PID(tach_id, data);
-	
-		#ifdef _TACH_STATS
-		if((tach_id == 0) && (!stat_done)){
-			if((num_samples < TACH_STATS_SIZE) && (total_time < 250000000)){	 //250mil * 4ns = 10 s
-				stats[num_samples] = data;
-				num_samples++;
-			}
-			else {
-				//Average = sum of all values/number of values
-				//Maximum deviation = max value - min value
-				max = 0;
-				min = 0xFFFFFFFF;
-				sum = 0;
-				for(i = 1; i < num_samples; i++){	 // first sample is junk
-			      sum += (long)stats[i];
-				  if(stats[i] < min) min = stats[i];
-				  if(stats[i] > max) max = stats[i];	  
-				}
-			    Tach_Stats.average = (short)(sum/(num_samples - 1));
-				Tach_Stats.maxdev = (short)(max - min);
-			
-				// Standard deviation = sqrt(sum of (each value - average)^2 / number of values)
-				sum = 0;
-				for(i = 1; i < num_samples; i++){
-			      sum +=(long)((short)stats[i]-(short)Tach_Stats.average)*((short)stats[i]-(short)Tach_Stats.average);	  
-				}
-				sum = sum/(num_samples - 1);
-				Tach_Stats.stdev = (short)sqrt(sum);
-				stat_done = 1;
-			}
-		}
-		#endif
-
-		speedBuffer[0] = 't';
-		speedBuffer[1] = '0' + tach_id; // send correct identifier
-		memcpy(&speedBuffer[2], &data, 4);
-
-		//tachArr[0] = 't';
-		//tachArr[1] = data;
-		CAN_Send(speedBuffer);
+        NumReceived[tach_id]++;
+        if (NumReceived[tach_id] > 2){
+    		total_time += data;
+    		//data = Tach_Filter(data);
+    		SeeTach1 = data;
+            SeeTach2 = (375000000/data)*10;
+            data = SeeTach2;
+    		//data = (375000000/data)*10; //convert to .1 RPM	-> (60 s)*(10^9ns)/4*(T*40 ns) * 10 .1RPM
+    		if (tach_id == 0){
+    		    SpeedArr[speed_i++] = data;
+                if (speed_i == 100){
+                    speed_i = 0;
+                }
+    		}
+    		else {
+    		    SpeedArr2[speed2_i++] = data;
+                if (speed2_i == 100){
+                    speed2_i = 0;
+                }
+    		}
+            //if (NumReceived[tach_id] > 2){
+                if (data < FULL_SPEED+200)
+    		        Motor_PID(tach_id, data);
+            //}
+    	
+    		#ifdef _TACH_STATS
+    		if((tach_id == 0) && (!stat_done)){
+    			if((num_samples < TACH_STATS_SIZE) && (total_time < 250000000)){	 //250mil * 4ns = 10 s
+    				stats[num_samples] = data;
+    				num_samples++;
+    			}
+    			else {
+    				//Average = sum of all values/number of values
+    				//Maximum deviation = max value - min value
+    				max = 0;
+    				min = 0xFFFFFFFF;
+    				sum = 0;
+    				for(i = 1; i < num_samples; i++){	 // first sample is junk
+    			      sum += (long)stats[i];
+    				  if(stats[i] < min) min = stats[i];
+    				  if(stats[i] > max) max = stats[i];	  
+    				}
+    			    Tach_Stats.average = (short)(sum/(num_samples - 1));
+    				Tach_Stats.maxdev = (short)(max - min);
+    			
+    				// Standard deviation = sqrt(sum of (each value - average)^2 / number of values)
+    				sum = 0;
+    				for(i = 1; i < num_samples; i++){
+    			      sum +=(long)((short)stats[i]-(short)Tach_Stats.average)*((short)stats[i]-(short)Tach_Stats.average);	  
+    				}
+    				sum = sum/(num_samples - 1);
+    				Tach_Stats.stdev = (short)sqrt(sum);
+    				stat_done = 1;
+    			}
+    		}
+    		#endif
+    
+    		speedBuffer[0] = 't';
+    		speedBuffer[1] = '0' + tach_id; // send correct identifier
+    		memcpy(&speedBuffer[2], &data, 4);
+    
+    		//tachArr[0] = 't';
+    		//tachArr[1] = data;
+    		//CAN_Send(speedBuffer);
+        }
 	}
 }

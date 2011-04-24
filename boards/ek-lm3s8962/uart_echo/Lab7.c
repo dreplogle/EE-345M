@@ -45,7 +45,7 @@ unsigned short SoundVFreq = 1;
 unsigned short SoundVTime = 0;
 unsigned short FilterOn = 1;
 struct sensors Sensors;
-unsigned char SpeedLeft, SpeedRight = MAX_SPEED;
+unsigned short SpeedLeft, SpeedRight = MAX_SPEED;
 
 unsigned char motorBuffer[CAN_FIFO_SIZE];
 int Running;                // true while robot is running
@@ -175,7 +175,7 @@ int main(void){
 
   NumCreated = 0 ;
 // create initial foreground threads
-  NumCreated += OS_AddThread(&CAN,128,2); 
+//  NumCreated += OS_AddThread(&CAN,128,2); 
   NumCreated += OS_AddThread(&IRSensor0,128,2);  // runs when nothing useful to do
   NumCreated += OS_AddThread(&IRSensor1,128,2);  // runs when nothing useful to do
   NumCreated += OS_AddThread(&IRSensor2,128,2);  // runs when nothing useful to do

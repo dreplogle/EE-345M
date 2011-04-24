@@ -118,18 +118,19 @@ void motorBackward(unsigned char motor_id, unsigned short duty_cycle){
 // Outputs: none
 // ** Code is based on Professor Valvano's lecture 20
 //long SeeDuty = 0;
+unsigned long SeeSpeed = 0;
 long SeeError = 0;
 long SeeU = 0;
 long Ui[2];
-#define KP1 5000 // proportional constant
-#define KI1 500 // integral constant
-#define KP2 3000
-#define KI2 500
+#define KP1 2000 // proportional constant
+#define KI1 6000 // integral constant
+#define KP2 0
+#define KI2 3000
+long Error = 0, Up = 0, U = 0;
+long Kp = 0;
+long Ki = 0;
+long duty_cycle = 0;
 void Motor_PID(unsigned char motor_id, unsigned long speed){
-	long Error = 0, Up = 0, U = 0;
-    long Kp = 0;
-    long Ki = 0;
-	long duty_cycle = 0;
     if (motor_id == 0){
         Kp = KP1;
         Ki = KI1;
@@ -138,7 +139,7 @@ void Motor_PID(unsigned char motor_id, unsigned long speed){
         Kp = KP2;
         Ki = KI2;
     }
-    
+    SeeSpeed = speed;
 	if (Motor_DesiredSpeeds[motor_id]){
 		if (Motor_DesiredSpeeds[motor_id] > 0){
 			Error = Motor_DesiredSpeeds[motor_id]-speed; // 0.1 RPM
@@ -146,6 +147,9 @@ void Motor_PID(unsigned char motor_id, unsigned long speed){
 		else {
 			Error = -Motor_DesiredSpeeds[motor_id]-speed; // 0.1 RPM backward
 		}
+//        if (Error < 0){
+//            duty_cycle++;
+//        }
 		Up = (Kp*Error)/10000;
 		Ui[motor_id] = Ui[motor_id]+(Ki*Error)/10000;
 		if (Ui[motor_id] < MIN_DUTY_CYCLE)
@@ -221,8 +225,8 @@ void Motor_GoForward(void)
 //*****************************************************************************
 void Motor_TurnLeft(void)
 {	
-	Motor_DesiredSpeeds[LEFT_MOTOR] = HALF_SPEED;
-	Motor_DesiredSpeeds[RIGHT_MOTOR] = FULL_SPEED;
+	Motor_DesiredSpeeds[LEFT_MOTOR] = FULL_SPEED;
+    Motor_DesiredSpeeds[RIGHT_MOTOR] = (FULL_SPEED*3)/4;
 }
 
 //*****************************************************************************
@@ -232,8 +236,8 @@ void Motor_TurnLeft(void)
 //*****************************************************************************
 void Motor_TurnRight(void)
 {	  
-	Motor_DesiredSpeeds[LEFT_MOTOR] = FULL_SPEED;
-	Motor_DesiredSpeeds[RIGHT_MOTOR] = HALF_SPEED;
+	Motor_DesiredSpeeds[LEFT_MOTOR] = (FULL_SPEED*3)/4;
+    Motor_DesiredSpeeds[RIGHT_MOTOR] = FULL_SPEED;
 }
 
 //*****************************************************************************
@@ -283,8 +287,8 @@ void Motor_TurnBackRight(void)
 void Motor_Init(void)
 {
 	volatile unsigned long delay = 0;
-    Ui[0] = MAX_DUTY_CYCLE;
-    Ui[1] = MAX_DUTY_CYCLE;
+    Ui[0] = (MAX_DUTY_CYCLE - MIN_DUTY_CYCLE)/2;
+    Ui[1] = (MAX_DUTY_CYCLE - MIN_DUTY_CYCLE)/2;
 
 	//Initialize PE0 and PE1 to be outputs
 	SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);
@@ -373,9 +377,4 @@ void Motor_Stop(unsigned char motor_id)
 		PWM_ENABLE_R &= ~(PWM_ENABLE_PWM1EN); // disable PWM1
 	}
 	
-}
-
-void Motor_SetDesiredSpeed(unsigned char motor_id, unsigned short speed)
-{
-	Motor_DesiredSpeeds[motor_id] = speed;
 }
