@@ -146,6 +146,9 @@ int iIdx;
 // The CAN controller interrupt handler.
 //
 //*****************************************************************************
+unsigned long DebugPingCounter = 0;
+unsigned long DebugBytesRemaining = 0;
+
 void
 CANIntHandler(void)
 {
@@ -179,6 +182,8 @@ CANIntHandler(void)
         //
         CANMessageGet(CAN0_BASE, ulStatus, &g_sCAN.MsgObjectRx, 1);
 
+
+
         //
         // Advance the read pointer.
         //
@@ -189,6 +194,13 @@ CANIntHandler(void)
         // Decrement the expected bytes remaining.
         //
         g_sCAN.ulBytesRemaining -= 8;
+
+		
+		
+		if (g_sCAN.pucBufferRx[0] == 'p')
+		{
+			DebugPingCounter++;
+		}
     }
     else
     {
@@ -204,7 +216,9 @@ CANIntHandler(void)
     //
     CANIntClear(CAN0_BASE, ulStatus);
 
+
 	IntMasterEnable();
+	
 
 }
 
@@ -574,11 +588,13 @@ CAN(void)
 
     
     //CAN_Init();
+	g_sCAN.ulBytesTransmitted = 0;
+
 
     while(1)
     {
-	COUNTER += 1;
-	CANIntEnable(CAN0_BASE, CAN_INT_MASTER | CAN_INT_ERROR);
+		COUNTER += 1;
+		CANIntEnable(CAN0_BASE, CAN_INT_MASTER | CAN_INT_ERROR);
         switch(g_sCAN.eState)
         {
             case CAN_SENDING:
@@ -594,9 +610,10 @@ CAN(void)
             }
             case CAN_WAIT_RX:
             {
+//				DebugBytesRemaining = 	g_sCAN.ulBytesRemaining;
                 // Wait for all new data to be received.
-                if(g_sCAN.ulBytesRemaining == 0)
-                {
+             //   if(g_sCAN.ulBytesRemaining == 0)
+              //  {
 					        if(g_sCAN.pucBufferRx[0] == 't'){
 					          memcpy(&tachIn, &g_sCAN.pucBufferRx[1], 4); 
 					          Sensors.tach = tachIn;
@@ -615,7 +632,7 @@ CAN(void)
                     // Reset the number of bytes expected.
                     //
                     g_sCAN.ulBytesRemaining = CAN_FIFO_SIZE;
-                }
+            //    }
                 break;
             }
             default:

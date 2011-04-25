@@ -38,6 +38,7 @@
 #include "drivers/tachometer.h"
 #include "drivers/motor.h"
 #include "can_device_fifo/can_device_fifo.h"
+#include "driverlib/timer.h"
 
 
 #define MAX_SPEED 20
@@ -61,7 +62,7 @@ unsigned char SpeedLeft, SpeedRight = MAX_SPEED;
 //
 // Size of the FIFOs allocated to the CAN controller.
 //
-#define CAN_FIFO_SIZE           (8 * 3)
+#define CAN_FIFO_SIZE           (8 * 5)
 
 //
 // Message object used by the transmit message FIFO.
@@ -477,6 +478,8 @@ int testmain(void){
 	}
 }
 
+
+unsigned long DebugSpeedCounter = 0;
 //*****************************************************************************
 //
 // This is the main loop for the application.
@@ -484,7 +487,7 @@ int testmain(void){
 //*****************************************************************************
 int main(void)
 {
-
+	Ping_Init(TIMER2_BASE, TIMER_A); 
 	Tach_Init(0);
 	Motor_Init();
 	Motor_Configure(0, 0, 10000, 6000); 
@@ -666,9 +669,9 @@ int main(void)
                 //
                 ToggleLED();
 
-   				//Ping_Init(TIMER2_BASE, TIMER_A); //Must do this after OS_AddPeriodicThread in order
 				if ( g_sCAN.pucBufferRx[0] == 'A')
 				{
+					DebugSpeedCounter++;
 				 	SpeedLeft = g_sCAN.pucBufferRx[1]; 
                     SpeedRight = g_sCAN.pucBufferRx[2]; 
 					setDutyCycle(LEFT_MOTOR, (SpeedLeft*MAX_DUTY_CYCLE)/20);
