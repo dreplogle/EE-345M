@@ -671,8 +671,8 @@ int main(void)
 				{
 				 	SpeedLeft = g_sCAN.pucBufferRx[1]; 
                     SpeedRight = g_sCAN.pucBufferRx[2]; 
-					Motor_SetDesiredSpeed(LEFT_MOTOR, (SpeedLeft*FULL_SPEED)/20);
-					Motor_SetDesiredSpeed(RIGHT_MOTOR, (SpeedRight*FULL_SPEED)/20);
+					setDutyCycle(LEFT_MOTOR, (SpeedLeft*MAX_DUTY_CYCLE)/20);
+					setDutyCycle(RIGHT_MOTOR, (SpeedRight*MAX_DUTY_CYCLE)/20);
 				}
 
 

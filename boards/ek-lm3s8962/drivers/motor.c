@@ -23,7 +23,7 @@ int i2 = 0;
 static unsigned char leftMotorDirection = 0;
 static unsigned char rightMotorDirection = 0;
 
-static
+
 void setDutyCycle(unsigned char motor, unsigned short duty)
 {
 	if (motor == LEFT_MOTOR)

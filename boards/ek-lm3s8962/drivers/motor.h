@@ -19,7 +19,7 @@
 #define MAX_SPEED_1 
 #define MAX_POWER 250
 #define MIN_DUTY_CYCLE 1500
-#define MAX_DUTY_CYCLE 7000
+#define MAX_DUTY_CYCLE 9900
 
 
 
@@ -130,5 +130,7 @@ void Motor_Configure(unsigned char motor_id, unsigned char direction, unsigned s
 void Motor_Start(unsigned char motor_id);
 
 void Motor_Stop(unsigned char motor_id);
+
+void setDutyCycle(unsigned char motor, unsigned short duty);
 
 #endif
