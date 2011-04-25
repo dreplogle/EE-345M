@@ -524,7 +524,7 @@ int main(void)
 	Motor_Start(0);
 	Motor_Start(1);
 
-	Motor_TurnRight();
+	Motor_GoForward();
 
 
 

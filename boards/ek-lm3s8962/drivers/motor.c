@@ -122,10 +122,10 @@ unsigned long SeeSpeed = 0;
 long SeeError = 0;
 long SeeU = 0;
 long Ui[2];
-#define KP1 2000 // proportional constant
-#define KI1 6000 // integral constant
-#define KP2 0
-#define KI2 3000
+#define KP1 40 // proportional constant
+#define KI1 4000 // integral constant
+#define KP2 40
+#define KI2 6000
 long Error = 0, Up = 0, U = 0;
 long Kp = 0;
 long Ki = 0;
@@ -247,8 +247,8 @@ void Motor_TurnRight(void)
 //*****************************************************************************
 void Motor_TurnHardLeft(void)
 {  	  
-	Motor_DesiredSpeeds[LEFT_MOTOR] = 0;
-	Motor_DesiredSpeeds[RIGHT_MOTOR] = FULL_SPEED;
+	Motor_DesiredSpeeds[LEFT_MOTOR] = HALF_SPEED;
+	Motor_DesiredSpeeds[RIGHT_MOTOR] = 0;
 }
 
 //*****************************************************************************
@@ -258,8 +258,10 @@ void Motor_TurnHardLeft(void)
 //*****************************************************************************
 void Motor_TurnHardRight(void)
 {  	  
-	Motor_DesiredSpeeds[LEFT_MOTOR] = FULL_SPEED;
-	Motor_DesiredSpeeds[RIGHT_MOTOR] = 0;
+	Motor_DesiredSpeeds[LEFT_MOTOR] = 0;
+	Motor_DesiredSpeeds[RIGHT_MOTOR] = HALF_SPEED;
+  Ui[RIGHT_MOTOR] = (HALF_SPEED*MAX_DUTY_CYCLE)/FULL_SPEED;
+  Ui[LEFT_MOTOR] = 0;
 }
 
 //*****************************************************************************
