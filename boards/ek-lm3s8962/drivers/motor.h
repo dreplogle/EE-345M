@@ -48,7 +48,7 @@
 #define SYSCTL_RCGC0_PWM 0x00100000 // PWM Clock Gating Control
 #define SYSCTL_RCGC2_R (*((volatile unsigned long *)0x400FE108))
 
-
+void Motor_SetDesiredSpeed(unsigned char motor_id, unsigned long desiredSpeed);
 
 // ********** Motor_GoForward ***********
 // Calculates and sets desired duty cycle to

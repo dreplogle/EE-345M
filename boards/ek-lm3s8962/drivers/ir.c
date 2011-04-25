@@ -136,7 +136,12 @@ void IRSensor0(void){
 	}
 	sum = sum/IR_SAMPLING_RATE;
 	IR_Stats0.stdev = sqrt(sum);
+	
+	if(sampleOut > 80){sampleOut = 80;}
+	if(sampleOut < 10){sampleOut = 10;}
 	Sensors.ir_front_left = sampleOut;
+
+
 
 	//oLED_Message(0, 0, "IR Avg", IR_Stats0.average);
 	//oLED_Message(0, 1, "IR StdDev", IR_Stats0.stdev);
@@ -206,7 +211,12 @@ void IRSensor1(void){
 	}
 	sum = sum/IR_SAMPLING_RATE;
 	IR_Stats1.stdev = sqrt(sum);
+
+	if(sampleOut > 80){sampleOut = 80;}
+	if(sampleOut < 10){sampleOut = 10;}
+
 	Sensors.ir_back_left = sampleOut;
+
 
 	//oLED_Message(0, 0, "IR Avg", IR_Stats1.average);
 	//oLED_Message(0, 1, "IR StdDev", IR_Stats1.stdev);
