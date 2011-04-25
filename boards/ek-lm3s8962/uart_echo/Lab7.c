@@ -45,7 +45,7 @@ unsigned short SoundVFreq = 1;
 unsigned short SoundVTime = 0;
 unsigned short FilterOn = 1;
 struct sensors Sensors;
-unsigned short SpeedLeft, SpeedRight = MAX_SPEED;
+short SpeedLeft, SpeedRight = MAX_SPEED;
 
 unsigned char motorBuffer[CAN_FIFO_SIZE];
 int Running;                // true while robot is running
@@ -126,32 +126,48 @@ void Display(void){
 	while(1){
   oLED_Message(0, 0, "IR0: ", Sensors.ir_front_left);
 	oLED_Message(0, 1, "IR1: ", Sensors.ir_back_left);
-  oLED_Message(0, 2, "IR2: ", Sensors.ir_front_right);
-  oLED_Message(0, 3, "IR3: ", Sensors.ir_back_right);
+  //oLED_Message(0, 2, "IR2: ", Sensors.ir_front_right);
+  //oLED_Message(0, 3, "IR3: ", Sensors.ir_back_right);
+    oLED_Message(1, 0, "SpeedLeft: ", SpeedLeft);
+	  oLED_Message(1,1, "SpeedRight: ", SpeedRight);
+
 	}
 }
 
 void CatBot(void){
+  SpeedLeft = 20;
+  SpeedRight = 20;
   while(1){
+
+	
    	//Transmit by CAN
-		if(Sensors.ir_front_left <= 10 || Sensors.ir_back_left <= 10 && Sensors.ir_front_right > 10 && Sensors.ir_back_right > 10)
-    {
-      SpeedLeft--;
-    }
-		if(Sensors.ir_front_right <= 10 || Sensors.ir_back_right <= 10 && Sensors.ir_front_left > 10 && Sensors.ir_back_left > 10)
-    {
-      SpeedRight--;
-    }
-    if(Sensors.ir_front_left > 30 && Sensors.ir_back_left > 30 && Sensors.ir_front_right > 30 && Sensors.ir_back_right > 30 &&
-      Sensors.ir_front_left < 60 && Sensors.ir_back_left < 60 && Sensors.ir_front_right < 60 && Sensors.ir_back_right < 60)
-    {
-      SpeedLeft, SpeedRight = MAX_SPEED;
-    }
-        
-    
-    motorBuffer[0] = SpeedLeft;
-    motorBuffer[1] = SpeedRight;
-		CAN_Send(motorBuffer);
+	//	if(Sensors.ir_front_left <= 10 || Sensors.ir_back_left <= 10 && Sensors.ir_front_right > 10 && Sensors.ir_back_right > 10)
+    //{
+    //  SpeedLeft--;
+    //}
+	//	if(Sensors.ir_front_right <= 10 || Sensors.ir_back_right <= 10 && Sensors.ir_front_left > 10 && Sensors.ir_back_left > 10)
+    //{
+    //  SpeedRight--;
+    //}
+    //if(Sensors.ir_front_left > 30 && Sensors.ir_back_left > 30 && Sensors.ir_front_right > 30 && Sensors.ir_back_right > 30 &&
+    //  Sensors.ir_front_left < 60 && Sensors.ir_back_left < 60 && Sensors.ir_front_right < 60 && Sensors.ir_back_right < 60)
+    //{
+    //  SpeedLeft, SpeedRight = MAX_SPEED;
+    //}
+    if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left > 5) { SpeedLeft--;}
+	else if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left < -5) { SpeedRight--;}
+	else { SpeedLeft++; SpeedRight++;} 
+	
+	if(SpeedLeft > 20){ SpeedLeft = 20;}
+	if(SpeedRight > 20){ SpeedRight = 20;}  
+	if(SpeedLeft < 0){ SpeedLeft = 0;}
+	if(SpeedRight < 0){ SpeedRight = 0;}   
+   
+    motorBuffer[0] = 'A';
+    motorBuffer[1] = SpeedLeft;
+    motorBuffer[2] = SpeedRight;
+	CAN_Send(motorBuffer);
+	SysCtlDelay(SysCtlClockGet()/500);
   }
 }
 
@@ -175,7 +191,7 @@ int main(void){
 
   NumCreated = 0 ;
 // create initial foreground threads
-//  NumCreated += OS_AddThread(&CAN,128,2); 
+  NumCreated += OS_AddThread(&CAN,128,2); 
   NumCreated += OS_AddThread(&IRSensor0,128,2);  // runs when nothing useful to do
   NumCreated += OS_AddThread(&IRSensor1,128,2);  // runs when nothing useful to do
   NumCreated += OS_AddThread(&IRSensor2,128,2);  // runs when nothing useful to do

@@ -23,7 +23,7 @@ int i2 = 0;
 static unsigned char leftMotorDirection = 0;
 static unsigned char rightMotorDirection = 0;
 
-static
+
 void setDutyCycle(unsigned char motor, unsigned short duty)
 {
 	if (motor == LEFT_MOTOR)
@@ -126,6 +126,11 @@ long Ui[2];
 #define KI1 6000 // integral constant
 #define KP2 0
 #define KI2 3000
+
+//#define KP1 10 // proportional constant
+//#define KI1 10 // integral constant
+//#define KP2 10
+//#define KI2 10
 long Error = 0, Up = 0, U = 0;
 long Kp = 0;
 long Ki = 0;
@@ -283,6 +288,14 @@ void Motor_TurnBackRight(void)
 	Motor_DesiredSpeeds[LEFT_MOTOR] = -FULL_SPEED;
 	Motor_DesiredSpeeds[RIGHT_MOTOR] = -HALF_SPEED;
 }
+
+
+
+void Motor_SetDesiredSpeed(unsigned char motor_id, unsigned long desiredSpeed)
+{
+	Motor_DesiredSpeeds[motor_id] = desiredSpeed;
+}
+
 
 void Motor_Init(void)
 {

@@ -242,7 +242,7 @@ void pingConsumer(void)  //make this an interrupt
 		}
 		if (pulseWidth >= 19000000)//Error, thinks rising edge is falling edge and vice versa
 		{
-			distance = MAX_DISTANCE;
+		//	distance = MAX_DISTANCE;
 
 			IntMasterDisable();			
 
