@@ -80,16 +80,16 @@ __heap_limit
 
         EXTERN  UARTIntHandler
 		EXTERN  ADC0Seq0IntHandler
-    EXTERN  ADC0Seq1IntHandler
-    EXTERN  ADC0Seq2IntHandler
-    EXTERN  ADC0Seq3IntHandler
+    	EXTERN  ADC0Seq1IntHandler
+    	EXTERN  ADC0Seq2IntHandler
+    	EXTERN  ADC0Seq3IntHandler
 		EXTERN  Timer3AIntHandler 
 		EXTERN  Timer3BIntHandler 
 		EXTERN  Timer2IntHandler
 		EXTERN  SysTickThSwIntHandler
 		EXTERN  PendSVHandler
 		EXTERN  SwitchIntHandler
-		EXTERN  Comparator0_Handler
+		//homg comment in the startup file
 
 ;******************************************************************************
 ;
@@ -139,7 +139,7 @@ __Vectors
         DCD     IntDefaultHandler           ; Timer 1 subtimer B
         DCD     IntDefaultHandler            ; Timer 2 subtimer A
         DCD     IntDefaultHandler           ; Timer 2 subtimer B
-        DCD     Comparator0_Handler           ; Analog Comparator 0
+        DCD     IntDefaultHandler           ; Analog Comparator 0
         DCD     IntDefaultHandler           ; Analog Comparator 1
         DCD     IntDefaultHandler           ; Analog Comparator 2
         DCD     IntDefaultHandler           ; System Control (PLL, OSC, BO)
