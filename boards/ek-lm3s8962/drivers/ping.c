@@ -27,7 +27,7 @@
 #define CCP1_TIMER_PRESCALE 0
 #define MAX_DISTANCE 3000
 #define PING_PERIOD 50000 //This is in units of 2000 ns increments
-#define CAN_FIFO_SIZE           (8 * 3)
+#define CAN_FIFO_SIZE           (8 * 5)
 
 unsigned long Ping_Data_Lost = 0;
 //Sema4Type Ping_Fifo_Available;
@@ -203,48 +203,52 @@ void pingConsumer(void)  //make this an interrupt
 			//Transmit by CAN
 			distanceBuffer[0] = 'p';
 			memcpy(&distanceBuffer[1], &distance, 4);
-//			CAN_Send(distanceBuffer);
+			CAN_Send(distanceBuffer);
 
 
 
 			//Take measurements
-			if (ping_stats_index < PING_SAMPLING_RATE)
-			{
-				ping_stats[ping_stats_index] = distance;
-				ping_stats_index++;
-			}
-			else
-			{
-				ping_stats_index = 0;
-
-				//Average = sum of all values/number of values
-				//Maximum deviation = max value - min value
-				max = ping_stats[0];
-				min = ping_stats[0];
-				sum = 0;
-				for(i = 0; i < PING_SAMPLING_RATE; i++){
-			      sum += ping_stats[i];
-				  if(ping_stats[i] <= min) min = ping_stats[i];
-				  if(ping_stats[i] > max) max = ping_stats[i];	  
-				}
-			    PING_Stats.average = (sum/PING_SAMPLING_RATE);
-				PING_Stats.maxdev = (max - min);
-			
-				//Standard deviation = sqrt(sum of (each value - average)^2 / number of values)
-				sum = 0;
-				for(i = 0; i < PING_SAMPLING_RATE; i++){
-			      sum +=(ping_stats[i]-PING_Stats.average)*(ping_stats[i]-PING_Stats.average);	  
-				}
-				sum = sum/PING_SAMPLING_RATE;
-				PING_Stats.stdev = sqrt(sum);
-			}
+//			if (ping_stats_index < PING_SAMPLING_RATE)
+//			{
+//				ping_stats[ping_stats_index] = distance;
+//				ping_stats_index++;
+//			}
+//			else
+//			{
+//				ping_stats_index = 0;
+//
+//				//Average = sum of all values/number of values
+//				//Maximum deviation = max value - min value
+//				max = ping_stats[0];
+//				min = ping_stats[0];
+//				sum = 0;
+//				for(i = 0; i < PING_SAMPLING_RATE; i++){
+//			      sum += ping_stats[i];
+//				  if(ping_stats[i] <= min) min = ping_stats[i];
+//				  if(ping_stats[i] > max) max = ping_stats[i];	  
+//				}
+//			    PING_Stats.average = (sum/PING_SAMPLING_RATE);
+//				PING_Stats.maxdev = (max - min);
+//			
+//				//Standard deviation = sqrt(sum of (each value - average)^2 / number of values)
+//				sum = 0;
+//				for(i = 0; i < PING_SAMPLING_RATE; i++){
+//			      sum +=(ping_stats[i]-PING_Stats.average)*(ping_stats[i]-PING_Stats.average);	  
+//				}
+//				sum = sum/PING_SAMPLING_RATE;
+//				PING_Stats.stdev = sqrt(sum);
+//			}
 
 		}
 		if (pulseWidth >= 19000000)//Error, thinks rising edge is falling edge and vice versa
 		{
 		//	distance = MAX_DISTANCE;
+			
 
-			IntMasterDisable();			
+			IntMasterDisable();	
+			distanceBuffer[0] = 'p';
+			memcpy(&distanceBuffer[1], &distance, 4);
+			CAN_Send(distanceBuffer);		
 
 			//Disable pending ping interrupts
 		    IntDisable(INT_TIMER0B);

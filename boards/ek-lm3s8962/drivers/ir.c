@@ -139,7 +139,7 @@ void IRSensor0(void){
 	
 	if(sampleOut > 80){sampleOut = 80;}
 	if(sampleOut < 10){sampleOut = 10;}
-	Sensors.ir_front_left = sampleOut;
+	Sensors.ir_back_left = sampleOut;
 
 
 
@@ -215,7 +215,7 @@ void IRSensor1(void){
 	if(sampleOut > 80){sampleOut = 80;}
 	if(sampleOut < 10){sampleOut = 10;}
 
-	Sensors.ir_back_left = sampleOut;
+	Sensors.ir_front_left = sampleOut;
 
 
 	//oLED_Message(0, 0, "IR Avg", IR_Stats1.average);

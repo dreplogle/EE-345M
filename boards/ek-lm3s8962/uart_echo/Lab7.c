@@ -126,6 +126,7 @@ void Display(void){
 	while(1){
   oLED_Message(0, 0, "IR0: ", Sensors.ir_front_left);
 	oLED_Message(0, 1, "IR1: ", Sensors.ir_back_left);
+	oLED_Message(0,2,"Ping: ",Sensors.ping);
   //oLED_Message(0, 2, "IR2: ", Sensors.ir_front_right);
   //oLED_Message(0, 3, "IR3: ", Sensors.ir_back_right);
     oLED_Message(1, 0, "SpeedLeft: ", SpeedLeft);
@@ -154,9 +155,13 @@ void CatBot(void){
     //{
     //  SpeedLeft, SpeedRight = MAX_SPEED;
     //}
-    if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left > 5) { SpeedLeft--;}
-	else if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left < -5) { SpeedRight--;}
-	else { SpeedLeft++; SpeedRight++;} 
+    SpeedLeft = 20; SpeedRight = 20;
+    if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left > 5) { SpeedLeft = 19;}
+	 else if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left < -5) { SpeedRight = 19;}
+	 else if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left > 10) { SpeedLeft = 17;}
+	 else if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left < -10) { SpeedRight = 17;}
+	 else if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left > 20) { SpeedLeft = 12;}
+	 else if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left < -20) { SpeedRight = 12;} 
 	
 	if(SpeedLeft > 20){ SpeedLeft = 20;}
 	if(SpeedRight > 20){ SpeedRight = 20;}  
