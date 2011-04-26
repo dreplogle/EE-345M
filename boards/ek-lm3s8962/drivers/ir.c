@@ -96,6 +96,7 @@ void IRSensor0(void){
 	data[2] = data[1];
 	data[1] = data[0];
     while(!RawIR0_Fifo_Get(&ADCin));
+	if(ADCin < 22){ADCin = 22;}
 	data[0] = ((long)ADCin*7836 - 166052)/1024; //((1/cm)*65535) = ((7836*x-166052)/1024
 	data[0] = 65535/data[0];  //cm = 65535/data[0] from last operation
 
@@ -139,7 +140,7 @@ void IRSensor0(void){
 	
 	if(sampleOut > 80){sampleOut = 80;}
 	if(sampleOut < 10){sampleOut = 10;}
-	Sensors.ir_back_left = sampleOut;
+	Sensors.ir_back_right = sampleOut;
 
 
 
@@ -171,6 +172,7 @@ void IRSensor1(void){
 	data[2] = data[1];
 	data[1] = data[0];
     while(!RawIR1_Fifo_Get(&ADCin));
+	if(ADCin < 22){ADCin = 22;}
 	data[0] = ((long)ADCin*7836 - 166052)/1024; //((1/cm)*65535) = ((7836*x-166052)/1024
 	data[0] = 65535/data[0];  //cm = 65535/data[0] from last operation
 
@@ -215,7 +217,7 @@ void IRSensor1(void){
 	if(sampleOut > 80){sampleOut = 80;}
 	if(sampleOut < 10){sampleOut = 10;}
 
-	Sensors.ir_front_left = sampleOut;
+	Sensors.ir_side_right = sampleOut;
 
 
 	//oLED_Message(0, 0, "IR Avg", IR_Stats1.average);
@@ -246,6 +248,7 @@ void IRSensor2(void){
 	data[2] = data[1];
 	data[1] = data[0];
     while(!RawIR2_Fifo_Get(&ADCin));
+	if(ADCin < 22){ADCin = 22;}
 	data[0] = ((long)ADCin*7836 - 166052)/1024; //((1/cm)*65535) = ((7836*x-166052)/1024
 	data[0] = 65535/data[0];  //cm = 65535/data[0] from last operation
 
@@ -286,7 +289,11 @@ void IRSensor2(void){
 	}
 	sum = sum/IR_SAMPLING_RATE;
 	IR_Stats2.stdev = sqrt(sum);
-	Sensors.ir_front_right = sampleOut;
+
+	if(sampleOut > 80){sampleOut = 80;}
+	if(sampleOut < 10){sampleOut = 10;}
+
+	Sensors.ir_side_left = sampleOut;
 
 	//oLED_Message(0, 0, "IR Avg", IR_Stats2.average);
 	//oLED_Message(0, 1, "IR StdDev", IR_Stats2.stdev);
@@ -316,6 +323,7 @@ void IRSensor3(void){
 	data[2] = data[1];
 	data[1] = data[0];
     while(!RawIR3_Fifo_Get(&ADCin));
+	if(ADCin < 22){ADCin = 22;}
 	data[0] = ((long)ADCin*7836 - 166052)/1024; //((1/cm)*65535) = ((7836*x-166052)/1024
 	data[0] = 65535/data[0];  //cm = 65535/data[0] from last operation
 
@@ -356,7 +364,11 @@ void IRSensor3(void){
 	}
 	sum = sum/IR_SAMPLING_RATE;
 	IR_Stats3.stdev = sqrt(sum);
-	Sensors.ir_back_right = sampleOut;
+
+	if(sampleOut > 80){sampleOut = 80;}
+	if(sampleOut < 10){sampleOut = 10;}
+
+	Sensors.ir_back_left = sampleOut;
 
 	//oLED_Message(0, 0, "IR Avg", IR_Stats3.average);
 	//oLED_Message(0, 1, "IR StdDev", IR_Stats3.stdev);

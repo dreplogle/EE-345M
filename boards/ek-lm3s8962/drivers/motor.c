@@ -135,7 +135,7 @@ void Motor_PID(unsigned char motor_id, unsigned long speed){
         Kp = KP1;
         Ki = KI1;
     }
-    else if (motor_id = 1){
+    else if (motor_id == 1){
         Kp = KP2;
         Ki = KI2;
     }
@@ -273,6 +273,17 @@ void Motor_TurnBackLeft(void)
 {	 
 	Motor_DesiredSpeeds[LEFT_MOTOR] = -HALF_SPEED;
 	Motor_DesiredSpeeds[RIGHT_MOTOR] = -FULL_SPEED;
+}
+
+
+void Motor_SetDesiredSpeed(unsigned char motor_id, unsigned long speed){
+	Motor_DesiredSpeeds[motor_id] = speed;
+}
+
+void Motor_LoadUi(unsigned char motor_id, unsigned long ui){
+
+  Ui[motor_id] = ui;
+
 }
 
 //*****************************************************************************

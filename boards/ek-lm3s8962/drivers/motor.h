@@ -49,6 +49,7 @@
 #define SYSCTL_RCGC2_R (*((volatile unsigned long *)0x400FE108))
 
 void Motor_SetDesiredSpeed(unsigned char motor_id, unsigned long desiredSpeed);
+void Motor_LoadUi(unsigned char motor_id, unsigned long ui);
 
 // ********** Motor_GoForward ***********
 // Calculates and sets desired duty cycle to

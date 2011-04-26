@@ -89,7 +89,7 @@ __heap_limit
 		EXTERN  SysTickThSwIntHandler
 		EXTERN  PendSVHandler
 		EXTERN  SwitchIntHandler
-		//homg comment in the startup file
+    	EXTERN  CANIntHandler
 
 ;******************************************************************************
 ;
@@ -153,7 +153,7 @@ __Vectors
         DCD     Timer3BIntHandler            ; Timer 3 subtimer B
         DCD     IntDefaultHandler           ; I2C1 Master and Slave
         DCD     IntDefaultHandler           ; Quadrature Encoder 1
-        DCD     IntDefaultHandler               ; CAN0
+        DCD     CANIntHandler               ; CAN0
         DCD     IntDefaultHandler           ; CAN1
         DCD     IntDefaultHandler           ; CAN2
         DCD     IntDefaultHandler           ; Ethernet
