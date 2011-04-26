@@ -35,15 +35,11 @@
 #include "driverlib/interrupt.h"
 #include "driverlib/sysctl.h"
 #include "driverlib/systick.h"
+#include "driverlib/timer.h"
+#include "drivers/ping.h"
 #include "drivers/tachometer.h"
 #include "drivers/motor.h"
 #include "can_device_fifo/can_device_fifo.h"
-#include "driverlib/timer.h"
-
-
-#define MAX_SPEED 20
-#define MIN_SPEED 0
-unsigned char SpeedLeft, SpeedRight = MAX_SPEED;
 
 
 //*****************************************************************************
@@ -59,31 +55,14 @@ unsigned char SpeedLeft, SpeedRight = MAX_SPEED;
 //
 //*****************************************************************************
 
-//
-// Size of the FIFOs allocated to the CAN controller.
-//
-#define CAN_FIFO_SIZE           (8 * 5)
-
-//
-// Message object used by the transmit message FIFO.
-//
-#define TRANSMIT_MESSAGE_ID     11
-
-//
-// Message object used by the receive message FIFO.
-//
-#define RECEIVE_MESSAGE_ID      8
-
-//
-// The number of FIFO transfers that cause a toggle of the LED.
-//
-#define TOGGLE_RATE             100
-
-//
-// The CAN bit rate.
-//
-#define CAN_BITRATE             250000
-
+enum Device
+{
+  Ping, Tach, 
+  IR0, IR1, IR2, IR3
+};
+#define MAX_SPEED 20
+#define MIN_SPEED 0
+unsigned short SpeedLeft, SpeedRight = MAX_SPEED;
 //
 // This structure holds all of the state information for the CAN transfers.
 //
@@ -133,11 +112,13 @@ struct
     } eState;
 } g_sCAN;
 
+
 //
 // Used by the ToggleLED function to set the toggle rate.
 //
 unsigned long g_ulLEDCount;
-
+unsigned long g_ulLEDCount;
+int iIdx;
 //*****************************************************************************
 //
 // The error routine that is called if the driver library encounters an error.
@@ -149,31 +130,6 @@ __error__(char *pcFilename, unsigned long ulLine)
 {
 }
 #endif
-
-
-
-
-
-
-void CAN_Send(unsigned char *data)
-{
-  int i;  
-
-  for(i = 0; i < CAN_FIFO_SIZE; i++)
-  {
-    g_sCAN.pucBufferTx[i] = *(data+i);
-  }
-  //
-  // Initialize the transmit count to zero.
-  //
-  g_sCAN.ulBytesTransmitted = 0;
-  CANTransmitFIFO(g_sCAN.pucBufferTx, CAN_FIFO_SIZE);
-  g_sCAN.eState = CAN_SENDING;
-}
-
-
-
-
 
 //*****************************************************************************
 //
@@ -206,13 +162,6 @@ CANIntHandler(void)
     //
     else if((ulStatus > 8) && (ulStatus <= 16))
     {
-		if(g_sCAN.MsgObjectRx.pucMsgData >= g_sCAN.pucBufferRx + CAN_FIFO_SIZE){
-		//
-    	// Reset the buffer pointer.
-    	//
-   		g_sCAN.MsgObjectRx.pucMsgData = g_sCAN.pucBufferRx;
-		}
-
         //
         // Read the data out and acknowledge that it was read.
         //
@@ -459,185 +408,149 @@ ToggleLED(void)
     g_ulLEDCount++;
 }
 
-//testmain1
-int testmain(void){
 
-	Tach_Init(0);
-	Motor_Init();
-	Motor_Configure(0, 0, 10000, 6000); 
-	Motor_Configure(1, 0, 10000, 6000);
-	Motor_Start(0);
-	Motor_Start(1);
 
-	Motor_SetDesiredSpeed(LEFT_MOTOR, 1500);
-	Motor_SetDesiredSpeed(RIGHT_MOTOR, 1500);
-	
-	while(1){
-	Tach_SendData(0);
-	Tach_SendData(1);
-	}
+
+
+void CAN_Init(void)
+{
+    // If running on Rev A2 silicon, turn the LDO voltage up to 2.75V.  This is
+    // a workaround to allow the PLL to operate reliably.
+    if(REVISION_IS_A2)
+    {
+        SysCtlLDOSet(SYSCTL_LDO_2_75V);
+    }
+    // Set the clocking to run directly from the PLL at 50MHz.
+    SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN |
+                   SYSCTL_XTAL_8MHZ);
+    // Configure CAN 0 Pins.
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
+    GPIOPinTypeCAN(GPIO_PORTD_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+    // Configure LED pin.
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
+    // Configure GPIO Pin used for the LED.
+    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_2);
+    // Turn off the LED.
+    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, 0);
+    // Enable the CAN controller.
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_CAN0);
+    // Reset the state of all the message object and the state of the CAN
+    // module to a known state.
+    CANInit(CAN0_BASE);
+    // Configure the bit rate for the CAN device, the clock rate to the CAN
+    // controller is fixed at 8MHz for this class of device and the bit rate is
+    // set to CAN_BITRATE.
+    CANBitRateSet(CAN0_BASE, 8000000, CAN_BITRATE);
+    // Take the CAN0 device out of INIT state.
+    CANEnable(CAN0_BASE);
+    // Enable interrupts from CAN controller.
+    CANIntEnable(CAN0_BASE, CAN_INT_MASTER | CAN_INT_ERROR);
+    // Enable interrupts for the CAN in the NVIC.
+    IntEnable(INT_CAN0);
+    // Enable processor interrupts.
+    IntMasterEnable();
+    // Set the initial state to wait for data.
+    g_sCAN.eState = CAN_WAIT_RX;
+    // Reset the buffer pointer.
+    g_sCAN.MsgObjectRx.pucMsgData = g_sCAN.pucBufferRx;
+    // Set the total number of bytes expected.
+    g_sCAN.ulBytesRemaining = CAN_FIFO_SIZE;
+    // Configure the receive message FIFO.
+    CANReceiveFIFO(g_sCAN.pucBufferRx, CAN_FIFO_SIZE);
+    // Initialized the LED toggle count.
+    g_ulLEDCount = 0;
+
+}
+
+void CAN_Send(unsigned char *data)
+{
+  int i;  
+
+  for(i = 0; i < CAN_FIFO_SIZE; i++)
+  {
+    g_sCAN.pucBufferTx[i] = *(data+i);
+  }
+  //
+  // Initialize the transmit count to zero.
+  //
+  g_sCAN.ulBytesTransmitted = 0;
+  CANTransmitFIFO(g_sCAN.pucBufferTx, CAN_FIFO_SIZE);
+  g_sCAN.eState = CAN_SENDING;
+}
+void CAN_Receive(void)
+{
+  g_sCAN.eState = CAN_WAIT_RX;
 }
 
 
-unsigned long DebugSpeedCounter = 0;
+
+//
+//int main(void){
+//
+//	Tach_Init(0);
+//	Motor_Init();
+//	Motor_Configure(0, 0, 10000, 6000); 
+//	Motor_Configure(1, 0, 10000, 6000);
+//	Motor_Start(0);
+//	Motor_Start(1);
+//
+//	Motor_SetDesiredSpeed(LEFT_MOTOR, 1500);
+//	Motor_SetDesiredSpeed(RIGHT_MOTOR, 1500);
+//	
+//	while(1){
+//	Tach_SendData(0);
+//	Tach_SendData(1);
+//	}
+//}
+//
+//
+
+
 //*****************************************************************************
 //
 // This is the main loop for the application.
 //
 //*****************************************************************************
-unsigned char SpeedLastR;
-unsigned char SpeedLastL;
-
 int main(void)
-{
-	Ping_Init(TIMER2_BASE, TIMER_A); 
-	Tach_Init(0);
+{        
+  unsigned char motdir = 0;
+  unsigned long i = 0;
+    CAN_Init();
+    Ping_Init(TIMER2_BASE, TIMER_A); //Must do this after OS_AddPeriodicThread in order
+  	Tach_Init(0);
 	Motor_Init();
-	Motor_Configure(0, 0, 10000, 6000); 
-	Motor_Configure(1, 0, 10000, 6000);
+	Motor_Configure(0, 0, 5000, 0); 
+	Motor_Configure(1, 0, 5000, 0);
 	Motor_Start(0);
 	Motor_Start(1);
 
-    //
-    // If running on Rev A2 silicon, turn the LDO voltage up to 2.75V.  This is
-    // a workaround to allow the PLL to operate reliably.
-    //
-    if(REVISION_IS_A2)
-    {
-        SysCtlLDOSet(SYSCTL_LDO_2_75V);
-    }
-
-    //
-    // Set the clocking to run directly from the PLL at 50MHz.
-    //
-    SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN |
-                   SYSCTL_XTAL_8MHZ);
-
-    //
-    // Configure CAN 0 Pins.
-    //
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
-    GPIOPinTypeCAN(GPIO_PORTD_BASE, GPIO_PIN_0 | GPIO_PIN_1);
-
-    //
-    // Configure LED pin.
-    //
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
-
-    //
-    // Configure GPIO Pin used for the LED.
-    //
-    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_2);
-
-    //
-    // Turn off the LED.
-    //
-    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, 0);
-
-    //
-    // Enable the CAN controller.
-    //
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_CAN0);
-
-    //
-    // Reset the state of all the message object and the state of the CAN
-    // module to a known state.
-    //
-    CANInit(CAN0_BASE);
-
-    //
-    // Configure the bit rate for the CAN device, the clock rate to the CAN
-    // controller is fixed at 8MHz for this class of device and the bit rate is
-    // set to CAN_BITRATE.
-    //
-    CANBitRateSet(CAN0_BASE, 8000000, CAN_BITRATE);
-
-    //
-    // Take the CAN0 device out of INIT state.
-    //
-    CANEnable(CAN0_BASE);
-
-    //
-    // Enable interrupts from CAN controller.
-    //
-    CANIntEnable(CAN0_BASE, CAN_INT_MASTER | CAN_INT_ERROR);
-
-    //
-    // Enable interrupts for the CAN in the NVIC.
-    //
-    IntEnable(INT_CAN0);
-
-    //
-    // Enable processor interrupts.
-    //
-    IntMasterEnable();
-
-    //
-    // Set the initial state to wait for data.
-    //
-    g_sCAN.eState = CAN_WAIT_RX;
-
-    //
-    // Reset the buffer pointer.
-    //
-    g_sCAN.MsgObjectRx.pucMsgData = g_sCAN.pucBufferRx;
-
-    //
-    // Set the total number of bytes expected.
-    //
-    g_sCAN.ulBytesRemaining = CAN_FIFO_SIZE;
-
-    //
-    // Configure the receive message FIFO.
-    //
-    CANReceiveFIFO(g_sCAN.pucBufferRx, CAN_FIFO_SIZE);
-
-    //
-    // Initialized the LED toggle count.
-    //
-    g_ulLEDCount = 0;
+	Motor_TurnHardLeft();
 
 
-		
 
-    //
-    // Loop forever.
-    //
     while(1)
-    {
+    {  
+	    Tach_SendData(MOTOR_LEFT_ID);
+		Tach_SendData(MOTOR_RIGHT_ID);
+//      for (i = 0; i < 1000000; i++){
+//      }
+//      motdir ^= 0x01;
+//      setMotorDirection(0, motdir); 
+//      setMotorDirection(1, motdir);
         switch(g_sCAN.eState)
         {
-            case CAN_IDLE:
-            {
-                //
-                // Switch to sending state.
-                //
-                g_sCAN.eState = CAN_SENDING;
-
-                //
-                // Initialize the transmit count to zero.
-                //
-                g_sCAN.ulBytesTransmitted = 0;
-
-                //
-                // Schedule all of the CAN transmissions.
-                //
-                CANTransmitFIFO(g_sCAN.pucBufferTx, CAN_FIFO_SIZE);
-
-                break;
-            }
             case CAN_SENDING:
             {
                 //
                 // Wait for all bytes to go out.
                 //
-//                if(g_sCAN.ulBytesTransmitted == CAN_FIFO_SIZE)
-//                {
+                if(g_sCAN.ulBytesTransmitted == CAN_FIFO_SIZE)
+                {
                     //
                     // Switch to wait for RX state.
                     //
                     g_sCAN.eState = CAN_WAIT_RX;
-              //  }
+                }
 
                 break;
             }
@@ -646,12 +559,13 @@ int main(void)
                 //
                 // Wait for all new data to be received.
                 //
-//                if(g_sCAN.ulBytesRemaining == 0)
-//                {
-                    //
-                    // Switch to wait for Process data state.
-                    //
-                    g_sCAN.eState = CAN_PROCESS;
+                if(g_sCAN.ulBytesRemaining == 0)
+                {
+                    SpeedLeft = g_sCAN.pucBufferRx[0]; 
+                    SpeedRight = g_sCAN.pucBufferRx[1];
+                    Motor_SetDesiredSpeed(MOTOR_LEFT_ID, SpeedLeft);
+                    Motor_SetDesiredSpeed(MOTOR_RIGHT_ID, SpeedRight);
+                    
 
                     //
                     // Reset the buffer pointer.
@@ -662,45 +576,7 @@ int main(void)
                     // Reset the number of bytes expected.
                     //
                     g_sCAN.ulBytesRemaining = CAN_FIFO_SIZE;
-                //}
-                break;
-            }
-            case CAN_PROCESS:
-            {
-                //
-                // Handle the LED toggle.
-                //
-                ToggleLED();
-
-				if ( g_sCAN.pucBufferRx[0] == 'A')
-				{
-					DebugSpeedCounter++;
-				 	SpeedRight = g_sCAN.pucBufferRx[1]; 
-                    SpeedLeft = g_sCAN.pucBufferRx[2]; 
-					Motor_SetDesiredSpeed(LEFT_MOTOR, (SpeedLeft*HALF_SPEED)/20);
-					Motor_SetDesiredSpeed(RIGHT_MOTOR, (SpeedRight*HALF_SPEED)/20);
-
-					//if(SpeedLastL < SpeedLeft){
-					//	Motor_LoadUi(LEFT_MOTOR, (SpeedLeft*MAX_DUTY_CYCLE)/20); // Jumpstart the PID for acceleration
-					//}
-					//if(SpeedLastR < SpeedRight){
-					//	Motor_LoadUi(RIGHT_MOTOR, (SpeedRight*MAX_DUTY_CYCLE)/20); // Jumpstart the PID for acceleration
-					//}
-					SpeedLastR = SpeedRight;
-					SpeedLastL = SpeedLeft;
-					//setDutyCycle(LEFT_MOTOR, (SpeedLeft*MAX_DUTY_CYCLE)/20);
-					//setDutyCycle(RIGHT_MOTOR, (SpeedRight*MAX_DUTY_CYCLE)/20);
-				}
-
-
-				Tach_SendData(0);
-				Tach_SendData(1);
-
-                //
-                // Return to the idle state.
-                //
-                g_sCAN.eState = CAN_IDLE;
-
+                }
                 break;
             }
             default:

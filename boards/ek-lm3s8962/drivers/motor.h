@@ -9,8 +9,8 @@
 #define PWM_ENABLE_PWM1EN 0x2
 #define MOTOR_FORWARD 0
 #define MOTOR_BACKWARD 1
-#define LEFT_MOTOR 0
-#define RIGHT_MOTOR 1
+#define MOTOR_LEFT_ID 0
+#define MOTOR_RIGHT_ID 1
 #define PIN_0_WRITE 0x1
 #define PIN_1_WRITE 0x2
 
@@ -19,7 +19,7 @@
 #define MAX_SPEED_1 
 #define MAX_POWER 250
 #define MIN_DUTY_CYCLE 1500
-#define MAX_DUTY_CYCLE 9900
+#define MAX_DUTY_CYCLE 7000
 
 
 
