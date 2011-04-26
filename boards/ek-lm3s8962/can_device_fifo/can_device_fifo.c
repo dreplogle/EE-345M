@@ -556,27 +556,22 @@ int main(void)
             }
             case CAN_WAIT_RX:
             {
-                //
-                // Wait for all new data to be received.
-                //
-                if(g_sCAN.ulBytesRemaining == 0)
-                {
-                    SpeedLeft = g_sCAN.pucBufferRx[0]; 
-                    SpeedRight = g_sCAN.pucBufferRx[1];
-                    Motor_SetDesiredSpeed(MOTOR_LEFT_ID, SpeedLeft);
-                    Motor_SetDesiredSpeed(MOTOR_RIGHT_ID, SpeedRight);
-                    
-
-                    //
-                    // Reset the buffer pointer.
-                    //
-                    g_sCAN.MsgObjectRx.pucMsgData = g_sCAN.pucBufferRx;
-
-                    //
-                    // Reset the number of bytes expected.
-                    //
-                    g_sCAN.ulBytesRemaining = CAN_FIFO_SIZE;
+                if (g_sCAN.pucBufferRx[0] == 'A'){
+                    SpeedLeft = g_sCAN.pucBufferRx[1]; 
+                    SpeedRight = g_sCAN.pucBufferRx[2];
+                    Motor_SetDesiredSpeed(MOTOR_LEFT_ID, (SpeedLeft*FULL_SPEED)/MOTOR_CODE_MAX);
+                    Motor_SetDesiredSpeed(MOTOR_RIGHT_ID, (SpeedRight*FULL_SPEED)/MOTOR_CODE_MAX);
                 }
+
+                //
+                // Reset the buffer pointer.
+                //
+                g_sCAN.MsgObjectRx.pucMsgData = g_sCAN.pucBufferRx;
+
+                //
+                // Reset the number of bytes expected.
+                //
+                g_sCAN.ulBytesRemaining = CAN_FIFO_SIZE;
                 break;
             }
             default:
