@@ -224,7 +224,7 @@ void Tach_InputCapture0A(void){
 		 // Stop Detection
 		if (tach_0A_timeout_count >= STOP_TIMEOUT){
 			tach_0A_timeout_count = 0;
-			Tach_Fifo_Put(0, 3750000000);
+			Tach_Fifo_Put(MOTOR_LEFT_ID, 3750000000);
 		}
 //        tach_0A_stop_detect++;
 //		 // Stop Detection
@@ -243,10 +243,11 @@ void Tach_InputCapture0A(void){
 		tach_0A_timeout_count = 0;
 		//time_debug = Tach_TimeDifference(time2, time1);
 		//Tach_Fifo_Put(time_debug);
-		if((SeeRPM1 < (FULL_SPEED + 200)) && Tach_Fifo_Put(0, period))
-			Tach_NumSamples[0]++;
+		//if((SeeRPM1 < (FULL_SPEED + 200)) && Tach_Fifo_Put(0, period))
+		if((SeeRPM1 < (FULL_SPEED + 200)) && Tach_Fifo_Put(MOTOR_LEFT_ID, period))	
+            Tach_NumSamples[MOTOR_LEFT_ID]++;
 		else
-			Tach_DataLost[0]++;
+			Tach_DataLost[MOTOR_LEFT_ID]++;
 	}
 	TimerIntClear(TIMER0_BASE, (TIMER_CAPA_EVENT | TIMER_TIMA_TIMEOUT));
 }
@@ -271,7 +272,7 @@ void Tach_InputCapture1A(void){
 		// Stop Detection
 		if (tach_1A_timeout_count >= STOP_TIMEOUT){
 			tach_1A_timeout_count = 0;
-		 	Tach_Fifo_Put(1, 3750000000);
+		 	Tach_Fifo_Put(MOTOR_RIGHT_ID, 3750000000);
 		}
 //        tach_1A_stop_detect++;
 //		// Stop Detection
@@ -297,10 +298,10 @@ void Tach_InputCapture1A(void){
             period++;
         }
         
-		if((SeeRPM2 < (FULL_SPEED + 200)) && Tach_Fifo_Put(1, period))
-			Tach_NumSamples[1]++;
+		if((SeeRPM2 < (FULL_SPEED + 200)) && Tach_Fifo_Put(MOTOR_RIGHT_ID, period))
+			Tach_NumSamples[MOTOR_RIGHT_ID]++;
 		else
-			Tach_DataLost[1]++;
+			Tach_DataLost[MOTOR_RIGHT_ID]++;
 	}
 	TimerIntClear(TIMER1_BASE, (TIMER_CAPA_EVENT | TIMER_TIMA_TIMEOUT));
 }

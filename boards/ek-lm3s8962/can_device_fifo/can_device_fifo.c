@@ -469,8 +469,8 @@ int testmain(void){
 	Motor_Start(0);
 	Motor_Start(1);
 
-	Motor_SetDesiredSpeed(LEFT_MOTOR, 1500);
-	Motor_SetDesiredSpeed(RIGHT_MOTOR, 1500);
+	Motor_SetDesiredSpeed(MOTOR_LEFT_ID, 1500);
+	Motor_SetDesiredSpeed(MOTOR_RIGHT_ID, 1500);
 	
 	while(1){
 	Tach_SendData(0);
@@ -493,8 +493,8 @@ int main(void)
 	Ping_Init(TIMER2_BASE, TIMER_A); 
 	Tach_Init(0);
 	Motor_Init();
-	Motor_Configure(0, 0, 10000, 6000); 
-	Motor_Configure(1, 0, 10000, 6000);
+	Motor_Configure(0, 0, 10000, 3000); 
+	Motor_Configure(1, 0, 10000, 3000);
 	Motor_Start(0);
 	Motor_Start(1);
 
@@ -675,10 +675,10 @@ int main(void)
 				if ( g_sCAN.pucBufferRx[0] == 'A')
 				{
 					DebugSpeedCounter++;
-				 	SpeedRight = g_sCAN.pucBufferRx[1]; 
-                    SpeedLeft = g_sCAN.pucBufferRx[2]; 
-					Motor_SetDesiredSpeed(LEFT_MOTOR, (SpeedLeft*HALF_SPEED)/20);
-					Motor_SetDesiredSpeed(RIGHT_MOTOR, (SpeedRight*HALF_SPEED)/20);
+				 	SpeedLeft = g_sCAN.pucBufferRx[1]; 
+                    SpeedRight = g_sCAN.pucBufferRx[2]; 
+					Motor_SetDesiredSpeed(MOTOR_LEFT_ID, (SpeedLeft*FULL_SPEED)/MOTOR_CODE_MAX);
+					Motor_SetDesiredSpeed(MOTOR_RIGHT_ID, (SpeedRight*FULL_SPEED)/MOTOR_CODE_MAX);
 
 					//if(SpeedLastL < SpeedLeft){
 					//	Motor_LoadUi(LEFT_MOTOR, (SpeedLeft*MAX_DUTY_CYCLE)/20); // Jumpstart the PID for acceleration

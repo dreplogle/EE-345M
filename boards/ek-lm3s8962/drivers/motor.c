@@ -26,7 +26,7 @@ static unsigned char rightMotorDirection = 0;
 static
 void setDutyCycle(unsigned char motor, unsigned short duty)
 {
-	if (motor == LEFT_MOTOR)
+	if (motor == MOTOR_LEFT_ID)
 	{
 		if (leftMotorDirection == MOTOR_BACKWARD)
 		{
@@ -51,7 +51,7 @@ unsigned char DebugDirection;
 
 void setMotorDirection(unsigned char motor, unsigned char direction)
 {
-	if (motor == LEFT_MOTOR)
+	if (motor == MOTOR_LEFT_ID)
 	{
 		//These two lines must be done separately, or the shifting won't work properly
 		leftMotorDirection = direction;
@@ -122,10 +122,10 @@ unsigned long SeeSpeed = 0;
 long SeeError = 0;
 long SeeU = 0;
 long Ui[2];
-#define KP1 40 // proportional constant
-#define KI1 4000 // integral constant
-#define KP2 40
-#define KI2 6000
+#define KP1 3000 // proportional constant
+#define KI1 30000 // integral constant
+#define KP2 3000
+#define KI2 25000
 long Error = 0, Up = 0, U = 0;
 long Kp = 0;
 long Ki = 0;
@@ -203,8 +203,8 @@ void Motor_PID(unsigned char motor_id, unsigned long speed){
 //*****************************************************************************
 void Motor_GoBackward(void)
 {
-	Motor_DesiredSpeeds[LEFT_MOTOR] = -HALF_SPEED;
-	Motor_DesiredSpeeds[RIGHT_MOTOR] = -HALF_SPEED;
+	Motor_DesiredSpeeds[MOTOR_LEFT_ID] = -HALF_SPEED;
+	Motor_DesiredSpeeds[MOTOR_RIGHT_ID] = -HALF_SPEED;
 }
 
 //*****************************************************************************
@@ -214,8 +214,8 @@ void Motor_GoBackward(void)
 //*****************************************************************************
 void Motor_GoForward(void)
 {	
-	Motor_DesiredSpeeds[LEFT_MOTOR] = FULL_SPEED;
-	Motor_DesiredSpeeds[RIGHT_MOTOR] = FULL_SPEED;
+	Motor_DesiredSpeeds[MOTOR_LEFT_ID] = FULL_SPEED;
+	Motor_DesiredSpeeds[MOTOR_RIGHT_ID] = FULL_SPEED;
 }
 
 //*****************************************************************************
@@ -225,8 +225,8 @@ void Motor_GoForward(void)
 //*****************************************************************************
 void Motor_TurnLeft(void)
 {	
-	Motor_DesiredSpeeds[LEFT_MOTOR] = FULL_SPEED;
-    Motor_DesiredSpeeds[RIGHT_MOTOR] = (FULL_SPEED*3)/4;
+	Motor_DesiredSpeeds[MOTOR_RIGHT_ID] = FULL_SPEED;
+    Motor_DesiredSpeeds[MOTOR_LEFT_ID] = (FULL_SPEED*3)/4;
 }
 
 //*****************************************************************************
@@ -236,8 +236,8 @@ void Motor_TurnLeft(void)
 //*****************************************************************************
 void Motor_TurnRight(void)
 {	  
-	Motor_DesiredSpeeds[LEFT_MOTOR] = (FULL_SPEED*3)/4;
-    Motor_DesiredSpeeds[RIGHT_MOTOR] = FULL_SPEED;
+	Motor_DesiredSpeeds[MOTOR_RIGHT_ID] = (FULL_SPEED*3)/4;
+    Motor_DesiredSpeeds[MOTOR_LEFT_ID] = FULL_SPEED;
 }
 
 //*****************************************************************************
@@ -247,8 +247,8 @@ void Motor_TurnRight(void)
 //*****************************************************************************
 void Motor_TurnHardLeft(void)
 {  	  
-	Motor_DesiredSpeeds[LEFT_MOTOR] = HALF_SPEED;
-	Motor_DesiredSpeeds[RIGHT_MOTOR] = 0;
+	Motor_DesiredSpeeds[MOTOR_RIGHT_ID] = HALF_SPEED;
+	Motor_DesiredSpeeds[MOTOR_LEFT_ID] = 0;
 }
 
 //*****************************************************************************
@@ -258,10 +258,10 @@ void Motor_TurnHardLeft(void)
 //*****************************************************************************
 void Motor_TurnHardRight(void)
 {  	  
-	Motor_DesiredSpeeds[LEFT_MOTOR] = 0;
-	Motor_DesiredSpeeds[RIGHT_MOTOR] = HALF_SPEED;
-  Ui[RIGHT_MOTOR] = (HALF_SPEED*MAX_DUTY_CYCLE)/FULL_SPEED;
-  Ui[LEFT_MOTOR] = 0;
+	Motor_DesiredSpeeds[MOTOR_RIGHT_ID] = 0;
+	Motor_DesiredSpeeds[MOTOR_LEFT_ID] = HALF_SPEED;
+  //Ui[MOTOR_RIGHT_ID] = (HALF_SPEED*MAX_DUTY_CYCLE)/FULL_SPEED;
+  //Ui[MOTOR_LEFT_ID] = 0;
 }
 
 //*****************************************************************************
@@ -271,19 +271,8 @@ void Motor_TurnHardRight(void)
 //*****************************************************************************
 void Motor_TurnBackLeft(void)
 {	 
-	Motor_DesiredSpeeds[LEFT_MOTOR] = -HALF_SPEED;
-	Motor_DesiredSpeeds[RIGHT_MOTOR] = -FULL_SPEED;
-}
-
-
-void Motor_SetDesiredSpeed(unsigned char motor_id, unsigned long speed){
-	Motor_DesiredSpeeds[motor_id] = speed;
-}
-
-void Motor_LoadUi(unsigned char motor_id, unsigned long ui){
-
-  Ui[motor_id] = ui;
-
+	Motor_DesiredSpeeds[MOTOR_LEFT_ID] = -HALF_SPEED;
+	Motor_DesiredSpeeds[MOTOR_RIGHT_ID] = -FULL_SPEED;
 }
 
 //*****************************************************************************
@@ -293,15 +282,19 @@ void Motor_LoadUi(unsigned char motor_id, unsigned long ui){
 //*****************************************************************************
 void Motor_TurnBackRight(void)
 {	  
-	Motor_DesiredSpeeds[LEFT_MOTOR] = -FULL_SPEED;
-	Motor_DesiredSpeeds[RIGHT_MOTOR] = -HALF_SPEED;
+	Motor_DesiredSpeeds[MOTOR_LEFT_ID] = -FULL_SPEED;
+	Motor_DesiredSpeeds[MOTOR_RIGHT_ID] = -HALF_SPEED;
+}
+
+void Motor_SetDesiredSpeed(unsigned char motor_id, unsigned long speed){
+	Motor_DesiredSpeeds[motor_id] = speed;
 }
 
 void Motor_Init(void)
 {
 	volatile unsigned long delay = 0;
-    Ui[0] = (MAX_DUTY_CYCLE - MIN_DUTY_CYCLE)/2;
-    Ui[1] = (MAX_DUTY_CYCLE - MIN_DUTY_CYCLE)/2;
+    Ui[0] = 0;
+    Ui[1] = 0;
 
 	//Initialize PE0 and PE1 to be outputs
 	SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);
@@ -345,7 +338,7 @@ void Motor_Configure(unsigned char motor_id, unsigned char direction, unsigned s
 
 	setMotorDirection(motor_id, direction);
 
-	if (motor_id == LEFT_MOTOR)
+	if (motor_id == MOTOR_LEFT_ID)
 	{
 		PWM_0_LOAD_R = period - 1; // cycles needed to count down to 0
 		//PWM_0_CMPA_R = duty - 1; // count value when output rises
@@ -368,7 +361,7 @@ void Motor_Configure(unsigned char motor_id, unsigned char direction, unsigned s
 
 void Motor_Start(unsigned char motor_id)
 {   
-	if (motor_id == LEFT_MOTOR)
+	if (motor_id == MOTOR_LEFT_ID)
 	{
 		PWM_ENABLE_R |= PWM_ENABLE_PWM0EN; // enable PWM0
 	}
@@ -381,7 +374,7 @@ void Motor_Start(unsigned char motor_id)
 
 void Motor_Stop(unsigned char motor_id)
 {
-	if (motor_id == LEFT_MOTOR)
+	if (motor_id == MOTOR_LEFT_ID)
 	{
 		PWM_ENABLE_R &= ~(PWM_ENABLE_PWM0EN); // disable PWM0
 	}
