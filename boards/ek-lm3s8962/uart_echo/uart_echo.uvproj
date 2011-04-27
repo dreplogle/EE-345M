@@ -451,6 +451,11 @@
               <FileType>1</FileType>
               <FilePath>..\drivers\ir.c</FilePath>
             </File>
+            <File>
+              <FileName>servo.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\drivers\servo.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

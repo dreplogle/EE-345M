@@ -567,7 +567,10 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
     // Set the configuration of the A and B timers.  Note that the B timer
     // configuration is ignored by the hardware in 32-bit modes.
     HWREG(TIMER3_BASE + 0x00000004) = (TIMER_CFG_16_BIT_PAIR|TIMER_CFG_A_PERIODIC) & 255;
-    TimerLoadSet(TIMER3_BASE, TIMER_A, period);
+    
+	TimerPrescaleSet(TIMER3_BASE, TIMER_A, 45);
+	
+	TimerLoadSet(TIMER3_BASE, TIMER_A, period);
 	  PeriodTimerA = (long)period;
     TimerIntEnable(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
     TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);

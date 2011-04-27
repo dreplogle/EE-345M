@@ -27,6 +27,7 @@
 #include "drivers/tachometer.h"
 #include "drivers/ir.h"
 #include "uart_echo/lab7.h"
+#include "drivers/servo.h"
 
 unsigned long NumCreated;   // number of foreground threads created
 unsigned long NumSamples;   // incremented every sample
@@ -137,6 +138,7 @@ void Display(void){
 
 #define WALL_DIST   20 //cm
 void CatBot(void){
+  unsigned long i;
   SpeedLeft = 20;
   SpeedRight = 20;
   while(1){
@@ -164,9 +166,25 @@ void CatBot(void){
 	//else if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left > 20) { SpeedLeft = 12;}
 	//else if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left < -20) { SpeedRight = 12;} 
 	
-	if(Sensors.ir_side_right < WALL_DIST){SpeedLeft--; SpeedRight++;}
-	else if(Sensors.ir_side_left < WALL_DIST){SpeedRight--; SpeedLeft++;}
-	else{SpeedLeft++; SpeedRight++;}
+	//NOTE: Possibly change the distance with ping. This is really close.
+	//NOTE: WALL_DIST*10 because ping is in terms of mm, where WALL_DIST 
+	//	is in terms of cm
+	//PING STRATEGY: If the ping recognizes Catbot to be too close to
+	//	a wall
+	/*
+	if(Sensors.ping < WALL_DIST*10)
+	{
+		if(Sensors.ir_side_right > WALL_DIST){SpeedLeft=10; SpeedRight=5;}
+		else if(Sensors.ir_side_left > WALL_DIST){SpeedRight=10; SpeedLeft=5;}
+
+	}
+	else
+	{
+		if(Sensors.ir_side_right < WALL_DIST){SpeedLeft--; SpeedRight++;}
+		else if(Sensors.ir_side_left < WALL_DIST){SpeedRight--; SpeedLeft++;}
+		else{SpeedLeft++; SpeedRight++;}
+	}
+
 
 	if(SpeedLeft > 20){ SpeedLeft = 20;}
 	if(SpeedRight > 20){ SpeedRight = 20;}  
@@ -178,10 +196,34 @@ void CatBot(void){
     motorBuffer[2] = SpeedRight;
 	CAN_Send(motorBuffer);
 	SysCtlDelay(SysCtlClockGet()/500);
+	*/
+	Servo_SetAngle(30);
+		for(i = 0; i < 5000; i++){}
+
+
   }
 }
 
+unsigned char OnOffFlag;
+unsigned long PWMduty;
+void Fake_PWM(void){
+  unsigned long totDutyPeriod = 21739;  //for 50Mhz and 45 timer prescale
 
+  if(OnOffFlag){
+    // Toggle bit high
+    GPIOPinWrite(GPIO_PORTD_BASE, GPIO_PIN_2, 0x4);
+	// Load pediod with duty cycle
+	TimerLoadSet(TIMER3_BASE, TIMER_A, PWMduty);
+	OnOffFlag = 0;
+  }
+  else{
+	// Toggle bit low  
+	GPIOPinWrite(GPIO_PORTD_BASE, GPIO_PIN_2, 0);
+	// Load period with total PWM period - duty cycle
+	TimerLoadSet(TIMER3_BASE, TIMER_A, totDutyPeriod - PWMduty);
+	OnOffFlag = 1; 
+  }  
+}
 //*******************lab 6 main **********
 int main(void){       
   OS_Init();           // initialize, disable interrupts
@@ -198,6 +240,8 @@ int main(void){
 
   OS_BumperInit();
   CAN_Init();
+  Servo_Init();
+  OS_AddPeriodicThread(&Fake_PWM, 100, 1);
 
   NumCreated = 0 ;
 // create initial foreground threads
