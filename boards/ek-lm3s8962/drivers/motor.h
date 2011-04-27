@@ -13,6 +13,7 @@
 #define MOTOR_RIGHT_ID 1
 #define PIN_0_WRITE 0x1
 #define PIN_1_WRITE 0x2
+#define MOTOR_CODE_MAX 20
 
 #define FULL_SPEED 1200
 #define HALF_SPEED (FULL_SPEED/2)

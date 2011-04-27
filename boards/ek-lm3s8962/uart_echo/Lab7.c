@@ -137,9 +137,12 @@ void Display(void){
 
 #define WALL_DIST   20 //cm
 void CatBot(void){
+  int i = 0;
+
   SpeedLeft = 20;
   SpeedRight = 20;
   while(1){
+    
 
 	
    	//Transmit by CAN
@@ -172,12 +175,40 @@ void CatBot(void){
 	if(SpeedRight > 20){ SpeedRight = 20;}  
 	if(SpeedLeft < 18){ SpeedLeft = 18;}
 	if(SpeedRight < 18){ SpeedRight = 18;}   
-   
-    motorBuffer[0] = 'A';
+    
+    motorBuffer[0] = 'A'; 
+
+    SpeedLeft = 20;
+    SpeedRight = 20;
     motorBuffer[1] = SpeedLeft;
     motorBuffer[2] = SpeedRight;
-	CAN_Send(motorBuffer);
-	SysCtlDelay(SysCtlClockGet()/500);
+    for (i = 0; i < 10000; i++){
+        CAN_Send(motorBuffer);
+    }
+
+    SpeedLeft = 0;
+    SpeedRight = 20;
+    motorBuffer[1] = SpeedLeft;
+    motorBuffer[2] = SpeedRight;
+    for (i = 0; i < 10000; i++){
+        CAN_Send(motorBuffer);
+    }
+
+    SpeedLeft = 20;
+    SpeedRight = 20;
+    motorBuffer[1] = SpeedLeft;
+    motorBuffer[2] = SpeedRight;
+    for (i = 0; i < 10000; i++){
+        CAN_Send(motorBuffer);
+    }
+
+    SpeedLeft = 20;
+    SpeedRight = 0;
+    motorBuffer[1] = SpeedLeft;
+    motorBuffer[2] = SpeedRight;
+    for (i = 0; i < 10000; i++){
+        CAN_Send(motorBuffer);
+    }
   }
 }
 

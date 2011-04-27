@@ -122,10 +122,10 @@ unsigned long SeeSpeed = 0;
 long SeeError = 0;
 long SeeU = 0;
 long Ui[2];
-#define KP1 40 // proportional constant
-#define KI1 4000 // integral constant
-#define KP2 40
-#define KI2 6000
+#define KP1 3000 // proportional constant
+#define KI1 30000 // integral constant
+#define KP2 3000
+#define KI2 25000
 long Error = 0, Up = 0, U = 0;
 long Kp = 0;
 long Ki = 0;
