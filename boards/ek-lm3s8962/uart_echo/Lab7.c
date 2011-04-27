@@ -168,7 +168,7 @@ void CatBot(void){
 	//else if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left < -20) { SpeedRight = 12;} 
 	
 	if(Sensors.ir_side_right < WALL_DIST){SpeedLeft--; SpeedRight++;}
-	else if(Sensors.ir_side_right > WALL_DIST){SpeedRight++; SpeedLeft--;}
+	else if(Sensors.ir_side_right > WALL_DIST){SpeedLeft++; SpeedRight--;}
 	else{SpeedLeft++; SpeedRight++;}
 
 	if(SpeedLeft > 20){ SpeedLeft = 20;}
