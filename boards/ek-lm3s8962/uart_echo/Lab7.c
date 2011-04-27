@@ -168,47 +168,50 @@ void CatBot(void){
 	//else if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left < -20) { SpeedRight = 12;} 
 	
 	if(Sensors.ir_side_right < WALL_DIST){SpeedLeft--; SpeedRight++;}
-	else if(Sensors.ir_side_left < WALL_DIST){SpeedRight--; SpeedLeft++;}
+	else if(Sensors.ir_side_right > WALL_DIST){SpeedRight++; SpeedLeft--;}
 	else{SpeedLeft++; SpeedRight++;}
 
 	if(SpeedLeft > 20){ SpeedLeft = 20;}
 	if(SpeedRight > 20){ SpeedRight = 20;}  
-	if(SpeedLeft < 18){ SpeedLeft = 18;}
-	if(SpeedRight < 18){ SpeedRight = 18;}   
+	if(SpeedLeft < 0){ SpeedLeft = 0;}
+	if(SpeedRight < 0){ SpeedRight = 0;}   
     
     motorBuffer[0] = 'A'; 
+	motorBuffer[1] = SpeedLeft;
+	motorBuffer[2] = SpeedRight;
+	CAN_Send(motorBuffer);
 
-    SpeedLeft = 20;
-    SpeedRight = 20;
-    motorBuffer[1] = SpeedLeft;
-    motorBuffer[2] = SpeedRight;
-    for (i = 0; i < 10000; i++){
-        CAN_Send(motorBuffer);
-    }
-
-    SpeedLeft = 0;
-    SpeedRight = 20;
-    motorBuffer[1] = SpeedLeft;
-    motorBuffer[2] = SpeedRight;
-    for (i = 0; i < 10000; i++){
-        CAN_Send(motorBuffer);
-    }
-
-    SpeedLeft = 20;
-    SpeedRight = 20;
-    motorBuffer[1] = SpeedLeft;
-    motorBuffer[2] = SpeedRight;
-    for (i = 0; i < 10000; i++){
-        CAN_Send(motorBuffer);
-    }
-
-    SpeedLeft = 20;
-    SpeedRight = 0;
-    motorBuffer[1] = SpeedLeft;
-    motorBuffer[2] = SpeedRight;
-    for (i = 0; i < 10000; i++){
-        CAN_Send(motorBuffer);
-    }
+//    SpeedLeft = 20;
+//    SpeedRight = 20;
+//    motorBuffer[1] = SpeedLeft;
+//    motorBuffer[2] = SpeedRight;
+//    for (i = 0; i < 10000; i++){
+//        CAN_Send(motorBuffer);
+//    }
+//
+//    SpeedLeft = 0;
+//    SpeedRight = 20;
+//    motorBuffer[1] = SpeedLeft;
+//    motorBuffer[2] = SpeedRight;
+//    for (i = 0; i < 10000; i++){
+//        CAN_Send(motorBuffer);
+//    }
+//
+//    SpeedLeft = 20;
+//    SpeedRight = 20;
+//    motorBuffer[1] = SpeedLeft;
+//    motorBuffer[2] = SpeedRight;
+//    for (i = 0; i < 10000; i++){
+//        CAN_Send(motorBuffer);
+//    }
+//
+//    SpeedLeft = 20;
+//    SpeedRight = 0;
+//    motorBuffer[1] = SpeedLeft;
+//    motorBuffer[2] = SpeedRight;
+//    for (i = 0; i < 10000; i++){
+//        CAN_Send(motorBuffer);
+//    }
   }
 }
 
