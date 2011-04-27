@@ -293,8 +293,8 @@ void Motor_SetDesiredSpeed(unsigned char motor_id, unsigned long speed){
 void Motor_Init(void)
 {
 	volatile unsigned long delay = 0;
-    Ui[0] = (MAX_DUTY_CYCLE - MIN_DUTY_CYCLE)/2;
-    Ui[1] = (MAX_DUTY_CYCLE - MIN_DUTY_CYCLE)/2;
+    Ui[0] = 0;
+    Ui[1] = 0;
 
 	//Initialize PE0 and PE1 to be outputs
 	SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);
