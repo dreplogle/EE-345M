@@ -39,6 +39,7 @@ unsigned long FilterWork;   // number of digital filter calculations finished
 
 extern unsigned long JitterHistogramA[];
 extern unsigned long JitterHistogramB[];
+extern unsigned long DebugAngle;
 extern long MaxJitterA;
 extern long MinJitterA;
 
@@ -125,18 +126,18 @@ void DownPush(void){
 
 void Display(void){
 	while(1){
-  	oLED_Message(0, 0, "IR Left: ", Sensors.ir_side_left);
-	oLED_Message(0, 1, "IR Right: ", Sensors.ir_side_right);
-	oLED_Message(0,2,"Ping: ",Sensors.ping);
-  //oLED_Message(0, 2, "IR2: ", Sensors.ir_front_right);
-  //oLED_Message(0, 3, "IR3: ", Sensors.ir_back_right);
-    oLED_Message(1, 0, "SpeedLeft: ", SpeedLeft);
-	  oLED_Message(1,1, "SpeedRight: ", SpeedRight);
+  	oLED_Message(0, 0, "IR Front Left: ", Sensors.ir_front_left);
+	oLED_Message(0, 1, "IR Side Left: ", Sensors.ir_side_left);
+    oLED_Message(1, 0, "DebugAngle: ", DebugAngle);
 
 	}
 }
 
 #define WALL_DIST   20 //cm
+
+#define FRONT_LEFT_DIST 30
+#define SIDE_LEFT_DIST 23
+
 void CatBot(void){
   unsigned long i;
   SpeedLeft = 20;
@@ -171,34 +172,41 @@ void CatBot(void){
 	//	is in terms of cm
 	//PING STRATEGY: If the ping recognizes Catbot to be too close to
 	//	a wall
-	/*
-	if(Sensors.ping < WALL_DIST*10)
-	{
-		if(Sensors.ir_side_right > WALL_DIST){SpeedLeft=10; SpeedRight=5;}
-		else if(Sensors.ir_side_left > WALL_DIST){SpeedRight=10; SpeedLeft=5;}
+//	if(Sensors.ping < WALL_DIST*10)
+//	{
+//		if(Sensors.ir_side_right > WALL_DIST){SpeedLeft=10; SpeedRight=5;}
+//		else if(Sensors.ir_side_left > WALL_DIST){SpeedRight=10; SpeedLeft=5;}
+//
+//	}
+//	else
+//	{
+//		if(Sensors.ir_front_right < Sensors.ir_back_right){Servo_SetAngle(SERVO_MEDIUM_LEFT)}
+//		else if (Sensors.ir_front_right > Sensors.ir_back_right) {Servo_SetAngle(SERVO_MEDIUM_RIGHT)}
+		//if (Sensors.ir_front_left < Sensors.ir_side_left) {Servo_SetAngle(SERVO_FINE_RIGHT);}
+		//else if (Sensors.ir_front_left > Sensors.ir_side_left) {Servo_SetAngle(SERVO_FINE_LEFT);}
+		//else {Servo_SetAngle(SERVO_STRAIGHT);}
+		if ((Sensors.ir_front_left < FRONT_LEFT_DIST) ) {Servo_SetAngle(SERVO_MEDIUM_RIGHT);}
+		else if ( (Sensors.ir_front_left > FRONT_LEFT_DIST) ) {Servo_SetAngle(SERVO_MEDIUM_LEFT);}
+		else if ( (Sensors.ir_front_left == FRONT_LEFT_DIST)	&& (Sensors.ir_side_left > SIDE_LEFT_DIST) ) {Servo_SetAngle(SERVO_MEDIUM_RIGHT);}
+		else if ( (Sensors.ir_front_left == FRONT_LEFT_DIST)	&& (Sensors.ir_side_left < SIDE_LEFT_DIST) ) {Servo_SetAngle(SERVO_MEDIUM_LEFT);}
+		else {Servo_SetAngle(SERVO_STRAIGHT);}
+//	}
 
-	}
-	else
-	{
-		if(Sensors.ir_side_right < WALL_DIST){SpeedLeft--; SpeedRight++;}
-		else if(Sensors.ir_side_left < WALL_DIST){SpeedRight--; SpeedLeft++;}
-		else{SpeedLeft++; SpeedRight++;}
-	}
 
-
-	if(SpeedLeft > 20){ SpeedLeft = 20;}
-	if(SpeedRight > 20){ SpeedRight = 20;}  
-	if(SpeedLeft < 18){ SpeedLeft = 18;}
-	if(SpeedRight < 18){ SpeedRight = 18;}   
    
     motorBuffer[0] = 'A';
     motorBuffer[1] = SpeedLeft;
     motorBuffer[2] = SpeedRight;
 	CAN_Send(motorBuffer);
-	SysCtlDelay(SysCtlClockGet()/500);
-	*/
-	Servo_SetAngle(30);
-		for(i = 0; i < 5000; i++){}
+	SysCtlDelay(SysCtlClockGet()/1000);
+
+//	Servo_SetAngle(SERVO_SHARP_LEFT);
+//    SysCtlDelay(SysCtlClockGet()/50);
+//	Servo_SetAngle(SERVO_STRAIGHT);
+//	SysCtlDelay(SysCtlClockGet()/50);
+//    Servo_SetAngle(SERVO_SHARP_RIGHT);
+//	SysCtlDelay(SysCtlClockGet()/50);
+   
 
 
   }

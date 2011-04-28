@@ -10,8 +10,8 @@ struct sensors{
 	unsigned long tach;
     long ir_side_left;
     long ir_side_right;
-    long ir_back_left;
-    long ir_back_right;
+    long ir_front_left;
+    long ir_front_right;
 };
 
 extern struct sensors Sensor;
