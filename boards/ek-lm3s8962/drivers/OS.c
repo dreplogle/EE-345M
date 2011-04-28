@@ -64,6 +64,8 @@ unsigned char TimerAFree;
 unsigned char TimerBFree;
 Sema4Type PeriodicTimerMutex;
 
+unsigned long RunningCount;
+
 unsigned long const JitterSize=JITTERSIZE;
 unsigned long JitterHistogramA[JITTERSIZE]={0,};
 unsigned long JitterHistogramB[JITTERSIZE]={0,};
@@ -276,6 +278,8 @@ OS_Init(void)
   CumulativeRunTime = 0;
   EventIndex = 0;
   CumLastTime = 0;
+
+  RunningCount = 0;
 
 } 
 
@@ -1210,6 +1214,7 @@ Timer2IntHandler(void)
 // SysTick handler, enables PendSV for thread switching.
 //
 //***********************************************************************
+unsigned long RunningCount;
 
 void
 SysTickThSwIntHandler(void)
@@ -1320,6 +1325,8 @@ SysTickThSwIntHandler(void)
   //GPIOPinIntEnable(GPIO_PORTF_BASE, GPIO_PIN_1);
 
   TriggerPendSV();
+
+  RunningCount += TIMESLICE/TIME_1MS;
 
   OS_EXITCRITICAL();  
 }

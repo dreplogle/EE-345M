@@ -43,6 +43,8 @@ extern unsigned long DebugAngle;
 extern long MaxJitterA;
 extern long MinJitterA;
 
+extern unsigned long RunningCount;
+
 unsigned short SoundVFreq = 1;
 unsigned short SoundVTime = 0;
 unsigned short FilterOn = 1;
@@ -129,6 +131,7 @@ void Display(void){
   	oLED_Message(0, 0, "IR Front Left: ", Sensors.ir_front_left);
 	oLED_Message(0, 1, "IR Side Left: ", Sensors.ir_side_left);
     oLED_Message(1, 0, "DebugAngle: ", DebugAngle);
+	oLED_Message(1, 1, "Ping: ", Sensors.ping);
 
 	}
 }
@@ -190,15 +193,32 @@ void CatBot(void){
 		else if ( (Sensors.ir_front_left == FRONT_LEFT_DIST)	&& (Sensors.ir_side_left > SIDE_LEFT_DIST) ) {Servo_SetAngle(SERVO_MEDIUM_RIGHT);}
 		else if ( (Sensors.ir_front_left == FRONT_LEFT_DIST)	&& (Sensors.ir_side_left < SIDE_LEFT_DIST) ) {Servo_SetAngle(SERVO_MEDIUM_LEFT);}
 		else {Servo_SetAngle(SERVO_STRAIGHT);}
+
+		if ((Sensors.ping < 400) && (Sensors.ir_side_left > 50)){Servo_SetAngle(SERVO_SHARP_LEFT);}
+		if ((Sensors.ping < 400) && (Sensors.ir_side_left <= 50)){Servo_SetAngle(SERVO_SHARP_RIGHT);}
+
+
 //	}
 
-
+    if(RunningCount > RUN_TIME){ SpeedLeft = 0; SpeedRight = 0; Servo_SetAngle(SERVO_STRAIGHT);}
    
     motorBuffer[0] = 'A';
     motorBuffer[1] = SpeedLeft;
     motorBuffer[2] = SpeedRight;
 	CAN_Send(motorBuffer);
 	SysCtlDelay(SysCtlClockGet()/1000);
+
+	if(RunningCount > RUN_TIME){
+		while(1){
+			SpeedLeft = 0; SpeedRight = 0;
+			motorBuffer[0] = 'A';
+    		motorBuffer[1] = SpeedLeft;
+    		motorBuffer[2] = SpeedRight;
+			CAN_Send(motorBuffer);
+			SysCtlDelay(SysCtlClockGet()/1000);
+		}
+	}
+
 
 //	Servo_SetAngle(SERVO_SHARP_LEFT);
 //    SysCtlDelay(SysCtlClockGet()/50);
