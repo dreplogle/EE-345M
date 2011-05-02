@@ -581,6 +581,9 @@ void CAN_Receive(void)
 
 unsigned long pingIn;
 unsigned long tachIn;
+unsigned char stopFlag;
+extern unsigned long SpeedLeft;
+extern unsigned long SpeedRight;
 void
 CAN(void)
 {
@@ -610,29 +613,29 @@ CAN(void)
             }
             case CAN_WAIT_RX:
             {
-//				DebugBytesRemaining = 	g_sCAN.ulBytesRemaining;
-                // Wait for all new data to be received.
-             //   if(g_sCAN.ulBytesRemaining == 0)
-              //  {
-					        if(g_sCAN.pucBufferRx[0] == 't'){
-					          memcpy(&tachIn, &g_sCAN.pucBufferRx[1], 4); 
-					          Sensors.tach = tachIn;
-					        }
-        					if(g_sCAN.pucBufferRx[0] == 'p'){
-        					  memcpy(&pingIn, &g_sCAN.pucBufferRx[1], 4); 
-        					  Sensors.ping = pingIn;
-        					}
+                
+		        if(g_sCAN.pucBufferRx[0] == 't'){
 
-                    //
-                    // Reset the buffer pointer.
-                    //
-                    g_sCAN.MsgObjectRx.pucMsgData = g_sCAN.pucBufferRx;
+					if (g_sCAN.pucBufferRx[1]  == 0)
+					{
+						stopFlag = 1; 
+					}   
+			  	
+		        }
+				if(g_sCAN.pucBufferRx[0] == 'p'){
+				  memcpy(&pingIn, &g_sCAN.pucBufferRx[1], 4); 
+				  Sensors.ping = pingIn;
+				}
 
-                    //
-                    // Reset the number of bytes expected.
-                    //
-                    g_sCAN.ulBytesRemaining = CAN_FIFO_SIZE;
-            //    }
+                //
+                // Reset the buffer pointer.
+                //
+                g_sCAN.MsgObjectRx.pucMsgData = g_sCAN.pucBufferRx;
+
+                //
+                // Reset the number of bytes expected.
+                //
+                g_sCAN.ulBytesRemaining = CAN_FIFO_SIZE;
                 break;
             }
             default:

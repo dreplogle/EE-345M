@@ -64,6 +64,8 @@ unsigned char TimerAFree;
 unsigned char TimerBFree;
 Sema4Type PeriodicTimerMutex;
 
+unsigned long RunningCount;
+
 unsigned long const JitterSize=JITTERSIZE;
 unsigned long JitterHistogramA[JITTERSIZE]={0,};
 unsigned long JitterHistogramB[JITTERSIZE]={0,};
@@ -276,6 +278,8 @@ OS_Init(void)
   CumulativeRunTime = 0;
   EventIndex = 0;
   CumLastTime = 0;
+
+  RunningCount = 0;
 
 } 
 
@@ -567,7 +571,10 @@ OS_AddPeriodicThread(void(*task)(void), unsigned long period, unsigned long prio
     // Set the configuration of the A and B timers.  Note that the B timer
     // configuration is ignored by the hardware in 32-bit modes.
     HWREG(TIMER3_BASE + 0x00000004) = (TIMER_CFG_16_BIT_PAIR|TIMER_CFG_A_PERIODIC) & 255;
-    TimerLoadSet(TIMER3_BASE, TIMER_A, period);
+    
+	TimerPrescaleSet(TIMER3_BASE, TIMER_A, 45);
+	
+	TimerLoadSet(TIMER3_BASE, TIMER_A, period);
 	  PeriodTimerA = (long)period;
     TimerIntEnable(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
     TimerIntClear(TIMER3_BASE, TIMER_TIMA_TIMEOUT);
@@ -1207,6 +1214,7 @@ Timer2IntHandler(void)
 // SysTick handler, enables PendSV for thread switching.
 //
 //***********************************************************************
+unsigned long RunningCount;
 
 void
 SysTickThSwIntHandler(void)
@@ -1317,6 +1325,8 @@ SysTickThSwIntHandler(void)
   //GPIOPinIntEnable(GPIO_PORTF_BASE, GPIO_PIN_1);
 
   TriggerPendSV();
+
+  RunningCount += TIMESLICE/TIME_1MS;
 
   OS_EXITCRITICAL();  
 }

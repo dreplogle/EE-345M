@@ -402,13 +402,13 @@ void Tach_SendData(unsigned char tach_id){
     		}
     		#endif
     
-    		speedBuffer[0] = 't';
-    		speedBuffer[1] = '0' + tach_id; // send correct identifier
-    		memcpy(&speedBuffer[2], &data, 4);
-    
-    		//tachArr[0] = 't';
-    		//tachArr[1] = data;
-    		//CAN_Send(speedBuffer);
+			if (data == 0)
+			{
+				speedBuffer[0] = 't';
+				speedBuffer[1] = 0;
+				speedBuffer[2] = 0; 
+				CAN_Send(speedBuffer);
+			}	
         }
 	}
 }

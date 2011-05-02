@@ -28,6 +28,8 @@
 // 10-sec finite time experiment duration 
 #define RUNLENGTH 10000   // display results and quit when NumSamples==RUNLENGTH
 
+#define RUN_TIME 180000
+
 typedef struct tcb{
   unsigned char * stackPtr;
   struct tcb * next;

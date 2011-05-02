@@ -286,7 +286,7 @@ void Motor_TurnBackRight(void)
 	Motor_DesiredSpeeds[MOTOR_RIGHT_ID] = -HALF_SPEED;
 }
 
-void Motor_SetDesiredSpeed(unsigned char motor_id, unsigned long speed){
+void Motor_SetDesiredSpeed(unsigned char motor_id, long speed){
 	Motor_DesiredSpeeds[motor_id] = speed;
 }
 

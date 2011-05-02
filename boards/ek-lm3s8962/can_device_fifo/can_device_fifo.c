@@ -43,7 +43,7 @@
 
 #define MAX_SPEED 20
 #define MIN_SPEED 0
-unsigned char SpeedLeft, SpeedRight = MAX_SPEED;
+signed char SpeedLeft, SpeedRight = MAX_SPEED;
 
 
 //*****************************************************************************
@@ -677,8 +677,9 @@ int main(void)
 					DebugSpeedCounter++;
 				 	SpeedLeft = g_sCAN.pucBufferRx[1]; 
                     SpeedRight = g_sCAN.pucBufferRx[2]; 
-					Motor_SetDesiredSpeed(MOTOR_LEFT_ID, (SpeedLeft*FULL_SPEED)/MOTOR_CODE_MAX);
-					Motor_SetDesiredSpeed(MOTOR_RIGHT_ID, (SpeedRight*FULL_SPEED)/MOTOR_CODE_MAX);
+
+					Motor_SetDesiredSpeed(MOTOR_LEFT_ID, ((long)SpeedLeft*FULL_SPEED)/MOTOR_CODE_MAX);
+					Motor_SetDesiredSpeed(MOTOR_RIGHT_ID, ((long)SpeedRight*FULL_SPEED)/MOTOR_CODE_MAX);
 
 					//if(SpeedLastL < SpeedLeft){
 					//	Motor_LoadUi(LEFT_MOTOR, (SpeedLeft*MAX_DUTY_CYCLE)/20); // Jumpstart the PID for acceleration

@@ -27,6 +27,7 @@
 #include "drivers/tachometer.h"
 #include "drivers/ir.h"
 #include "uart_echo/lab7.h"
+#include "drivers/servo.h"
 
 unsigned long NumCreated;   // number of foreground threads created
 unsigned long NumSamples;   // incremented every sample
@@ -38,14 +39,17 @@ unsigned long FilterWork;   // number of digital filter calculations finished
 
 extern unsigned long JitterHistogramA[];
 extern unsigned long JitterHistogramB[];
+extern unsigned long DebugAngle;
 extern long MaxJitterA;
 extern long MinJitterA;
+
+extern unsigned long RunningCount;
 
 unsigned short SoundVFreq = 1;
 unsigned short SoundVTime = 0;
 unsigned short FilterOn = 1;
 struct sensors Sensors;
-short SpeedLeft, SpeedRight = MAX_SPEED;
+char SpeedLeft, SpeedRight = MAX_SPEED;
 
 unsigned char motorBuffer[CAN_FIFO_SIZE];
 int Running;                // true while robot is running
@@ -122,98 +126,130 @@ void DownPush(void){
   CAN_Receive();
 }
 
+
+
+extern unsigned char stopFlag;
+
 void Display(void){
 	while(1){
-  	oLED_Message(0, 0, "IR Left: ", Sensors.ir_side_left);
-	oLED_Message(0, 1, "IR Right: ", Sensors.ir_side_right);
-	oLED_Message(0,2,"Ping: ",Sensors.ping);
-  //oLED_Message(0, 2, "IR2: ", Sensors.ir_front_right);
-  //oLED_Message(0, 3, "IR3: ", Sensors.ir_back_right);
-    oLED_Message(1, 0, "SpeedLeft: ", SpeedLeft);
-	  oLED_Message(1,1, "SpeedRight: ", SpeedRight);
+  	oLED_Message(0, 0, "IR Front Left: ", Sensors.ir_front_left);
+	oLED_Message(0, 1, "IR Side Left: ", Sensors.ir_side_left);
+	oLED_Message(0, 2, "SpeedLeft: ", SpeedLeft);
+	oLED_Message(0, 3, "SpeedRight: ", SpeedRight);
+    oLED_Message(1, 0, "StopFlag: ", stopFlag);
+	oLED_Message(1, 1, "Ping: ", Sensors.ping);
+	oLED_Message(1, 1, "Angle: ", DebugAngle);
 
 	}
 }
 
 #define WALL_DIST   20 //cm
+
+#define FRONT_LEFT_DIST 30
+#define SIDE_LEFT_DIST 23
+
+
 void CatBot(void){
-  int i = 0;
-
-  SpeedLeft = 20;
-  SpeedRight = 20;
+  unsigned long i;
   while(1){
-    
+	   SpeedLeft = 20;
+  		SpeedRight = 20;
+	
+   	
+	//NOTE: Possibly change the distance with ping. This is really close.
+	//NOTE: WALL_DIST*10 because ping is in terms of mm, where WALL_DIST 
+	//	is in terms of cm
+	//PING STRATEGY: If the ping recognizes Catbot to be too close to
+	//	a wall
 
 	
-   	//Transmit by CAN
-	//	if(Sensors.ir_front_left <= 10 || Sensors.ir_back_left <= 10 && Sensors.ir_front_right > 10 && Sensors.ir_back_right > 10)
-    //{
-    //  SpeedLeft--;
-    //}
-	//	if(Sensors.ir_front_right <= 10 || Sensors.ir_back_right <= 10 && Sensors.ir_front_left > 10 && Sensors.ir_back_left > 10)
-    //{
-    //  SpeedRight--;
-    //}
-    //if(Sensors.ir_front_left > 30 && Sensors.ir_back_left > 30 && Sensors.ir_front_right > 30 && Sensors.ir_back_right > 30 &&
-    //  Sensors.ir_front_left < 60 && Sensors.ir_back_left < 60 && Sensors.ir_front_right < 60 && Sensors.ir_back_right < 60)
-    //{
-    //  SpeedLeft, SpeedRight = MAX_SPEED;
-    //}
-    //SpeedLeft = 20; SpeedRight = 20;
-    //if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left > 5) { SpeedLeft = 19;}
-	//else if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left < -5) { SpeedRight = 19;}
-	//else if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left > 10) { SpeedLeft = 17;}
-	//else if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left < -10) { SpeedRight = 17;}
-	//else if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left > 20) { SpeedLeft = 12;}
-	//else if((long)Sensors.ir_front_left - (long)Sensors.ir_back_left < -20) { SpeedRight = 12;} 
-	
-	if(Sensors.ir_side_right < WALL_DIST){SpeedLeft--; SpeedRight++;}
-	else if(Sensors.ir_side_right > WALL_DIST){SpeedLeft++; SpeedRight--;}
-	else{SpeedLeft++; SpeedRight++;}
 
-	if(SpeedLeft > 20){ SpeedLeft = 20;}
-	if(SpeedRight > 20){ SpeedRight = 20;}  
-	if(SpeedLeft < 0){ SpeedLeft = 0;}
-	if(SpeedRight < 0){ SpeedRight = 0;}   
+		
+
+
     
-    motorBuffer[0] = 'A'; 
-	motorBuffer[1] = SpeedLeft;
-	motorBuffer[2] = SpeedRight;
-	CAN_Send(motorBuffer);
 
-//    SpeedLeft = 20;
-//    SpeedRight = 20;
-//    motorBuffer[1] = SpeedLeft;
-//    motorBuffer[2] = SpeedRight;
-//    for (i = 0; i < 10000; i++){
-//        CAN_Send(motorBuffer);
-//    }
-//
-//    SpeedLeft = 0;
-//    SpeedRight = 20;
-//    motorBuffer[1] = SpeedLeft;
-//    motorBuffer[2] = SpeedRight;
-//    for (i = 0; i < 10000; i++){
-//        CAN_Send(motorBuffer);
-//    }
-//
-//    SpeedLeft = 20;
-//    SpeedRight = 20;
-//    motorBuffer[1] = SpeedLeft;
-//    motorBuffer[2] = SpeedRight;
-//    for (i = 0; i < 10000; i++){
-//        CAN_Send(motorBuffer);
-//    }
-//
-//    SpeedLeft = 20;
-//    SpeedRight = 0;
-//    motorBuffer[1] = SpeedLeft;
-//    motorBuffer[2] = SpeedRight;
-//    for (i = 0; i < 10000; i++){
-//        CAN_Send(motorBuffer);
-//    }
+	if (stopFlag == 1 && RunningCount >= 10000 && Sensors.ping <= 350)
+	{
+		SpeedLeft = -10;
+		SpeedRight = -10;
+		motorBuffer[0] = 'A';
+	    motorBuffer[1] = SpeedLeft;
+	    motorBuffer[2] = SpeedRight;
+		for (i = 0; i < 2000; i++)
+		{
+			Servo_SetAngle(SERVO_STRAIGHT);
+			CAN_Send(motorBuffer);
+		}
+
+		stopFlag = 0;
+	}
+	else
+	{
+		stopFlag = 0;
+
+			if ((Sensors.ir_front_left < FRONT_LEFT_DIST) ) {Servo_SetAngle(SERVO_MEDIUM_RIGHT);}
+		else if ( (Sensors.ir_front_left > FRONT_LEFT_DIST) ) {Servo_SetAngle(SERVO_MEDIUM_LEFT);}
+		else if ( (Sensors.ir_front_left == FRONT_LEFT_DIST)	&& (Sensors.ir_side_left > SIDE_LEFT_DIST) ) {Servo_SetAngle(SERVO_MEDIUM_RIGHT);}
+		else if ( (Sensors.ir_front_left == FRONT_LEFT_DIST)	&& (Sensors.ir_side_left < SIDE_LEFT_DIST) ) {Servo_SetAngle(SERVO_MEDIUM_LEFT);}
+		else {Servo_SetAngle(SERVO_STRAIGHT);}
+
+		if ((Sensors.ping < 450) && (Sensors.ir_side_left > 50)){Servo_SetAngle(SERVO_SHARP_LEFT);}
+		if ((Sensors.ping < 450) && (Sensors.ir_side_left <= 50)){Servo_SetAngle(SERVO_SHARP_RIGHT);}
+
+
+	    motorBuffer[0] = 'A';
+	    motorBuffer[1] = SpeedLeft;
+	    motorBuffer[2] = SpeedRight;
+		CAN_Send(motorBuffer);
+	}
+
+	if(RunningCount > RUN_TIME){ SpeedLeft = 0; SpeedRight = 0; Servo_SetAngle(SERVO_STRAIGHT);}
+
+	if(RunningCount > RUN_TIME){
+		while(1){
+			SpeedLeft = 0; SpeedRight = 0;
+			motorBuffer[0] = 'A';
+    		motorBuffer[1] = SpeedLeft;
+    		motorBuffer[2] = SpeedRight;
+			CAN_Send(motorBuffer);
+			SysCtlDelay(SysCtlClockGet()/1000);
+		}
+	}
   }
 }
+
+unsigned char OnOffFlag;
+unsigned long PWMduty;
+void Fake_PWM(void){
+  unsigned long totDutyPeriod = 21739;  //for 50Mhz and 45 timer prescale
+
+  if(OnOffFlag){
+    // Toggle bit high
+    GPIOPinWrite(GPIO_PORTD_BASE, GPIO_PIN_2, 0x4);
+	// Load pediod with duty cycle
+	TimerLoadSet(TIMER3_BASE, TIMER_A, PWMduty);
+	OnOffFlag = 0;
+  }
+  else{
+	// Toggle bit low  
+	GPIOPinWrite(GPIO_PORTD_BASE, GPIO_PIN_2, 0);
+	// Load period with total PWM period - duty cycle
+	TimerLoadSet(TIMER3_BASE, TIMER_A, totDutyPeriod - PWMduty);
+	OnOffFlag = 1; 
+  }  
+}
+
+
+void ServoOrient(void)
+{
+	while(1)
+	{
+		Servo_SetAngle(SERVO_STRAIGHT);
+	}
+} 
+
+
 
 
 //*******************lab 6 main **********
@@ -232,6 +268,8 @@ int main(void){
 
   OS_BumperInit();
   CAN_Init();
+  Servo_Init();
+  OS_AddPeriodicThread(&Fake_PWM, 100, 1);
 
   NumCreated = 0 ;
 // create initial foreground threads
@@ -241,9 +279,10 @@ int main(void){
   NumCreated += OS_AddThread(&IRSensor2,128,2);  // runs when nothing useful to do
   NumCreated += OS_AddThread(&IRSensor3,128,2);  // runs when nothing useful to do
   NumCreated += OS_AddThread(&CatBot,128,2);
+ // NumCreated += OS_AddThread(&ServoOrient,128,2);
   NumCreated += OS_AddThread(&Display,128,2);
  
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes
 }
- 
+
