@@ -38,7 +38,7 @@ void SRRestore(long sr);
 #define OS_EXITCRITICAL(){SRRestore(sr);}
 #define CAN_FIFO_SIZE           (8 * 8)
 
-#define _TACH_STATS	1
+#define _TACH_STATS	0
 
 //***********************************************************************
 // Tach_Fifo variables, this code segment copied from Valvano, lecture1
@@ -244,7 +244,7 @@ void Tach_InputCapture0A(void){
 		//time_debug = Tach_TimeDifference(time2, time1);
 		//Tach_Fifo_Put(time_debug);
 		//if((SeeRPM1 < (FULL_SPEED + 200)) && Tach_Fifo_Put(0, period))
-		if((SeeRPM1 < (FULL_SPEED + 200)) && Tach_Fifo_Put(MOTOR_LEFT_ID, period))	
+		if((SeeRPM1 < (FULL_SPEED + 100)) && Tach_Fifo_Put(MOTOR_LEFT_ID, period))	
             Tach_NumSamples[MOTOR_LEFT_ID]++;
 		else
 			Tach_DataLost[MOTOR_LEFT_ID]++;
@@ -298,7 +298,7 @@ void Tach_InputCapture1A(void){
             period++;
         }
         
-		if((SeeRPM2 < (FULL_SPEED + 200)) && Tach_Fifo_Put(MOTOR_RIGHT_ID, period))
+		if((SeeRPM2 < (FULL_SPEED + 100)) && Tach_Fifo_Put(MOTOR_RIGHT_ID, period))
 			Tach_NumSamples[MOTOR_RIGHT_ID]++;
 		else
 			Tach_DataLost[MOTOR_RIGHT_ID]++;
@@ -346,7 +346,7 @@ void Tach_SendData(unsigned char tach_id){
 
 	if(Tach_Fifo_Get(tach_id, &data)){
         NumReceived[tach_id]++;
-        if (NumReceived[tach_id] > 2){
+        //if (NumReceived[tach_id] > 2){
     		total_time += data;
     		//data = Tach_Filter(data);
     		SeeTach1 = data;
@@ -402,13 +402,9 @@ void Tach_SendData(unsigned char tach_id){
     		}
     		#endif
     
-			if (data == 0)
-			{
-				speedBuffer[0] = 't';
-				speedBuffer[1] = 0;
-				speedBuffer[2] = 0; 
-				CAN_Send(speedBuffer);
-			}	
-        }
+			speedBuffer[0] = 't';
+			memcpy(&speedBuffer[1], &data, 4); 
+			CAN_Send(speedBuffer);	
+        //}
 	}
 }

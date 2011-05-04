@@ -6,6 +6,7 @@
 #define SERVO_SUPER_FINE_LEFT 85
 #define SERVO_FINE_LEFT 80
 #define SERVO_MEDIUM_LEFT 60
+#define SERVO_MEDIUM_SHARP_LEFT 45
 #define SERVO_SHARP_LEFT 30
 
 void Servo_Init(void);

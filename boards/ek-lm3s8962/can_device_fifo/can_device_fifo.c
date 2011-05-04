@@ -490,6 +490,7 @@ unsigned char SpeedLastL;
 
 int main(void)
 {
+	int i;
 	Ping_Init(TIMER2_BASE, TIMER_A); 
 	Tach_Init(0);
 	Motor_Init();
@@ -598,6 +599,12 @@ int main(void)
     g_ulLEDCount = 0;
 
 
+	for (i = 0; i < 200; i++)
+	{
+			setDutyCycle(0, 6000);
+			setDutyCycle(1, 6000);
+	}
+
 		
 
     //
@@ -681,16 +688,11 @@ int main(void)
 					Motor_SetDesiredSpeed(MOTOR_LEFT_ID, ((long)SpeedLeft*FULL_SPEED)/MOTOR_CODE_MAX);
 					Motor_SetDesiredSpeed(MOTOR_RIGHT_ID, ((long)SpeedRight*FULL_SPEED)/MOTOR_CODE_MAX);
 
-					//if(SpeedLastL < SpeedLeft){
-					//	Motor_LoadUi(LEFT_MOTOR, (SpeedLeft*MAX_DUTY_CYCLE)/20); // Jumpstart the PID for acceleration
-					//}
-					//if(SpeedLastR < SpeedRight){
-					//	Motor_LoadUi(RIGHT_MOTOR, (SpeedRight*MAX_DUTY_CYCLE)/20); // Jumpstart the PID for acceleration
-					//}
+				
+
+					
 					SpeedLastR = SpeedRight;
 					SpeedLastL = SpeedLeft;
-					//setDutyCycle(LEFT_MOTOR, (SpeedLeft*MAX_DUTY_CYCLE)/20);
-					//setDutyCycle(RIGHT_MOTOR, (SpeedRight*MAX_DUTY_CYCLE)/20);
 				}
 
 

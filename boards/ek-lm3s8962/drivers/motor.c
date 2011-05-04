@@ -23,7 +23,6 @@ int i2 = 0;
 static unsigned char leftMotorDirection = 0;
 static unsigned char rightMotorDirection = 0;
 
-static
 void setDutyCycle(unsigned char motor, unsigned short duty)
 {
 	if (motor == MOTOR_LEFT_ID)
@@ -123,9 +122,9 @@ long SeeError = 0;
 long SeeU = 0;
 long Ui[2];
 #define KP1 3000 // proportional constant
-#define KI1 30000 // integral constant
+#define KI1 25000 // integral constant
 #define KP2 3000
-#define KI2 25000
+#define KI2 20000
 long Error = 0, Up = 0, U = 0;
 long Kp = 0;
 long Ki = 0;
@@ -284,6 +283,9 @@ void Motor_TurnBackRight(void)
 {	  
 	Motor_DesiredSpeeds[MOTOR_LEFT_ID] = -FULL_SPEED;
 	Motor_DesiredSpeeds[MOTOR_RIGHT_ID] = -HALF_SPEED;
+	
+    //Ui[0] = (MAX_DUTY_CYCLE - MIN_DUTY_CYCLE)/2;
+    //Ui[1] = (MAX_DUTY_CYCLE - MIN_DUTY_CYCLE)/2;
 }
 
 void Motor_SetDesiredSpeed(unsigned char motor_id, long speed){
@@ -293,8 +295,10 @@ void Motor_SetDesiredSpeed(unsigned char motor_id, long speed){
 void Motor_Init(void)
 {
 	volatile unsigned long delay = 0;
-    Ui[0] = 0;
-    Ui[1] = 0;
+	Ui[0] = 0;
+	Ui[1] = 0;
+    //Ui[0] = (MAX_DUTY_CYCLE - MIN_DUTY_CYCLE)/2;
+    //Ui[1] = (MAX_DUTY_CYCLE - MIN_DUTY_CYCLE)/2;
 
 	//Initialize PE0 and PE1 to be outputs
 	SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);

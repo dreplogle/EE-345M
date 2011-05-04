@@ -25,6 +25,7 @@ void Servo_SetAngle(unsigned long angle){
  DebugAngle = angle;
 	 switch(angle){
 	 	case SERVO_SHARP_LEFT: PWMduty = (ulPeriod * 1460)/10000; break;
+		case SERVO_MEDIUM_SHARP_LEFT: PWMduty = (ulPeriod * 1270)/10000; break; 
 		case SERVO_MEDIUM_LEFT: PWMduty = 	(ulPeriod * 1200)/10000; break;
 		case SERVO_FINE_LEFT: PWMduty = (ulPeriod * 1140)/10000; break;
 		case SERVO_SUPER_FINE_LEFT: PWMduty = (ulPeriod * 1120)/10000; break;

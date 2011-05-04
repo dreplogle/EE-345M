@@ -616,10 +616,12 @@ CAN(void)
                 
 		        if(g_sCAN.pucBufferRx[0] == 't'){
 
-					if (g_sCAN.pucBufferRx[1]  == 0)
-					{
-						stopFlag = 1; 
-					}   
+//					if (g_sCAN.pucBufferRx[1]  == 0)
+//					{
+//						stopFlag = 1; 
+//					}   
+					memcpy(&tachIn, &g_sCAN.pucBufferRx[1], 4); 
+					Sensors.tach = tachIn;
 			  	
 		        }
 				if(g_sCAN.pucBufferRx[0] == 'p'){
