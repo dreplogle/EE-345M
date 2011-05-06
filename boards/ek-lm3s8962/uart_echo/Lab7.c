@@ -199,21 +199,21 @@ void CatBot(void){
 				CAN_Send(motorBuffer);
 			}
 		}
-		localPing =  Sensors.ping;
-		localTach =  Sensors.tach;
-		if ( (localTach == 0) && (RunningCount > 3000) )
-		{
-			Servo_SetAngle(SERVO_STRAIGHT);
-			for (i = 0; i < 10; i++)
-			{
-				SpeedLeft = -10;
-				SpeedRight = -10;
-				motorBuffer[0] = 'A';
-			    motorBuffer[1] = SpeedLeft;
-			    motorBuffer[2] = SpeedRight;
-				CAN_Send(motorBuffer);
-			}
-		}
+//		localPing =  Sensors.ping;
+//		localTach =  Sensors.tach;
+//		if ( (localTach == 0) && (RunningCount > 3000) )
+//		{
+//			Servo_SetAngle(SERVO_STRAIGHT);
+//			for (i = 0; i < 10; i++)
+//			{
+//				SpeedLeft = -10;
+//				SpeedRight = -10;
+//				motorBuffer[0] = 'A';
+//			    motorBuffer[1] = SpeedLeft;
+//			    motorBuffer[2] = SpeedRight;
+//				CAN_Send(motorBuffer);
+//			}
+//		}
 
     if(RunningCount > RUN_TIME){ SpeedLeft = 0; SpeedRight = 0; Servo_SetAngle(SERVO_STRAIGHT);}
    
